@@ -1,4 +1,4 @@
-<main class="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
+<main class="flex min-h-[90vh] flex-col items-center justify-center bg-background px-4 py-8">
 	<div class="mx-auto max-w-4xl text-center">
 		<img src="/logo-black.svg" alt="ContextVM Logo" class="mx-auto mb-8 h-32 w-auto dark:hidden" />
 		<img

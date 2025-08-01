@@ -118,4 +118,51 @@
 	body {
 		@apply bg-background text-foreground;
 	}
+
+	/* Typography improvements for common elements */
+	h1 {
+		@apply mt-8 mb-4 text-2xl font-bold;
+	}
+
+	h2 {
+		@apply mt-6 mb-3 text-xl font-semibold;
+	}
+
+	h3 {
+		@apply mt-5 mb-2 text-lg font-medium;
+	}
+
+	p {
+		@apply text-base leading-relaxed;
+	}
+
+	ul,
+	ol {
+		@apply mt-4 mb-4;
+	}
+
+	li {
+		@apply mt-1 mb-1;
+	}
+
+	/* Restore list markers with proper alignment */
+	ul li {
+		@apply list-outside list-disc;
+	}
+
+	ol li {
+		@apply list-outside list-decimal;
+	}
+
+	code {
+		@apply rounded bg-muted px-1 py-0.5 text-sm;
+	}
+
+	pre {
+		@apply overflow-x-auto rounded-lg bg-muted p-4;
+	}
+
+	blockquote {
+		@apply mt-4 mb-4 border-l-2 border-primary pl-4 italic;
+	}
 }
