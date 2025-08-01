@@ -1,6 +1,10 @@
 <script lang="ts">
 	import Github from '@lucide/svelte/icons/github';
 	import ThemeToggle from './theme-toggle.svelte';
+	import AccountLoginDialog from './AccountLoginDialog.svelte';
+	import ProfileCard from './ProfileCard.svelte';
+	import { activeAccount, logout } from '$lib/services/accountManager.svelte';
+	import Button from './ui/button/button.svelte';
 </script>
 
 <header
@@ -35,7 +39,16 @@
 					<Github class="h-4 w-4" />
 				</a>
 			</nav>
-
+			<div class="flex items-center gap-4">
+				{#if $activeAccount}
+					<div class="flex items-center gap-3">
+						<ProfileCard pubkey={$activeAccount.pubkey} />
+						<Button variant="outline" onclick={logout}>Logout</Button>
+					</div>
+				{:else}
+					<AccountLoginDialog />
+				{/if}
+			</div>
 			<!-- Theme Toggle -->
 			<div class="flex items-center space-x-2">
 				<ThemeToggle />
