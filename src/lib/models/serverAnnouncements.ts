@@ -12,6 +12,7 @@ export interface ServerAnnouncement {
 	name: string;
 	website?: string;
 	picture?: string;
+	about?: string;
 	supportsEncryption: boolean;
 	capabilities: InitializeResult;
 }
@@ -32,6 +33,7 @@ export function parseServerAnnouncement(event: Event): ServerAnnouncement | null
 		const name = getTagValue(event, 'name') || parsed.data.serverInfo.name || 'Unknown Server';
 		const website = getTagValue(event, 'website');
 		const picture = getTagValue(event, 'picture');
+		const about = getTagValue(event, 'about');
 		const supportsEncryption = event.tags.some((tag) => tag[0] === 'support_encryption');
 
 		return {
@@ -41,6 +43,7 @@ export function parseServerAnnouncement(event: Event): ServerAnnouncement | null
 			name,
 			website,
 			picture,
+			about,
 			supportsEncryption,
 			capabilities: parsed.data
 		};
