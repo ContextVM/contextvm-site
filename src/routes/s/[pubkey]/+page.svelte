@@ -12,11 +12,31 @@
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import type { InitializeResult } from '@modelcontextprotocol/sdk/types.js';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import { mcpClientService } from '$lib/services/mcpClient.svelte';
+	import ToolsList from '$lib/components/ToolsList.svelte';
+	import ResourcesList from '$lib/components/ResourcesList.svelte';
+	import PromptsList from '$lib/components/PromptsList.svelte';
+	import type {
+		InitializeResult,
+		Prompt,
+		Resource,
+		Tool
+	} from '@modelcontextprotocol/sdk/types.js';
+	import { activeAccount } from '$lib/services/accountManager.svelte';
 
 	const pubkey = page.params.pubkey ?? '';
 
 	const server = eventStore.model(ServerAnnouncementModel, pubkey);
+
+	// MCP connection state
+	let connected = $state(false);
+	let loading = $state(false);
+	let error = $state<string | null>(null);
+	let tools = $state<Tool[] | null>(null);
+	let resources = $state<Resource[] | null>(null);
+	let prompts = $state<Prompt[] | null>(null);
+	let activeTab = $state('about');
 
 	$effect(() => {
 		if ($server) return;
@@ -34,6 +54,69 @@
 		return ['tools', 'resources', 'prompts'].filter((capability) =>
 			hasCapability(server.capabilities, capability)
 		);
+	}
+
+	async function connectToServer() {
+		if (!$server) return;
+
+		loading = true;
+		error = null;
+
+		try {
+			const client = await mcpClientService.getClient($server.pubkey);
+			if (client) {
+				connected = true;
+
+				// Load capabilities based on what the server supports
+				const capabilities = getAvailableCapabilities($server);
+
+				if (capabilities.includes('tools')) {
+					try {
+						const toolsResult = await mcpClientService.listTools($server.pubkey);
+						tools = toolsResult.tools;
+					} catch (err) {
+						console.error('Failed to load tools:', err);
+					}
+				}
+
+				if (capabilities.includes('resources')) {
+					try {
+						const resourcesResult = await mcpClientService.listResources($server.pubkey);
+						resources = resourcesResult.resources;
+					} catch (err) {
+						console.error('Failed to load resources:', err);
+					}
+				}
+
+				if (capabilities.includes('prompts')) {
+					try {
+						const promptsResult = await mcpClientService.listPrompts($server.pubkey);
+						prompts = promptsResult.prompts;
+					} catch (err) {
+						console.error('Failed to load prompts:', err);
+					}
+				}
+			}
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to connect to server';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function disconnectFromServer() {
+		if (!$server) return;
+
+		try {
+			await mcpClientService.disconnect($server.pubkey);
+			connected = false;
+			tools = null;
+			resources = null;
+			prompts = null;
+			error = null;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to disconnect from server';
+		}
 	}
 </script>
 
@@ -61,26 +144,57 @@
 			<!-- Left column (2/3 width) -->
 			<div class="lg:col-span-2">
 				<!-- Server name and website -->
-				<div class="mb-6">
-					<h1
-						class="mb-3 text-2xl leading-tight font-bold tracking-tight sm:mb-4 sm:text-3xl md:text-4xl"
-					>
-						{$server.name}
-					</h1>
-					{#if $server.website}
-						<a
-							href={$server.website}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-sm text-primary hover:underline"
+				<div class="mb-6 flex items-center justify-between">
+					<div>
+						<h1
+							class="mb-3 text-2xl leading-tight font-bold tracking-tight sm:mb-4 sm:text-3xl md:text-4xl"
 						>
-							{$server.website}
-						</a>
-					{/if}
+							{$server.name}
+						</h1>
+						{#if $server.website}
+							<a
+								href={$server.website}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="text-sm text-primary hover:underline"
+							>
+								{$server.website}
+							</a>
+						{/if}
+					</div>
+					<div class="flex items-center space-x-2">
+						{#if connected}
+							<span
+								class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
+							>
+								Connected
+							</span>
+							<Button variant="outline" onclick={disconnectFromServer} disabled={loading}>
+								Disconnect
+							</Button>
+						{:else}
+							<Button onclick={connectToServer} disabled={loading || !$activeAccount}>
+								{#if loading}
+									Connecting...
+								{:else}
+									Connect to Server
+								{/if}
+							</Button>
+						{/if}
+					</div>
 				</div>
 
+				<!-- Error message -->
+				{#if error}
+					<Card.Root class="mb-6 border-destructive">
+						<Card.Content class="pt-6">
+							<p class="text-sm text-destructive">{error}</p>
+						</Card.Content>
+					</Card.Root>
+				{/if}
+
 				<!-- Tabs for server information -->
-				<Tabs.Root value="about">
+				<Tabs.Root bind:value={activeTab}>
 					<Tabs.List class="grid w-full grid-cols-4">
 						<Tabs.Trigger value="about">About</Tabs.Trigger>
 						{#each availableCapabilities as capability (capability)}
@@ -103,16 +217,56 @@
 						</Card.Root>
 					</Tabs.Content>
 
-					<!-- Dynamic capability tabs -->
-					{#each availableCapabilities as capability (capability)}
-						<Tabs.Content value={capability} class="mt-4">
-							<Card.Root>
-								<Card.Content class="pt-6">
-									<p class="text-sm">This server has {capability}.</p>
-								</Card.Content>
-							</Card.Root>
+					<!-- Tools tab -->
+					{#if availableCapabilities.includes('tools')}
+						<Tabs.Content value="tools" class="mt-4">
+							{#if connected}
+								<ToolsList {tools} {loading} {error} />
+							{:else}
+								<Card.Root>
+									<Card.Content class="pt-6">
+										<p class="text-center text-sm text-muted-foreground">
+											Connect to the server to view available tools.
+										</p>
+									</Card.Content>
+								</Card.Root>
+							{/if}
 						</Tabs.Content>
-					{/each}
+					{/if}
+
+					<!-- Resources tab -->
+					{#if availableCapabilities.includes('resources')}
+						<Tabs.Content value="resources" class="mt-4">
+							{#if connected}
+								<ResourcesList {resources} {loading} {error} />
+							{:else}
+								<Card.Root>
+									<Card.Content class="pt-6">
+										<p class="text-center text-sm text-muted-foreground">
+											Connect to the server to view available resources.
+										</p>
+									</Card.Content>
+								</Card.Root>
+							{/if}
+						</Tabs.Content>
+					{/if}
+
+					<!-- Prompts tab -->
+					{#if availableCapabilities.includes('prompts')}
+						<Tabs.Content value="prompts" class="mt-4">
+							{#if connected}
+								<PromptsList {prompts} {loading} {error} />
+							{:else}
+								<Card.Root>
+									<Card.Content class="pt-6">
+										<p class="text-center text-sm text-muted-foreground">
+											Connect to the server to view available prompts.
+										</p>
+									</Card.Content>
+								</Card.Root>
+							{/if}
+						</Tabs.Content>
+					{/if}
 				</Tabs.Root>
 			</div>
 

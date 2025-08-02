@@ -2,7 +2,7 @@ import { map } from 'rxjs/operators';
 import type { Model } from 'applesauce-core';
 import { getTagValue } from 'applesauce-core/helpers';
 import { InitializeResultSchema, type InitializeResult } from '@modelcontextprotocol/sdk/types.js';
-import type { Event } from 'nostr-tools';
+import { type Event } from 'nostr-tools';
 import { SERVER_ANNOUNCEMENT_KIND } from '@contextvm/sdk';
 
 export interface ServerAnnouncement {
@@ -74,17 +74,8 @@ export function ServerAnnouncementsModel(): Model<ServerAnnouncement[]> {
 /** A model that gets and parses a server announcement by pubkey */
 export function ServerAnnouncementModel(pubkey: string): Model<ServerAnnouncement | undefined> {
 	return (events) =>
-		events.timeline({ kinds: [SERVER_ANNOUNCEMENT_KIND], authors: [pubkey] }).pipe(
-			map((events: Event[]) => {
-				// Parse each event and return the first valid one
-				const announcements = events
-					.map(parseServerAnnouncement)
-					.filter((announcement): announcement is ServerAnnouncement => announcement !== null);
-
-				// Return the newest announcement or undefined if none found
-				return announcements.sort(
-					(a: ServerAnnouncement, b: ServerAnnouncement) => b.created_at - a.created_at
-				)[0];
-			})
+		events.replaceable(SERVER_ANNOUNCEMENT_KIND, pubkey).pipe(
+			// Parse each event and return the first valid one
+			map((event) => event && (parseServerAnnouncement(event) ?? undefined))
 		);
 }
