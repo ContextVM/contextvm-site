@@ -50,7 +50,6 @@
 	{@const image = getArticleImage($storedArticle)}
 	{@const title = getArticleTitle($storedArticle)}
 	{@const publishedAt = formatUnixTimestamp($storedArticle.created_at, true)}
-	{@const identifier = getTagValue($storedArticle, 'd')}
 
 	<article class="container mx-auto max-w-4xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to blog link -->

@@ -4,6 +4,7 @@
 	import { blogArticlesLoader } from '$lib/services/loaders';
 	import { TimelineModel } from 'applesauce-core/models';
 	import ArticleCard from '$lib/components/ArticleCard.svelte';
+	import LoadingCard from '$lib/components/LoadingCard.svelte';
 
 	const blogArticles = eventStore.model(TimelineModel, articlesFilter);
 
@@ -18,15 +19,17 @@
 <div class="container mx-auto px-4 py-8">
 	<h1 class="mb-8 text-3xl font-bold">Blog</h1>
 
-	{#if $blogArticles}
+	{#if $blogArticles.length}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 			{#each $blogArticles as article (article.id)}
 				<ArticleCard {article} />
 			{/each}
 		</div>
 	{:else}
-		<div class="py-12 text-center">
-			<p class="text-lg text-muted-foreground">No articles found</p>
+		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+			{#each Array(3) as _ (_)}
+				<LoadingCard layout="article" />
+			{/each}
 		</div>
 	{/if}
 </div>
