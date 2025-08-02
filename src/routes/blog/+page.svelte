@@ -27,7 +27,7 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-			{#each Array(3) as _ (_)}
+			{#each Array(3) as _, i (i)}
 				<LoadingCard layout="article" />
 			{/each}
 		</div>

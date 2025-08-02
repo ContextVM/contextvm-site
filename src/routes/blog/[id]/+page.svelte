@@ -8,7 +8,7 @@
 	import { LongFormArticle } from 'nostr-tools/kinds';
 	import { marked } from 'marked';
 	import type { AddressPointer } from 'nostr-tools/nip19';
-	import { getArticleImage, getArticleTitle, getTagValue } from 'applesauce-core/helpers';
+	import { getArticleImage, getArticleTitle } from 'applesauce-core/helpers';
 	import DOMPurify from 'dompurify';
 	import { formatUnixTimestamp } from '$lib/utils';
 	import { onMount } from 'svelte';
