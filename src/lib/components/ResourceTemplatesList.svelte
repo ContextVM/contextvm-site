@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Resource } from '@modelcontextprotocol/sdk/types.js';
+	import type { ResourceTemplate } from '@modelcontextprotocol/sdk/types.js';
 	import {
 		Card,
 		CardContent,
@@ -9,11 +9,11 @@
 	} from '$lib/components/ui/card/index.js';
 
 	let {
-		resources,
+		resourceTemplates,
 		loading,
 		error
 	}: {
-		resources: Resource[] | null;
+		resourceTemplates: ResourceTemplate[] | null;
 		loading: boolean;
 		error: string | null;
 	} = $props();
@@ -22,7 +22,7 @@
 {#if loading}
 	<div class="flex items-center justify-center p-8">
 		<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-		<span class="ml-3">Loading resources...</span>
+		<span class="ml-3">Loading resource templates...</span>
 	</div>
 {:else if error}
 	<Card>
@@ -32,16 +32,16 @@
 			</div>
 		</CardContent>
 	</Card>
-{:else if resources && resources.length > 0}
+{:else if resourceTemplates && resourceTemplates.length > 0}
 	<div class="space-y-4">
-		{#each resources as resource (resource.uri)}
+		{#each resourceTemplates as template (template.uriTemplate)}
 			<Card>
 				<CardHeader>
 					<div class="flex items-start justify-between">
 						<div class="space-y-1">
-							<CardTitle class="text-lg">{resource.name || resource.uri}</CardTitle>
-							{#if resource.description}
-								<CardDescription>{resource.description}</CardDescription>
+							<CardTitle class="text-lg">{template.name || template.uriTemplate}</CardTitle>
+							{#if template.description}
+								<CardDescription>{template.description}</CardDescription>
 							{/if}
 						</div>
 					</div>
@@ -49,13 +49,15 @@
 				<CardContent>
 					<div class="space-y-3">
 						<div>
-							<h4 class="text-sm font-medium">URI:</h4>
-							<p class="font-mono text-sm break-all text-muted-foreground">{resource.uri}</p>
+							<h4 class="text-sm font-medium">URI Template:</h4>
+							<p class="font-mono text-sm break-all text-muted-foreground">
+								{template.uriTemplate}
+							</p>
 						</div>
-						{#if resource.mimeType}
+						{#if template.mimeType}
 							<div>
 								<h4 class="text-sm font-medium">MIME Type:</h4>
-								<p class="text-sm text-muted-foreground">{resource.mimeType}</p>
+								<p class="text-sm text-muted-foreground">{template.mimeType}</p>
 							</div>
 						{/if}
 					</div>

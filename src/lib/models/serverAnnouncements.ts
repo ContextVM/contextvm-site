@@ -22,7 +22,8 @@ export function parseServerAnnouncement(event: Event): ServerAnnouncement | null
 	try {
 		// Parse the content to get server capabilities
 		const content = JSON.parse(event.content);
-		const parsed = InitializeResultSchema.safeParse(content);
+		const resultInContent = 'result' in content;
+		const parsed = InitializeResultSchema.safeParse(resultInContent ? content.result : content);
 
 		if (!parsed.success) {
 			console.error('Invalid server capabilities:', parsed.error);

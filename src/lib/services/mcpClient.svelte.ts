@@ -6,6 +6,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type {
 	ListPromptsResult,
 	ListResourcesResult,
+	ListResourceTemplatesResult,
 	ListToolsResult
 } from '@modelcontextprotocol/sdk/types.js';
 import { SvelteMap } from 'svelte/reactivity';
@@ -24,7 +25,7 @@ export class McpClientService {
 		name: 'ContextVM Web Client',
 		version: '1.0.0'
 	};
-	private static readonly defaultConnectionState = {
+	private static readonly defaultConnectionState: Readonly<McpConnectionState> = {
 		connected: false,
 		loading: false,
 		error: null
@@ -39,7 +40,8 @@ export class McpClientService {
 		}
 
 		try {
-			this.updateConnectionState(serverPubkey, {
+			// Set loading state
+			this.connectionStates.set(serverPubkey, {
 				connected: false,
 				loading: true,
 				error: null
@@ -61,12 +63,12 @@ export class McpClientService {
 				relayHandler: this.relayPool,
 				serverPubkey
 			});
-
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
 			this.clients.set(serverPubkey, client);
 
-			this.updateConnectionState(serverPubkey, {
+			// Set connected state
+			this.connectionStates.set(serverPubkey, {
 				connected: true,
 				loading: false,
 				error: null
@@ -75,7 +77,7 @@ export class McpClientService {
 			return client;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Failed to connect to server';
-			this.updateConnectionState(serverPubkey, {
+			this.connectionStates.set(serverPubkey, {
 				connected: false,
 				loading: false,
 				error: errorMessage
@@ -90,18 +92,14 @@ export class McpClientService {
 		if (client) {
 			await client.close();
 			this.clients.delete(serverPubkey);
-			this.updateConnectionState(serverPubkey, McpClientService.defaultConnectionState);
+			// Reset to default state
+			this.connectionStates.set(serverPubkey, { ...McpClientService.defaultConnectionState });
 		}
 	}
 
 	// Get connection state for a server
 	getConnectionState(serverPubkey: string): McpConnectionState {
-		return this.connectionStates.get(serverPubkey) || McpClientService.defaultConnectionState;
-	}
-
-	// Update connection state
-	private updateConnectionState(serverPubkey: string, state: McpConnectionState): void {
-		this.connectionStates.set(serverPubkey, state);
+		return this.connectionStates.get(serverPubkey) ?? McpClientService.defaultConnectionState;
 	}
 
 	// List tools for a server
@@ -120,6 +118,15 @@ export class McpClientService {
 			throw new Error('Not connected to server');
 		}
 		return client.listResources();
+	}
+
+	// List resources for a server
+	async listResourcesTemplates(serverPubkey: string): Promise<ListResourceTemplatesResult> {
+		const client = await this.getClient(serverPubkey);
+		if (!client) {
+			throw new Error('Not connected to server');
+		}
+		return client.listResourceTemplates();
 	}
 
 	// List prompts for a server

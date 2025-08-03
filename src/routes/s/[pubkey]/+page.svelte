@@ -3,6 +3,7 @@
 	import { eventStore } from '$lib/services/eventStore';
 	import { serverAnnouncementByPubkeyLoader } from '$lib/services/loaders';
 	import {
+		parseServerAnnouncement,
 		ServerAnnouncementModel,
 		type ServerAnnouncement
 	} from '$lib/models/serverAnnouncements';
@@ -13,29 +14,51 @@
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { mcpClientService } from '$lib/services/mcpClient.svelte';
+	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import ToolsList from '$lib/components/ToolsList.svelte';
 	import ResourcesList from '$lib/components/ResourcesList.svelte';
+	import ResourceTemplatesList from '$lib/components/ResourceTemplatesList.svelte';
 	import PromptsList from '$lib/components/PromptsList.svelte';
 	import type {
 		InitializeResult,
 		Prompt,
 		Resource,
+		ResourceTemplate,
 		Tool
 	} from '@modelcontextprotocol/sdk/types.js';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
+	import type { NostrClientTransport } from '@contextvm/sdk';
 
 	const pubkey = page.params.pubkey ?? '';
 
 	const server = eventStore.model(ServerAnnouncementModel, pubkey);
 
-	// MCP connection state
-	let connected = $state(false);
-	let loading = $state(false);
-	let error = $state<string | null>(null);
-	let tools = $state<Tool[] | null>(null);
-	let resources = $state<Resource[] | null>(null);
-	let prompts = $state<Prompt[] | null>(null);
+	// Create a minimal server object for private servers
+	let privateServer = $state<ServerAnnouncement | null>(null);
+
+	// Derived server that combines both public and private servers
+	const currentServer = $derived($server || privateServer);
+
+	// MCP connection state - using the service's state directly
+	let connectionState = $derived<McpConnectionState>(
+		currentServer
+			? mcpClientService.getConnectionState(currentServer.pubkey)
+			: { connected: false, loading: false, error: null }
+	);
+
+	// Server capabilities data
+	let serverData = $state<{
+		tools: Tool[] | null;
+		resources: Resource[] | null;
+		resourceTemplates: ResourceTemplate[] | null;
+		prompts: Prompt[] | null;
+	}>({
+		tools: null,
+		resources: null,
+		resourceTemplates: null,
+		prompts: null
+	});
+
 	let activeTab = $state('about');
 
 	$effect(() => {
@@ -56,73 +79,130 @@
 		);
 	}
 
+	// Load server capabilities with error handling
+	async function loadServerCapabilities(
+		serverPubkey: string,
+		capabilities: string[] = ['tools', 'resources', 'prompts']
+	) {
+		const results = {
+			tools: null as Tool[] | null,
+			resources: null as Resource[] | null,
+			resourceTemplates: null as ResourceTemplate[] | null,
+			prompts: null as Prompt[] | null
+		};
+
+		for (const capability of capabilities) {
+			try {
+				switch (capability) {
+					case 'tools':
+						results.tools = (await mcpClientService.listTools(serverPubkey)).tools;
+						break;
+					case 'resources':
+						// Try to load regular resources
+						results.resources = (await mcpClientService.listResources(serverPubkey)).resources;
+						results.resourceTemplates = (
+							await mcpClientService.listResourcesTemplates(serverPubkey)
+						).resourceTemplates;
+						console.log('Regular resources loaded', results.resources, results.resourceTemplates);
+						break;
+					case 'prompts':
+						results.prompts = (await mcpClientService.listPrompts(serverPubkey)).prompts;
+						break;
+				}
+			} catch (err) {
+				console.error(`Failed to load ${capability}:`, err);
+			}
+		}
+
+		return results;
+	}
+
 	async function connectToServer() {
 		if (!$server) return;
-
-		loading = true;
-		error = null;
 
 		try {
 			const client = await mcpClientService.getClient($server.pubkey);
 			if (client) {
-				connected = true;
-
 				// Load capabilities based on what the server supports
 				const capabilities = getAvailableCapabilities($server);
+				const results = await loadServerCapabilities($server.pubkey, capabilities);
 
-				if (capabilities.includes('tools')) {
-					try {
-						const toolsResult = await mcpClientService.listTools($server.pubkey);
-						tools = toolsResult.tools;
-					} catch (err) {
-						console.error('Failed to load tools:', err);
-					}
-				}
-
-				if (capabilities.includes('resources')) {
-					try {
-						const resourcesResult = await mcpClientService.listResources($server.pubkey);
-						resources = resourcesResult.resources;
-					} catch (err) {
-						console.error('Failed to load resources:', err);
-					}
-				}
-
-				if (capabilities.includes('prompts')) {
-					try {
-						const promptsResult = await mcpClientService.listPrompts($server.pubkey);
-						prompts = promptsResult.prompts;
-					} catch (err) {
-						console.error('Failed to load prompts:', err);
-					}
-				}
+				// Update server data with loaded capabilities
+				serverData = results;
 			}
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to connect to server';
-		} finally {
-			loading = false;
+			// Error is handled by the service
+			console.error('Connection error:', err);
 		}
 	}
 
 	async function disconnectFromServer() {
-		if (!$server) return;
+		if (!currentServer) return;
 
 		try {
-			await mcpClientService.disconnect($server.pubkey);
-			connected = false;
-			tools = null;
-			resources = null;
-			prompts = null;
-			error = null;
+			await mcpClientService.disconnect(currentServer.pubkey);
+
+			// Reset server data
+			serverData = {
+				tools: null,
+				resources: null,
+				resourceTemplates: null,
+				prompts: null
+			};
+
+			// If this was a private server, clear the privateServer object
+			if (privateServer) {
+				privateServer = null;
+			}
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to disconnect from server';
+			// Error is handled by the service
+			console.error('Disconnection error:', err);
+		}
+	}
+
+	async function attemptConnectToPrivateServer() {
+		if (!pubkey) return;
+
+		try {
+			// Check if user is logged in
+			const currentAccount = activeAccount.getValue();
+			if (!currentAccount) {
+				throw new Error('Please log in to connect to servers');
+			}
+
+			// Try to connect to the server directly
+			const client = await mcpClientService.getClient(pubkey);
+			if (client) {
+				const initializeEvent = (
+					client.transport as NostrClientTransport
+				).getServerInitializeEvent();
+				if (!initializeEvent) return;
+
+				// Create a minimal server object for private servers
+				const parsedServer = parseServerAnnouncement(initializeEvent);
+				if (!parsedServer) return;
+
+				privateServer = parsedServer;
+
+				// Get available capabilities from the server's initialization response
+				const capabilities = getAvailableCapabilities(parsedServer);
+
+				// Only load capabilities that the server actually supports
+				const results = await loadServerCapabilities(pubkey, capabilities);
+
+				// Update server data with loaded capabilities
+				serverData = results;
+			}
+		} catch (err) {
+			// Error is handled by the service
+			console.error('Private server connection error:', err);
 		}
 	}
 </script>
 
-{#if $server}
-	{@const publishedAt = formatUnixTimestamp($server.created_at, true)}
-	{@const availableCapabilities = getAvailableCapabilities($server)}
+{#if currentServer}
+	{@const publishedAt = formatUnixTimestamp(currentServer.created_at, true)}
+	{@const availableCapabilities = getAvailableCapabilities(currentServer)}
 	<article class="container mx-auto max-w-6xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to servers link -->
 		<button
@@ -133,9 +213,13 @@
 		</button>
 
 		<!-- Server header with picture -->
-		{#if $server.picture}
+		{#if currentServer.picture}
 			<div class="mb-6 aspect-video overflow-hidden rounded-lg bg-muted sm:mb-8">
-				<img src={$server.picture} alt={$server.name} class="h-full w-full object-cover" />
+				<img
+					src={currentServer.picture}
+					alt={currentServer.name}
+					class="h-full w-full object-cover"
+				/>
 			</div>
 		{/if}
 
@@ -149,32 +233,39 @@
 						<h1
 							class="mb-3 text-2xl leading-tight font-bold tracking-tight sm:mb-4 sm:text-3xl md:text-4xl"
 						>
-							{$server.name}
+							{currentServer.name}
 						</h1>
-						{#if $server.website}
+						{#if currentServer.website}
 							<a
-								href={$server.website}
+								href={currentServer.website}
 								target="_blank"
 								rel="noopener noreferrer"
 								class="text-sm text-primary hover:underline"
 							>
-								{$server.website}
+								{currentServer.website}
 							</a>
 						{/if}
 					</div>
 					<div class="flex items-center space-x-2">
-						{#if connected}
+						{#if connectionState.connected}
 							<span
 								class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
 							>
 								Connected
 							</span>
-							<Button variant="outline" onclick={disconnectFromServer} disabled={loading}>
+							<Button
+								variant="outline"
+								onclick={disconnectFromServer}
+								disabled={connectionState.loading}
+							>
 								Disconnect
 							</Button>
 						{:else}
-							<Button onclick={connectToServer} disabled={loading || !$activeAccount}>
-								{#if loading}
+							<Button
+								onclick={connectToServer}
+								disabled={connectionState.loading || !$activeAccount}
+							>
+								{#if connectionState.loading}
 									Connecting...
 								{:else}
 									Connect to Server
@@ -185,17 +276,17 @@
 				</div>
 
 				<!-- Error message -->
-				{#if error}
+				{#if connectionState.error}
 					<Card.Root class="mb-6 border-destructive">
 						<Card.Content class="pt-6">
-							<p class="text-sm text-destructive">{error}</p>
+							<p class="text-sm text-destructive">{connectionState.error}</p>
 						</Card.Content>
 					</Card.Root>
 				{/if}
 
 				<!-- Tabs for server information -->
 				<Tabs.Root bind:value={activeTab}>
-					<Tabs.List class="grid w-full grid-cols-4">
+					<Tabs.List class="grid w-full grid-cols-5">
 						<Tabs.Trigger value="about">About</Tabs.Trigger>
 						{#each availableCapabilities as capability (capability)}
 							<Tabs.Trigger value={capability}>{capability}</Tabs.Trigger>
@@ -206,8 +297,8 @@
 					<Tabs.Content value="about" class="mt-4">
 						<Card.Root>
 							<Card.Content class="pt-6">
-								{#if $server.about}
-									<p class="text-sm">{$server.about}</p>
+								{#if currentServer.about}
+									<p class="text-sm">{currentServer.about}</p>
 								{:else}
 									<p class="text-sm text-muted-foreground">
 										No description available for this server.
@@ -220,8 +311,12 @@
 					<!-- Tools tab -->
 					{#if availableCapabilities.includes('tools')}
 						<Tabs.Content value="tools" class="mt-4">
-							{#if connected}
-								<ToolsList {tools} {loading} {error} />
+							{#if connectionState.connected}
+								<ToolsList
+									tools={serverData.tools}
+									loading={connectionState.loading}
+									error={connectionState.error}
+								/>
 							{:else}
 								<Card.Root>
 									<Card.Content class="pt-6">
@@ -237,8 +332,23 @@
 					<!-- Resources tab -->
 					{#if availableCapabilities.includes('resources')}
 						<Tabs.Content value="resources" class="mt-4">
-							{#if connected}
-								<ResourcesList {resources} {loading} {error} />
+							{#if connectionState.connected}
+								{#if serverData.resources?.length}
+									<h3 class="text-lg font-medium">Resources</h3>
+									<ResourcesList
+										resources={serverData.resources}
+										loading={connectionState.loading}
+										error={connectionState.error}
+									/>
+								{/if}
+								{#if serverData.resourceTemplates?.length}
+									<h3 class="text-lg font-medium">Resource Templates</h3>
+									<ResourceTemplatesList
+										resourceTemplates={serverData.resourceTemplates}
+										loading={connectionState.loading}
+										error={connectionState.error}
+									/>
+								{/if}
 							{:else}
 								<Card.Root>
 									<Card.Content class="pt-6">
@@ -254,8 +364,12 @@
 					<!-- Prompts tab -->
 					{#if availableCapabilities.includes('prompts')}
 						<Tabs.Content value="prompts" class="mt-4">
-							{#if connected}
-								<PromptsList {prompts} {loading} {error} />
+							{#if connectionState.connected}
+								<PromptsList
+									prompts={serverData.prompts}
+									loading={connectionState.loading}
+									error={connectionState.error}
+								/>
 							{:else}
 								<Card.Root>
 									<Card.Content class="pt-6">
@@ -281,23 +395,22 @@
 						<div class="space-y-4">
 							<div>
 								<p class="text-sm font-medium text-muted-foreground">Published</p>
-								<time datetime={new Date($server.created_at * 1000).toISOString()} class="text-sm">
+								<time
+									datetime={new Date(currentServer.created_at * 1000).toISOString()}
+									class="text-sm"
+								>
 									{publishedAt}
 								</time>
 							</div>
 							<div>
 								<p class="text-sm font-medium text-muted-foreground">Version</p>
-								<p class="text-sm">{$server.capabilities.serverInfo?.version || 'Unknown'}</p>
-							</div>
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Protocol Version</p>
-								<p class="text-sm">{$server.capabilities.protocolVersion || 'Unknown'}</p>
+								<p class="text-sm">{currentServer.capabilities.serverInfo?.version || 'Unknown'}</p>
 							</div>
 							<div>
 								<p class="text-sm font-medium text-muted-foreground">Public Key</p>
-								<p class="font-mono text-xs break-all">{$server.pubkey}</p>
+								<p class="font-mono text-xs break-all">{currentServer.pubkey}</p>
 							</div>
-							{#if $server.supportsEncryption}
+							{#if currentServer.supportsEncryption}
 								<div>
 									<p class="text-sm font-medium text-muted-foreground">Encryption</p>
 									<span
@@ -324,7 +437,7 @@
 				</Collapsible.Trigger>
 				<Collapsible.Content>
 					<pre class="overflow-x-auto rounded bg-muted p-4 text-xs">{JSON.stringify(
-							$server.capabilities,
+							currentServer.capabilities,
 							null,
 							2
 						)}</pre>
@@ -336,13 +449,33 @@
 	<div class="container mx-auto px-4 py-16 text-center">
 		<h1 class="mb-4 text-2xl font-bold">Server not found</h1>
 		<p class="mb-6 text-muted-foreground">
-			The server you're looking for doesn't exist or couldn't be loaded.
+			The server you're looking for doesn't exist or couldn't be loaded from public announcements.
+			This might be a private server that doesn't publish announcements.
 		</p>
-		<button
-			onclick={() => goto('/')}
-			class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-		>
-			Back to servers
-		</button>
+		<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
+			<Button
+				onclick={attemptConnectToPrivateServer}
+				disabled={connectionState.loading || !$activeAccount}
+			>
+				{#if connectionState.loading}
+					Connecting...
+				{:else}
+					Attempt Connect To Server
+				{/if}
+			</Button>
+			<button
+				onclick={() => goto('/')}
+				class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+			>
+				Back to servers
+			</button>
+		</div>
+		{#if connectionState.error}
+			<Card.Root class="mx-auto mt-6 max-w-md border-destructive">
+				<Card.Content class="pt-6">
+					<p class="text-sm text-destructive">{connectionState.error}</p>
+				</Card.Content>
+			</Card.Root>
+		{/if}
 	</div>
 {/if}
