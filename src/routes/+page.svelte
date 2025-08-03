@@ -6,9 +6,16 @@
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
-
+	let loading = $state(false);
 	$effect(() => {
-		const sub = serverAnnouncementsLoader().subscribe();
+		loading = true;
+		const sub = serverAnnouncementsLoader().subscribe({
+			complete: () => {
+				setTimeout(() => {
+					loading = false;
+				}, 500);
+			}
+		});
 		return () => {
 			sub.unsubscribe();
 		};
@@ -57,14 +64,15 @@
 						<ServerCard {server} />
 					{/each}
 				</div>
+			{:else if !$serverAnnouncements.length && !loading}
+				<div class="mt-8 text-center text-muted-foreground">
+					<p>No MCP servers found. Check back later for server announcements.</p>
+				</div>
 			{:else}
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each Array(3) as _, i (i)}
 						<LoadingCard layout="article" />
 					{/each}
-				</div>
-				<div class="mt-8 text-center text-muted-foreground">
-					<p>No MCP servers found. Check back later for server announcements.</p>
 				</div>
 			{/if}
 		</div>

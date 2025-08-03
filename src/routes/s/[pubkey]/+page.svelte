@@ -1,13 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { eventStore } from '$lib/services/eventStore';
-	import { serverAnnouncementByPubkeyLoader } from '$lib/services/loaders';
+	import {
+		serverAnnouncementByPubkeyLoader,
+		toolsAnnouncementByPubkeyLoader,
+		resourcesAnnouncementByPubkeyLoader,
+		resourcesTemplatesAnnouncementByPubkeyLoader,
+		promptsAnnouncementByPubkeyLoader
+	} from '$lib/services/loaders';
 	import {
 		parseServerAnnouncement,
 		ServerAnnouncementModel,
 		type ServerAnnouncement
 	} from '$lib/models/serverAnnouncements';
-	import { formatUnixTimestamp } from '$lib/utils';
+	import { formatUnixTimestamp, getAvailableCapabilities } from '$lib/utils';
 	import { goto } from '$app/navigation';
 	import { Collapsible } from 'bits-ui';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
@@ -20,7 +26,6 @@
 	import ResourceTemplatesList from '$lib/components/ResourceTemplatesList.svelte';
 	import PromptsList from '$lib/components/PromptsList.svelte';
 	import type {
-		InitializeResult,
 		Prompt,
 		Resource,
 		ResourceTemplate,
@@ -28,18 +33,22 @@
 	} from '@modelcontextprotocol/sdk/types.js';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import type { NostrClientTransport } from '@contextvm/sdk';
+	import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 	const pubkey = page.params.pubkey ?? '';
 
+	// Try to load server from public announcements
 	const server = eventStore.model(ServerAnnouncementModel, pubkey);
 
-	// Create a minimal server object for private servers
+	// For private servers (no public announcement)
 	let privateServer = $state<ServerAnnouncement | null>(null);
 
-	// Derived server that combines both public and private servers
+	// Combined server object
 	const currentServer = $derived($server || privateServer);
 
-	// MCP connection state - using the service's state directly
+	let mcpClient = $state<Client | null>(null);
+
+	// Connection state
 	let connectionState = $derived<McpConnectionState>(
 		currentServer
 			? mcpClientService.getConnectionState(currentServer.pubkey)
@@ -47,157 +56,176 @@
 	);
 
 	// Server capabilities data
-	let serverData = $state<{
-		tools: Tool[] | null;
-		resources: Resource[] | null;
-		resourceTemplates: ResourceTemplate[] | null;
-		prompts: Prompt[] | null;
-	}>({
-		tools: null,
-		resources: null,
-		resourceTemplates: null,
-		prompts: null
+	let serverData = $state({
+		tools: null as Tool[] | null,
+		resources: null as Resource[] | null,
+		resourceTemplates: null as ResourceTemplate[] | null,
+		prompts: null as Prompt[] | null
 	});
 
 	let activeTab = $state('about');
 
+	// Load server capabilities from announcements (for public servers)
 	$effect(() => {
-		if ($server) return;
-		const sub = serverAnnouncementByPubkeyLoader(pubkey).subscribe();
+		if (!$server) return;
+
+		const capabilities = getAvailableCapabilities($server);
+		let toolsSub: { unsubscribe: () => void } | null = null;
+		let resourcesSub: { unsubscribe: () => void } | null = null;
+		let resourceTemplatesSub: { unsubscribe: () => void } | null = null;
+		let promptsSub: { unsubscribe: () => void } | null = null;
+
+		// Load tools if supported
+		if (capabilities.includes('tools')) {
+			toolsSub = toolsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
+				if (event) {
+					try {
+						const content = JSON.parse(event.content);
+						serverData.tools = content.tools || [];
+					} catch (err) {
+						console.error('Failed to parse tools announcement:', err);
+					}
+				}
+			});
+		}
+
+		// Load resources if supported
+		if (capabilities.includes('resources')) {
+			resourcesSub = resourcesAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
+				if (event) {
+					try {
+						const content = JSON.parse(event.content);
+						serverData.resources = content.resources || [];
+					} catch (err) {
+						console.error('Failed to parse resources announcement:', err);
+					}
+				}
+			});
+
+			resourceTemplatesSub = resourcesTemplatesAnnouncementByPubkeyLoader(pubkey).subscribe(
+				(event) => {
+					if (event) {
+						try {
+							const content = JSON.parse(event.content);
+							serverData.resourceTemplates = content.resourceTemplates || [];
+						} catch (err) {
+							console.error('Failed to parse resource templates announcement:', err);
+						}
+					}
+				}
+			);
+		}
+
+		// Load prompts if supported
+		if (capabilities.includes('prompts')) {
+			promptsSub = promptsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
+				if (event) {
+					try {
+						const content = JSON.parse(event.content);
+						serverData.prompts = content.prompts || [];
+					} catch (err) {
+						console.error('Failed to parse prompts announcement:', err);
+					}
+				}
+			});
+		}
+
 		return () => {
-			sub.unsubscribe();
+			toolsSub?.unsubscribe();
+			resourcesSub?.unsubscribe();
+			resourceTemplatesSub?.unsubscribe();
+			promptsSub?.unsubscribe();
 		};
 	});
 
-	function hasCapability(server: InitializeResult, capability: string): boolean {
-		return capability in server.capabilities;
-	}
-
-	function getAvailableCapabilities(server: ServerAnnouncement): string[] {
-		return ['tools', 'resources', 'prompts'].filter((capability) =>
-			hasCapability(server.capabilities, capability)
-		);
-	}
-
-	// Load server capabilities with error handling
+	// Load server capabilities via MCP (for private servers)
 	async function loadServerCapabilities(
 		serverPubkey: string,
 		capabilities: string[] = ['tools', 'resources', 'prompts']
 	) {
-		const results = {
-			tools: null as Tool[] | null,
-			resources: null as Resource[] | null,
-			resourceTemplates: null as ResourceTemplate[] | null,
-			prompts: null as Prompt[] | null
-		};
+		// Initialize results directly in serverData to avoid creating a temporary object
+		serverData.tools = null;
+		serverData.resources = null;
+		serverData.resourceTemplates = null;
+		serverData.prompts = null;
 
+		// Load each capability directly into serverData
 		for (const capability of capabilities) {
 			try {
 				switch (capability) {
 					case 'tools':
-						results.tools = (await mcpClientService.listTools(serverPubkey)).tools;
+						serverData.tools = (await mcpClientService.listTools(serverPubkey)).tools;
 						break;
-					case 'resources':
-						// Try to load regular resources
-						results.resources = (await mcpClientService.listResources(serverPubkey)).resources;
-						results.resourceTemplates = (
-							await mcpClientService.listResourcesTemplates(serverPubkey)
-						).resourceTemplates;
-						console.log('Regular resources loaded', results.resources, results.resourceTemplates);
+					case 'resources': {
+						const resources = await mcpClientService.listResources(serverPubkey);
+						const templates = await mcpClientService.listResourcesTemplates(serverPubkey);
+						serverData.resources = resources.resources;
+						serverData.resourceTemplates = templates.resourceTemplates;
 						break;
+					}
 					case 'prompts':
-						results.prompts = (await mcpClientService.listPrompts(serverPubkey)).prompts;
+						serverData.prompts = (await mcpClientService.listPrompts(serverPubkey)).prompts;
 						break;
 				}
 			} catch (err) {
 				console.error(`Failed to load ${capability}:`, err);
 			}
 		}
-
-		return results;
 	}
 
+	// Connect to server (public or private)
 	async function connectToServer() {
-		if (!$server) return;
+		if (!pubkey) return;
 
 		try {
-			const client = await mcpClientService.getClient($server.pubkey);
-			if (client) {
-				// Load capabilities based on what the server supports
-				const capabilities = getAvailableCapabilities($server);
-				const results = await loadServerCapabilities($server.pubkey, capabilities);
-
-				// Update server data with loaded capabilities
-				serverData = results;
+			// For public servers, just get the client
+			if ($server) {
+				mcpClient = await mcpClientService.getClient($server.pubkey);
+				return;
 			}
+
+			// For private servers, get client and load capabilities
+			const client = await mcpClientService.getClient(pubkey);
+			if (!client) return;
+
+			mcpClient = client;
+
+			// Get server initialization event
+			const initializeEvent = (client.transport as NostrClientTransport).getServerInitializeEvent();
+			if (!initializeEvent) return;
+
+			// Parse server announcement
+			const parsedServer = parseServerAnnouncement(initializeEvent);
+			if (!parsedServer) return;
+
+			privateServer = parsedServer;
+
+			// Load capabilities
+			const capabilities = getAvailableCapabilities(parsedServer);
+			await loadServerCapabilities(pubkey, capabilities);
 		} catch (err) {
-			// Error is handled by the service
 			console.error('Connection error:', err);
 		}
 	}
 
+	// Disconnect from server
 	async function disconnectFromServer() {
 		if (!currentServer) return;
 
 		try {
 			await mcpClientService.disconnect(currentServer.pubkey);
-
-			// Reset server data
-			serverData = {
-				tools: null,
-				resources: null,
-				resourceTemplates: null,
-				prompts: null
-			};
-
-			// If this was a private server, clear the privateServer object
-			if (privateServer) {
-				privateServer = null;
-			}
+			mcpClient = null;
 		} catch (err) {
-			// Error is handled by the service
 			console.error('Disconnection error:', err);
 		}
 	}
 
-	async function attemptConnectToPrivateServer() {
-		if (!pubkey) return;
-
-		try {
-			// Check if user is logged in
-			const currentAccount = activeAccount.getValue();
-			if (!currentAccount) {
-				throw new Error('Please log in to connect to servers');
-			}
-
-			// Try to connect to the server directly
-			const client = await mcpClientService.getClient(pubkey);
-			if (client) {
-				const initializeEvent = (
-					client.transport as NostrClientTransport
-				).getServerInitializeEvent();
-				if (!initializeEvent) return;
-
-				// Create a minimal server object for private servers
-				const parsedServer = parseServerAnnouncement(initializeEvent);
-				if (!parsedServer) return;
-
-				privateServer = parsedServer;
-
-				// Get available capabilities from the server's initialization response
-				const capabilities = getAvailableCapabilities(parsedServer);
-
-				// Only load capabilities that the server actually supports
-				const results = await loadServerCapabilities(pubkey, capabilities);
-
-				// Update server data with loaded capabilities
-				serverData = results;
-			}
-		} catch (err) {
-			// Error is handled by the service
-			console.error('Private server connection error:', err);
-		}
-	}
+	// Load server announcement if not already loaded (for private server detection)
+	$effect(() => {
+		if ($server) return;
+		const sub = serverAnnouncementByPubkeyLoader(pubkey).subscribe();
+		return () => sub.unsubscribe();
+	});
 </script>
 
 {#if currentServer}
@@ -247,7 +275,7 @@
 						{/if}
 					</div>
 					<div class="flex items-center space-x-2">
-						{#if connectionState.connected}
+						{#if connectionState.connected && mcpClient}
 							<span
 								class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
 							>
@@ -311,7 +339,7 @@
 					<!-- Tools tab -->
 					{#if availableCapabilities.includes('tools')}
 						<Tabs.Content value="tools" class="mt-4">
-							{#if connectionState.connected}
+							{#if $server || connectionState.connected}
 								<ToolsList
 									tools={serverData.tools}
 									loading={connectionState.loading}
@@ -332,7 +360,7 @@
 					<!-- Resources tab -->
 					{#if availableCapabilities.includes('resources')}
 						<Tabs.Content value="resources" class="mt-4">
-							{#if connectionState.connected}
+							{#if $server || connectionState.connected}
 								{#if serverData.resources?.length}
 									<h3 class="text-lg font-medium">Resources</h3>
 									<ResourcesList
@@ -364,7 +392,7 @@
 					<!-- Prompts tab -->
 					{#if availableCapabilities.includes('prompts')}
 						<Tabs.Content value="prompts" class="mt-4">
-							{#if connectionState.connected}
+							{#if $server || connectionState.connected}
 								<PromptsList
 									prompts={serverData.prompts}
 									loading={connectionState.loading}
@@ -453,10 +481,7 @@
 			This might be a private server that doesn't publish announcements.
 		</p>
 		<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
-			<Button
-				onclick={attemptConnectToPrivateServer}
-				disabled={connectionState.loading || !$activeAccount}
-			>
+			<Button onclick={connectToServer} disabled={connectionState.loading || !$activeAccount}>
 				{#if connectionState.loading}
 					Connecting...
 				{:else}
