@@ -18,7 +18,7 @@ export interface ServerAnnouncement {
 }
 
 /** A helper function to parse server announcement events */
-export function parseServerAnnouncement(event: Event): ServerAnnouncement | null {
+export function parseServerInitializeMsg(event: Event): ServerAnnouncement | null {
 	try {
 		// Parse the content to get server capabilities
 		const content = JSON.parse(event.content);
@@ -61,7 +61,7 @@ export function ServerAnnouncementsModel(): Model<ServerAnnouncement[]> {
 			map((events: Event[]) => {
 				// Parse each event and filter out invalid ones
 				const announcements = events
-					.map(parseServerAnnouncement)
+					.map(parseServerInitializeMsg)
 					.filter((announcement): announcement is ServerAnnouncement => announcement !== null);
 
 				// Sort by creation date (newest first)
@@ -77,6 +77,6 @@ export function ServerAnnouncementModel(pubkey: string): Model<ServerAnnouncemen
 	return (events) =>
 		events.replaceable(SERVER_ANNOUNCEMENT_KIND, pubkey).pipe(
 			// Parse each event and return the first valid one
-			map((event) => event && (parseServerAnnouncement(event) ?? undefined))
+			map((event) => event && (parseServerInitializeMsg(event) ?? undefined))
 		);
 }

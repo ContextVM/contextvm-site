@@ -1,4 +1,4 @@
-import { SimpleRelayPool } from '@contextvm/sdk';
+import { EncryptionMode, SimpleRelayPool } from '@contextvm/sdk';
 import { activeAccount } from '$lib/services/accountManager.svelte';
 import { devRelay } from './relay-pool';
 import { NostrClientTransport } from '@contextvm/sdk';
@@ -7,7 +7,10 @@ import type {
 	ListPromptsResult,
 	ListResourcesResult,
 	ListResourceTemplatesResult,
-	ListToolsResult
+	ListToolsResult,
+	CallToolResult,
+	ReadResourceResult,
+	GetPromptResult
 } from '@modelcontextprotocol/sdk/types.js';
 import { SvelteMap } from 'svelte/reactivity';
 
@@ -61,7 +64,8 @@ export class McpClientService {
 			const transport = new NostrClientTransport({
 				signer,
 				relayHandler: this.relayPool,
-				serverPubkey
+				serverPubkey,
+				encryptionMode: EncryptionMode.DISABLED
 			});
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
@@ -136,6 +140,45 @@ export class McpClientService {
 			throw new Error('Not connected to server');
 		}
 		return client.listPrompts();
+	}
+
+	// Call a tool on a server
+	async callTool(
+		serverPubkey: string,
+		toolName: string,
+		arguments_: Record<string, unknown>
+	): Promise<CallToolResult> {
+		const client = await this.getClient(serverPubkey);
+		console.log('client?!', client);
+		if (!client) {
+			throw new Error('Not connected to server');
+		}
+		const result = await client.callTool({ name: toolName, arguments: arguments_ });
+		return result as CallToolResult;
+	}
+
+	// Read a resource from a server
+	async readResource(serverPubkey: string, uri: string): Promise<ReadResourceResult> {
+		const client = await this.getClient(serverPubkey);
+		if (!client) {
+			throw new Error('Not connected to server');
+		}
+		const result = await client.readResource({ uri });
+		return result as ReadResourceResult;
+	}
+
+	// Get a prompt from a server
+	async getPrompt(
+		serverPubkey: string,
+		promptName: string,
+		arguments_: Record<string, string> = {}
+	): Promise<GetPromptResult> {
+		const client = await this.getClient(serverPubkey);
+		if (!client) {
+			throw new Error('Not connected to server');
+		}
+		const result = await client.getPrompt({ name: promptName, arguments: arguments_ });
+		return result as GetPromptResult;
 	}
 }
 
