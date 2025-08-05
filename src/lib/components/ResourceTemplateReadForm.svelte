@@ -2,9 +2,10 @@
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import type { ReadResourceResult, ResourceTemplate } from '@modelcontextprotocol/sdk/types.js';
+	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
+	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 
 	let {
 		resourceTemplate,
@@ -16,21 +17,15 @@
 		connectionState: McpConnectionState;
 	} = $props();
 
-	// Form state - consolidated into a single state object
-	let formState = $state<{
-		result: ReadResourceResult | null;
-		error: string | null;
-		isSubmitting: boolean;
-		showResult: boolean;
-	}>({
-		result: null,
-		error: null,
-		isSubmitting: false,
-		showResult: false
-	});
+	// Form state
+	let formResult = $state<ReadResourceResult | null>(null);
+	let formError = $state<string | null>(null);
+	let showResult = $state(false);
+	let loading = $state(false);
 
 	// Collapsible state
 	let open = $state(false);
+	let rawOpen = $state(false);
 
 	// Template part input state
 	let templateInput = $state('');
@@ -61,43 +56,32 @@
 
 	// Handle form submission
 	async function handleSubmit() {
+		loading = true;
 		try {
 			if (!connectionState.connected) {
 				await mcpClientService.getClient(serverPubkey);
 			}
 
-			formState = {
-				result: null,
-				error: null,
-				isSubmitting: true,
-				showResult: false
-			};
+			formError = null;
+			formResult = null;
+			showResult = false;
 
 			const result = await mcpClientService.readResource(serverPubkey, getFinalUri());
-			formState = {
-				result,
-				error: null,
-				isSubmitting: false,
-				showResult: true
-			};
+			formResult = result;
+			showResult = true;
 		} catch (error) {
-			formState = {
-				result: null,
-				error: error instanceof Error ? error.message : 'Failed to read resource',
-				isSubmitting: false,
-				showResult: true
-			};
+			formError = error instanceof Error ? error.message : 'Failed to read resource';
+		} finally {
+			loading = false;
 		}
 	}
 
 	// Reset form
 	function resetForm() {
-		formState = {
-			result: null,
-			error: null,
-			isSubmitting: false,
-			showResult: false
-		};
+		formResult = null;
+		formError = null;
+		showResult = false;
+		loading = false;
 		templateInput = '';
 	}
 </script>
@@ -114,7 +98,7 @@
 				<p class="text-sm text-muted-foreground">{resourceTemplate.description}</p>
 			{/if}
 		</div>
-		<ChevronDownIcon
+		<ChevronsUpDownIcon
 			class={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
 		/>
 	</Collapsible.Trigger>
@@ -122,33 +106,38 @@
 		class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
 	>
 		<div class="border-t bg-muted/50 p-4">
-			{#if formState.error}
+			{#if formError}
 				<div class="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-					{formState.error}
+					{formError}
 				</div>
 			{/if}
 
-			{#if formState.showResult && formState.result}
+			{#if showResult && formResult}
 				<div class="mb-4 space-y-4">
 					<div class="flex items-center justify-between">
 						<h3 class="text-sm font-medium">Resource Content</h3>
 						<Button variant="outline" size="sm" onclick={resetForm}>Read Again</Button>
 					</div>
 
-					{#if formState.result.contents && formState.result.contents.length > 0}
+					{#if formResult.contents && formResult.contents.length > 0}
 						<div class="space-y-2">
-							{#each formState.result.contents as content (content.uri)}
+							{#each formResult.contents as content, i (i + '-' + content.uri)}
 								<div class="rounded-md bg-muted p-3">
 									<div class="mb-2 flex items-center justify-between">
 										<span class="text-sm font-medium">{content.uri}</span>
+										{#if content.mimeType}
+											<span class="rounded bg-primary/10 px-2 py-1 text-xs text-primary">
+												{content.mimeType}
+											</span>
+										{/if}
 									</div>
 
-									{#if content.text}
+									{#if 'text' in content}
 										<div class="text-sm whitespace-pre-wrap">{content.text}</div>
-									{:else if content.blob}
+									{:else if 'blob' in content}
 										<div class="text-sm text-muted-foreground">
 											<p>Binary content</p>
-											<p class="mt-1 text-xs">Size: {(content.blob as any)?.length || 0} bytes</p>
+											<p class="mt-1 text-xs">Size: {content.blob.length || 0} bytes</p>
 										</div>
 									{:else}
 										<div class="text-sm text-muted-foreground">No content available</div>
@@ -161,7 +150,29 @@
 							No content returned
 						</div>
 					{/if}
+
+					<Collapsible.Root bind:open={rawOpen}>
+						<Collapsible.Trigger
+							class="flex w-full items-center justify-between rounded-md bg-muted/30 p-2 text-left text-sm transition-colors hover:bg-muted/50"
+						>
+							<div class="flex items-center gap-2">
+								<ChevronsUpDownIcon
+									class={`h-4 w-4 transition-transform duration-200 ${rawOpen ? 'rotate-180' : ''}`}
+								/> <span class="font-medium">Show Raw Result</span>
+							</div>
+						</Collapsible.Trigger>
+						<Collapsible.Content
+							class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+						>
+							<div class="mt-2 rounded-md bg-muted p-3">
+								<h4 class="mb-2 text-sm font-medium">Raw JSON Response</h4>
+								<pre class="overflow-x-auto text-xs">{JSON.stringify(formResult, null, 2)}</pre>
+							</div>
+						</Collapsible.Content>
+					</Collapsible.Root>
 				</div>
+			{:else if loading}
+				<LoadingSpinner />
 			{:else}
 				<div class="space-y-4">
 					<!-- URI Template Display -->
@@ -183,16 +194,8 @@
 									placeholder={uriTemplateInfo().templatePart}
 									class="flex-1 font-mono text-sm"
 								/>
-								<Button
-									onclick={handleSubmit}
-									disabled={formState.isSubmitting || templateInput === ''}
-									size="sm"
-								>
-									{#if formState.isSubmitting}
-										Reading...
-									{:else}
-										Read
-									{/if}
+								<Button onclick={handleSubmit} disabled={loading || templateInput === ''} size="sm">
+									Read
 								</Button>
 							</div>
 							<p class="text-xs text-muted-foreground">
@@ -201,13 +204,7 @@
 						</div>
 					{:else}
 						<!-- Submit Button for templates with no parameters -->
-						<Button onclick={handleSubmit} disabled={formState.isSubmitting} class="w-full">
-							{#if formState.isSubmitting}
-								Reading...
-							{:else}
-								Read Resource
-							{/if}
-						</Button>
+						<Button onclick={handleSubmit} disabled={loading} class="w-full">Read Resource</Button>
 					{/if}
 				</div>
 			{/if}

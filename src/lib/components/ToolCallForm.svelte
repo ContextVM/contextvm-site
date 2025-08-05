@@ -4,10 +4,10 @@
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 
-	// FIXME: There is an error reading some tools Uncaught Svelte error: each_key_duplicate Keyed each block has duplicate key `resource_link` at indexes 1 and 2
 	let {
 		tool,
 		connectionState,
@@ -25,19 +25,14 @@
 
 	// Collapsible state
 	let open = $state(false);
-
-	// Create form schema from tool input schema
-	const formSchema: Schema = {
-		type: 'object',
-		properties: (tool.inputSchema?.properties as Record<string, any>) || {},
-		required: tool.inputSchema?.required || []
-	};
-
+	let rawOpen = $state(false);
+	let loading = $state(false);
 	// Create form instance
 	const form = createForm({
 		...formDefaults,
-		schema: formSchema,
+		schema: tool.inputSchema as Schema,
 		onSubmit: async (data) => {
+			loading = true;
 			try {
 				if (!connectionState.connected) {
 					await mcpClientService.getClient(serverPubkey);
@@ -53,6 +48,7 @@
 				);
 				formResult = result;
 				showResult = true;
+				loading = false;
 			} catch (error) {
 				formError = error instanceof Error ? error.message : 'Failed to call tool';
 			}
@@ -78,7 +74,7 @@
 				<p class="text-sm text-muted-foreground">{tool.description}</p>
 			{/if}
 		</div>
-		<ChevronDownIcon
+		<ChevronsUpDownIcon
 			class={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
 		/>
 	</Collapsible.Trigger>
@@ -101,7 +97,7 @@
 
 					{#if formResult.content && formResult.content.length > 0}
 						<div class="space-y-2">
-							{#each formResult.content as content (content.type)}
+							{#each formResult.content as content, i (i + '-' + content.type)}
 								<div class="rounded-md bg-muted p-3">
 									{#if content.type === 'text'}
 										<div class="text-sm">
@@ -131,12 +127,34 @@
 						</div>
 					{/if}
 
+					<Collapsible.Root bind:open={rawOpen}>
+						<Collapsible.Trigger
+							class="flex w-full items-center justify-between rounded-md bg-muted/30 p-2 text-left text-sm transition-colors hover:bg-muted/50"
+						>
+							<div class="flex items-center gap-2">
+								<ChevronsUpDownIcon
+									class={`h-4 w-4 transition-transform duration-200 ${rawOpen ? 'rotate-180' : ''}`}
+								/> <span class="font-medium">Show Raw Result</span>
+							</div>
+						</Collapsible.Trigger>
+						<Collapsible.Content
+							class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+						>
+							<div class="mt-2 rounded-md bg-muted p-3">
+								<h4 class="mb-2 text-sm font-medium">Raw JSON Response</h4>
+								<pre class="overflow-x-auto text-xs">{JSON.stringify(formResult, null, 2)}</pre>
+							</div>
+						</Collapsible.Content>
+					</Collapsible.Root>
+
 					{#if formResult.isError}
 						<div class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
 							Tool returned an error
 						</div>
 					{/if}
 				</div>
+			{:else if loading}
+				<LoadingSpinner />
 			{:else}
 				<BasicForm {form} />
 			{/if}

@@ -4,10 +4,10 @@
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import type { Prompt, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
+	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 
-	// FIXME: There is an error reading parametrized prompts Uncaught Svelte error: each_key_duplicate Keyed each block has duplicate key `user` at indexes 0 and 2
 	let {
 		prompt,
 		connectionState,
@@ -25,9 +25,10 @@
 
 	// Collapsible state
 	let open = $state(false);
-
+	let rawOpen = $state(false);
+	let loading = $state(false);
 	// Create form schema from prompt arguments
-	const properties: Record<string, any> = {};
+	const properties: Record<string, Schema> = {};
 	const required: string[] = [];
 
 	if (prompt.arguments) {
@@ -55,7 +56,8 @@
 	const form = createForm({
 		...formDefaults,
 		schema: formSchema,
-		onSubmit: async (data) => {
+		onSubmit: async (data: Record<string, string>) => {
+			loading = true;
 			try {
 				if (!connectionState.connected) {
 					await mcpClientService.getClient(serverPubkey);
@@ -64,15 +66,13 @@
 				formResult = null;
 
 				// Get the prompt with the form data
-				const result = await mcpClientService.getPrompt(
-					serverPubkey,
-					prompt.name,
-					data as Record<string, string>
-				);
+				const result = await mcpClientService.getPrompt(serverPubkey, prompt.name, data);
 				formResult = result;
 				showResult = true;
 			} catch (error) {
 				formError = error instanceof Error ? error.message : 'Failed to get prompt';
+			} finally {
+				loading = false;
 			}
 		}
 	});
@@ -96,7 +96,7 @@
 				<p class="text-sm text-muted-foreground">{prompt.description}</p>
 			{/if}
 		</div>
-		<ChevronDownIcon
+		<ChevronsUpDownIcon
 			class={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
 		/>
 	</Collapsible.Trigger>
@@ -127,7 +127,7 @@
 					{#if formResult.messages && formResult.messages.length > 0}
 						<div class="space-y-2">
 							<h4 class="text-sm font-medium">Messages</h4>
-							{#each formResult.messages as message (message.role)}
+							{#each formResult.messages as message, i (i + '-' + message.role)}
 								<div class="rounded-md bg-muted p-3">
 									<div class="mb-2 flex items-center justify-between">
 										<span class="text-sm font-medium capitalize">{message.role}</span>
@@ -144,10 +144,32 @@
 										</div>
 									{:else if message.content?.type === 'image'}
 										<div class="text-sm">
-											<p class="mb-2">Image: {message.content.data}</p>
+											{#if message.content.mimeType}
+												<img
+													src={`data:${message.content.mimeType};base64,${message.content.data}`}
+													alt="result_img"
+													class="max-w-full rounded-md"
+												/>
+												<p class="text-xs text-muted-foreground">
+													MIME type: {message.content.mimeType}
+												</p>
+											{/if}
+										</div>
+									{:else if message.content?.type === 'audio'}
+										<div class="text-sm">
+											<p class="mb-2">Audio: {message.content.data}</p>
 											{#if message.content.mimeType}
 												<p class="text-xs text-muted-foreground">
 													MIME type: {message.content.mimeType}
+												</p>
+											{/if}
+										</div>
+									{:else if message.content?.type === 'resource'}
+										<div class="text-sm">
+											<p class="mb-2">Resource: {message.content.resource?.uri || 'Unknown'}</p>
+											{#if message.content.resource?.mimeType}
+												<p class="text-xs text-muted-foreground">
+													MIME type: {message.content.resource.mimeType}
 												</p>
 											{/if}
 										</div>
@@ -168,7 +190,29 @@
 							No messages returned
 						</div>
 					{/if}
+
+					<Collapsible.Root bind:open={rawOpen}>
+						<Collapsible.Trigger
+							class="flex w-full items-center justify-between rounded-md bg-muted/30 p-2 text-left text-sm transition-colors hover:bg-muted/50"
+						>
+							<div class="flex items-center gap-2">
+								<ChevronsUpDownIcon
+									class={`h-4 w-4 transition-transform duration-200 ${rawOpen ? 'rotate-180' : ''}`}
+								/> <span class="font-medium">Show Raw Result</span>
+							</div>
+						</Collapsible.Trigger>
+						<Collapsible.Content
+							class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+						>
+							<div class="mt-2 rounded-md bg-muted p-3">
+								<h4 class="mb-2 text-sm font-medium">Raw JSON Response</h4>
+								<pre class="overflow-x-auto text-xs">{JSON.stringify(formResult, null, 2)}</pre>
+							</div>
+						</Collapsible.Content>
+					</Collapsible.Root>
 				</div>
+			{:else if loading}
+				<LoadingSpinner />
 			{:else}
 				<BasicForm {form} />
 			{/if}

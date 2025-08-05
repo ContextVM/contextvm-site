@@ -149,7 +149,6 @@ export class McpClientService {
 		arguments_: Record<string, unknown>
 	): Promise<CallToolResult> {
 		const client = await this.getClient(serverPubkey);
-		console.log('client?!', client);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}

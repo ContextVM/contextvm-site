@@ -188,14 +188,11 @@
 			const initializeEvent = (client.transport as NostrClientTransport).getServerInitializeEvent();
 			if (!initializeEvent) return;
 
-			// Parse server initialization message
-			const parsedServer = parseServerInitializeMsg(initializeEvent);
-			if (!parsedServer) return;
-
-			privateServer = parsedServer;
+			privateServer = parseServerInitializeMsg(initializeEvent);
+			if (!privateServer) return;
 
 			// Load capabilities
-			const capabilities = getAvailableCapabilities(parsedServer);
+			const capabilities = getAvailableCapabilities(privateServer);
 			await loadServerCapabilities(pubkey, capabilities);
 		} catch (err) {
 			console.error('Connection error:', err);
@@ -331,7 +328,7 @@
 
 					<!-- Tools tab -->
 					{#if availableCapabilities.includes('tools')}
-						<Tabs.Content value="tools" class="mt-4">
+						<Tabs.Content value="tools" class="mt-4 flex flex-col gap-2">
 							{#if $server && serverData.tools}
 								{#each serverData.tools as tool (tool.name)}
 									<ToolCallForm {tool} serverPubkey={currentServer.pubkey} {connectionState} />
@@ -350,7 +347,7 @@
 
 					<!-- Resources tab -->
 					{#if availableCapabilities.includes('resources')}
-						<Tabs.Content value="resources" class="mt-4">
+						<Tabs.Content value="resources" class="mt-4 flex flex-col gap-2">
 							{#if $server && serverData.resources}
 								{#if serverData.resources?.length}
 									<h3 class="text-lg font-medium">Resources</h3>
@@ -399,7 +396,7 @@
 
 					<!-- Prompts tab -->
 					{#if availableCapabilities.includes('prompts')}
-						<Tabs.Content value="prompts" class="mt-4">
+						<Tabs.Content value="prompts" class="mt-4 flex flex-col gap-2">
 							{#if $server && serverData.prompts}
 								{#each serverData.prompts as prompt (prompt.name)}
 									<PromptGetForm {prompt} {connectionState} serverPubkey={currentServer.pubkey} />
