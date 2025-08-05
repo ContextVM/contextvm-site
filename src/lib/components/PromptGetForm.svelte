@@ -7,6 +7,7 @@
 	import type { Prompt, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
+	import { onDestroy } from 'svelte';
 
 	let {
 		prompt,
@@ -27,30 +28,32 @@
 	let open = $state(false);
 	let rawOpen = $state(false);
 	let loading = $state(false);
+
 	// Create form schema from prompt arguments
-	const properties: Record<string, Schema> = {};
-	const required: string[] = [];
+	const formSchema: Schema = (() => {
+		const { properties, required } = prompt.arguments?.reduce(
+			(acc, arg) => {
+				acc.properties[arg.name] = {
+					type: 'string',
+					title: arg.name,
+					description: arg.description || undefined
+				};
+				if (arg.required) {
+					acc.required.push(arg.name);
+				}
+				return acc;
+			},
+			{ properties: {} as Record<string, Schema>, required: [] as string[] }
+		) || { properties: {}, required: [] };
 
-	if (prompt.arguments) {
-		for (const arg of prompt.arguments) {
-			properties[arg.name] = {
-				type: 'string',
-				title: arg.name,
-				description: arg.description || undefined
-			};
-			if (arg.required) {
-				required.push(arg.name);
-			}
-		}
-	}
-
-	const formSchema: Schema = {
-		type: 'object',
-		title: prompt.name,
-		description: prompt.description || `Get prompt "${prompt.name}"`,
-		properties,
-		required
-	};
+		return {
+			type: 'object',
+			title: prompt.name,
+			description: prompt.description || `Get prompt "${prompt.name}"`,
+			properties,
+			required: required.length > 0 ? required : undefined
+		};
+	})();
 
 	// Create form instance
 	const form = createForm({
@@ -84,6 +87,11 @@
 		formError = null;
 		showResult = false;
 	}
+
+	// Only reset form on destroy
+	onDestroy(() => {
+		resetForm();
+	});
 </script>
 
 <Collapsible.Root bind:open>

@@ -44,3 +44,5 @@ export function getAvailableCapabilities(server: ServerAnnouncement): string[] {
 		hasCapability(server.capabilities, capability)
 	);
 }
+
+export const isEmptyObj = (obj: object) => Object.keys(obj).length === 0;
