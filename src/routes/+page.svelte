@@ -1,21 +1,25 @@
 <script lang="ts">
 	import { eventStore } from '$lib/services/eventStore';
-	import { serverAnnouncementsLoader } from '$lib/services/loaders';
+	import { createServerAnnouncementsLoader } from '$lib/services/loaders.svelte';
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 	let loading = $state(false);
+
+	// Load announcements when relays change
 	$effect(() => {
 		loading = true;
-		const sub = serverAnnouncementsLoader().subscribe({
+
+		const sub = createServerAnnouncementsLoader().subscribe({
 			complete: () => {
 				setTimeout(() => {
 					loading = false;
 				}, 500);
 			}
 		});
+
 		return () => {
 			sub.unsubscribe();
 		};

@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { articlesFilter } from '$lib/constants';
 	import { eventStore } from '$lib/services/eventStore';
-	import { blogArticlesLoader } from '$lib/services/loaders';
 	import { TimelineModel } from 'applesauce-core/models';
 	import ArticleCard from '$lib/components/ArticleCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
+	import { createBlogArticlesLoader } from '$lib/services/loaders.svelte';
 
 	const blogArticles = eventStore.model(TimelineModel, articlesFilter);
 
 	$effect(() => {
-		const sub = blogArticlesLoader().subscribe();
+		const sub = createBlogArticlesLoader().subscribe();
 		return () => {
 			sub.unsubscribe();
 		};

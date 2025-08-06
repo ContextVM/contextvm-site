@@ -4,6 +4,7 @@
 	import '../app.css';
 	import { setThemeContext } from '@sjsf/shadcn4-theme';
 	import * as components from '@sjsf/shadcn4-theme/new-york';
+	import RelayWidget from '$lib/components/RelayWidget.svelte';
 
 	let { children } = $props();
 
@@ -13,6 +14,7 @@
 
 <ModeWatcher />
 <Header />
+<RelayWidget />
 <div class=" pt-14">
 	{@render children()}
 </div>

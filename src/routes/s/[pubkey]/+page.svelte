@@ -2,13 +2,6 @@
 	import { page } from '$app/state';
 	import { eventStore } from '$lib/services/eventStore';
 	import {
-		serverAnnouncementByPubkeyLoader,
-		toolsAnnouncementByPubkeyLoader,
-		resourcesAnnouncementByPubkeyLoader,
-		resourcesTemplatesAnnouncementByPubkeyLoader,
-		promptsAnnouncementByPubkeyLoader
-	} from '$lib/services/loaders';
-	import {
 		parseServerInitializeMsg,
 		ServerAnnouncementModel,
 		type ServerAnnouncement
@@ -34,6 +27,13 @@
 	import ResourceReadForm from '$lib/components/ResourceReadForm.svelte';
 	import PromptGetForm from '$lib/components/PromptGetForm.svelte';
 	import ResourceTemplateReadForm from '$lib/components/ResourceTemplateReadForm.svelte';
+	import {
+		createPromptsAnnouncementByPubkeyLoader,
+		createResourcesAnnouncementByPubkeyLoader,
+		createResourcesTemplatesAnnouncementByPubkeyLoader,
+		createServerAnnouncementByPubkeyLoader,
+		createToolsAnnouncementByPubkeyLoader
+	} from '$lib/services/loaders.svelte';
 
 	const pubkey = page.params.pubkey ?? '';
 
@@ -75,7 +75,7 @@
 
 		// Load tools if supported
 		if (capabilities.includes('tools')) {
-			toolsSub = toolsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
+			toolsSub = createToolsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
 				if (event) {
 					try {
 						const content = JSON.parse(event.content);
@@ -89,7 +89,7 @@
 
 		// Load resources if supported
 		if (capabilities.includes('resources')) {
-			resourcesSub = resourcesAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
+			resourcesSub = createResourcesAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
 				if (event) {
 					try {
 						const content = JSON.parse(event.content);
@@ -100,7 +100,7 @@
 				}
 			});
 
-			resourceTemplatesSub = resourcesTemplatesAnnouncementByPubkeyLoader(pubkey).subscribe(
+			resourceTemplatesSub = createResourcesTemplatesAnnouncementByPubkeyLoader(pubkey).subscribe(
 				(event) => {
 					if (event) {
 						try {
@@ -116,7 +116,7 @@
 
 		// Load prompts if supported
 		if (capabilities.includes('prompts')) {
-			promptsSub = promptsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
+			promptsSub = createPromptsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
 				if (event) {
 					try {
 						const content = JSON.parse(event.content);
@@ -213,7 +213,7 @@
 	// Load server announcement if not already loaded (for private server detection)
 	$effect(() => {
 		if ($server) return;
-		const sub = serverAnnouncementByPubkeyLoader(pubkey).subscribe();
+		const sub = createServerAnnouncementByPubkeyLoader(pubkey).subscribe();
 		return () => sub.unsubscribe();
 	});
 </script>

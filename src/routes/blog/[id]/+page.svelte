@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { CONTEXTVM_PUBKEY } from '$lib/constants';
 	import { eventStore } from '$lib/services/eventStore';
-	import { addressLoader } from '$lib/services/loaders';
+	import { addressLoader } from '$lib/services/loaders.svelte';
 	import { defaultRelays } from '$lib/services/relay-pool';
 	import { ReplaceableModel } from 'applesauce-core/models';
 	import { LongFormArticle } from 'nostr-tools/kinds';

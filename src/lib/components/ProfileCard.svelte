@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { addressLoader } from '$lib/services/loaders';
+	import { addressLoader } from '$lib/services/loaders.svelte';
 	import { metadataRelays } from '$lib/services/relay-pool';
 	import { eventStore } from '../services/eventStore';
 	import { ProfileModel } from 'applesauce-core/models';
