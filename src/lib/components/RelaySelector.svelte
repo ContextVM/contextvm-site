@@ -1,16 +1,10 @@
 <script lang="ts">
-	import {
-		relayState,
-		setSelectedRelays,
-		resetToDefaultRelays,
-		useDevRelay,
-		removeRelays
-	} from '$lib/services/relay-store.svelte';
 	import { relayPool } from '$lib/services/relay-pool';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import Plus from '@lucide/svelte/icons/plus';
 	import RelayItem from './RelayItem.svelte';
+	import { relayActions, relayStore } from '$lib/stores/relay-store.svelte';
 
 	let customRelayInput = $state('');
 
@@ -18,19 +12,19 @@
 
 	const selectedRelays = $derived(
 		Array.from($relays$).filter(([url, _]) =>
-			relayState.current.some((selectedUrl) => url.startsWith(selectedUrl))
+			relayStore.selectedRelays.some((selectedUrl) => url.startsWith(selectedUrl))
 		)
 	);
 
 	function addCustomRelay() {
 		if (customRelayInput) {
-			setSelectedRelays([...relayState.current, customRelayInput]);
+			relayActions.setSelectedRelays([...relayStore.selectedRelays, customRelayInput]);
 			customRelayInput = '';
 		}
 	}
 
 	function removeSelectedRelay(relays: string[]) {
-		removeRelays(relays);
+		relayActions.removeRelays(relays);
 	}
 </script>
 
@@ -38,8 +32,10 @@
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold">Relays</h2>
 		<div class="flex gap-2">
-			<Button onclick={resetToDefaultRelays} variant="outline" size="sm">Use Defaults</Button>
-			<Button onclick={useDevRelay} variant="outline" size="sm">Use Dev</Button>
+			<Button onclick={relayActions.resetToDefaultRelays} variant="outline" size="sm"
+				>Use Defaults</Button
+			>
+			<Button onclick={relayActions.useDevRelay} variant="outline" size="sm">Use Dev</Button>
 		</div>
 	</div>
 

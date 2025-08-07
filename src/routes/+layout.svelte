@@ -5,6 +5,7 @@
 	import { setThemeContext } from '@sjsf/shadcn4-theme';
 	import * as components from '@sjsf/shadcn4-theme/new-york';
 	import RelayWidget from '$lib/components/RelayWidget.svelte';
+	import RelayChangeDialog from '$lib/components/dialogs/RelayChangeDialog.svelte';
 
 	let { children } = $props();
 
@@ -18,3 +19,6 @@
 <div class=" pt-14">
 	{@render children()}
 </div>
+
+<!-- Global dialog for relay change notifications -->
+<RelayChangeDialog />

@@ -2,7 +2,7 @@ import { createAddressLoader, createTimelineLoader } from 'applesauce-loaders/lo
 import { defaultRelays, relayPool } from './relay-pool';
 import { eventStore } from './eventStore';
 import { articlesFilter, serverAnnouncementsFilter } from '$lib/constants';
-import { getSelectedRelays } from './relay-store.svelte';
+import { relayStore } from '../stores/relay-store.svelte';
 import {
 	PROMPTS_LIST_KIND,
 	RESOURCES_LIST_KIND,
@@ -24,7 +24,7 @@ export const createBlogArticlesLoader = (relays: string[] = defaultRelays) => {
 
 // Function to create a server announcements loader with dynamic relays
 export const createServerAnnouncementsLoader = (relays?: string[]) => {
-	const selectedRelays = relays || getSelectedRelays();
+	const selectedRelays = relays || relayStore.selectedRelays;
 	const loader = createTimelineLoader(relayPool, selectedRelays, serverAnnouncementsFilter, {
 		eventStore
 	});
@@ -33,7 +33,7 @@ export const createServerAnnouncementsLoader = (relays?: string[]) => {
 
 // Function to create a server announcement loader by pubkey with dynamic relays
 export const createServerAnnouncementByPubkeyLoader = (pubkey: string, relays?: string[]) => {
-	const selectedRelays = relays || getSelectedRelays();
+	const selectedRelays = relays || relayStore.selectedRelays;
 	return addressLoader({
 		pubkey,
 		kind: SERVER_ANNOUNCEMENT_KIND,
@@ -43,7 +43,7 @@ export const createServerAnnouncementByPubkeyLoader = (pubkey: string, relays?: 
 
 // Function to create a tools announcement loader by pubkey with dynamic relays
 export const createToolsAnnouncementByPubkeyLoader = (pubkey: string, relays?: string[]) => {
-	const selectedRelays = relays || getSelectedRelays();
+	const selectedRelays = relays || relayStore.selectedRelays;
 	return addressLoader({
 		pubkey,
 		kind: TOOLS_LIST_KIND,
@@ -53,7 +53,7 @@ export const createToolsAnnouncementByPubkeyLoader = (pubkey: string, relays?: s
 
 // Function to create a resources announcement loader by pubkey with dynamic relays
 export const createResourcesAnnouncementByPubkeyLoader = (pubkey: string, relays?: string[]) => {
-	const selectedRelays = relays || getSelectedRelays();
+	const selectedRelays = relays || relayStore.selectedRelays;
 	return addressLoader({
 		pubkey,
 		kind: RESOURCES_LIST_KIND,
@@ -66,7 +66,7 @@ export const createResourcesTemplatesAnnouncementByPubkeyLoader = (
 	pubkey: string,
 	relays?: string[]
 ) => {
-	const selectedRelays = relays || getSelectedRelays();
+	const selectedRelays = relays || relayStore.selectedRelays;
 	return addressLoader({
 		pubkey,
 		kind: RESOURCETEMPLATES_LIST_KIND,
@@ -76,7 +76,7 @@ export const createResourcesTemplatesAnnouncementByPubkeyLoader = (
 
 // Function to create a prompts announcement loader by pubkey with dynamic relays
 export const createPromptsAnnouncementByPubkeyLoader = (pubkey: string, relays?: string[]) => {
-	const selectedRelays = relays || getSelectedRelays();
+	const selectedRelays = relays || relayStore.selectedRelays;
 	return addressLoader({
 		pubkey,
 		kind: PROMPTS_LIST_KIND,

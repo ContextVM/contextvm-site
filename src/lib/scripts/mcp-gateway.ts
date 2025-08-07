@@ -15,7 +15,8 @@ async function main(): Promise<void> {
 
 	const transport = new StdioClientTransport({
 		command: 'npx',
-		args: ['@modelcontextprotocol/server-everything']
+		args: ['@modelcontextprotocol/server-everything'],
+		stderr: 'pipe'
 	});
 
 	const signer = new PrivateKeySigner(clientPrivateKey);
