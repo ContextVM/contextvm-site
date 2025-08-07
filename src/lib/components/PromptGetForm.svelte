@@ -2,10 +2,12 @@
 	import { createForm, BasicForm, type Schema } from '@sjsf/form';
 	import { formDefaults } from '$lib/form-defaults';
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
+	import { copyToClipboard } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { Prompt, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
+	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 	import { onDestroy } from 'svelte';
 
@@ -136,7 +138,7 @@
 						<div class="space-y-2">
 							<h4 class="text-sm font-medium">Messages</h4>
 							{#each formResult.messages as message, i (i + '-' + message.role)}
-								<div class="rounded-md bg-muted p-3">
+								<div class="relative rounded-md bg-muted p-3">
 									<div class="mb-2 flex items-center justify-between">
 										<span class="text-sm font-medium capitalize">{message.role}</span>
 										{#if message.content?.type}
@@ -147,7 +149,7 @@
 									</div>
 
 									{#if message.content?.type === 'text'}
-										<div class="text-sm">
+										<div class="pr-8 text-sm">
 											{message.content.text}
 										</div>
 									{:else if message.content?.type === 'image'}
@@ -183,12 +185,38 @@
 										</div>
 									{:else}
 										<div class="text-sm">
-											<pre class="overflow-x-auto text-xs">{JSON.stringify(
+											<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
 													message.content,
 													null,
 													2
 												)}</pre>
 										</div>
+									{/if}
+
+									{#if message.content?.type === 'text'}
+										<button
+											onclick={() => copyToClipboard(message.content.text as BlobPart)}
+											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+											aria-label="Copy message text"
+										>
+											<CopyIcon class="h-4 w-4" />
+										</button>
+									{:else if message.content?.type === 'audio'}
+										<button
+											onclick={() => copyToClipboard(message.content.data as BlobPart)}
+											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+											aria-label="Copy audio info"
+										>
+											<CopyIcon class="h-4 w-4" />
+										</button>
+									{:else if message.content?.type && message.content.type !== 'image'}
+										<button
+											onclick={() => copyToClipboard(message.content.data as BlobPart)}
+											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+											aria-label="Copy message content"
+										>
+											<CopyIcon class="h-4 w-4" />
+										</button>
 									{/if}
 								</div>
 							{/each}
@@ -212,9 +240,22 @@
 						<Collapsible.Content
 							class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
 						>
-							<div class="mt-2 rounded-md bg-muted p-3">
-								<h4 class="mb-2 text-sm font-medium">Raw JSON Response</h4>
-								<pre class="overflow-x-auto text-xs">{JSON.stringify(formResult, null, 2)}</pre>
+							<div class="relative mt-2 rounded-md bg-muted p-3">
+								<div class="mb-2 flex items-center justify-between">
+									<h4 class="text-sm font-medium">Raw JSON Response</h4>
+									<button
+										onclick={() => copyToClipboard(JSON.stringify(formResult, null, 2))}
+										class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+										aria-label="Copy raw result"
+									>
+										<CopyIcon class="h-4 w-4" />
+									</button>
+								</div>
+								<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+										formResult,
+										null,
+										2
+									)}</pre>
 							</div>
 						</Collapsible.Content>
 					</Collapsible.Root>

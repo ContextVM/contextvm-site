@@ -6,7 +6,7 @@
 	import * as components from '@sjsf/shadcn4-theme/new-york';
 	import RelayWidget from '$lib/components/RelayWidget.svelte';
 	import RelayChangeDialog from '$lib/components/dialogs/RelayChangeDialog.svelte';
-
+	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	let { children } = $props();
 
 	// Initialize the theme context for shadcn forms
@@ -16,6 +16,7 @@
 <ModeWatcher />
 <Header />
 <RelayWidget />
+<Toaster />
 <div class=" pt-14">
 	{@render children()}
 </div>

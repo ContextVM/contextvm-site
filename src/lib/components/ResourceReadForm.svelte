@@ -2,10 +2,12 @@
 	import { createForm, BasicForm, type Schema } from '@sjsf/form';
 	import { formDefaults } from '$lib/form-defaults';
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
+	import { copyToClipboard } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { Resource, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
+	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 	let {
 		resource,
@@ -111,7 +113,7 @@
 					{#if formResult.contents && formResult.contents.length > 0}
 						<div class="space-y-2">
 							{#each formResult.contents as content, i (i + '-' + content.uri)}
-								<div class="rounded-md bg-muted p-3">
+								<div class="relative rounded-md bg-muted p-3">
 									<div class="mb-2 flex items-center justify-between">
 										<span class="text-sm font-medium">{content.uri}</span>
 										{#if content.mimeType}
@@ -122,7 +124,7 @@
 									</div>
 
 									{#if 'text' in content}
-										<div class="text-sm">
+										<div class="pr-8 text-sm">
 											<pre class="overflow-x-auto text-xs">{content.text}</pre>
 										</div>
 									{:else if 'blob' in content && content.mimeType?.startsWith('image/')}
@@ -140,6 +142,24 @@
 										</div>
 									{:else}
 										<div class="text-sm text-muted-foreground">No content available</div>
+									{/if}
+
+									{#if 'text' in content}
+										<button
+											onclick={() => copyToClipboard(content.text as BlobPart)}
+											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+											aria-label="Copy resource text"
+										>
+											<CopyIcon class="h-4 w-4" />
+										</button>
+									{:else if 'blob' in content && !content.mimeType?.startsWith('image/')}
+										<button
+											onclick={() => copyToClipboard(content.blob as BlobPart)}
+											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+											aria-label="Copy resource info"
+										>
+											<CopyIcon class="h-4 w-4" />
+										</button>
 									{/if}
 								</div>
 							{/each}
@@ -163,9 +183,22 @@
 						<Collapsible.Content
 							class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
 						>
-							<div class="mt-2 rounded-md bg-muted p-3">
-								<h4 class="mb-2 text-sm font-medium">Raw JSON Response</h4>
-								<pre class="overflow-x-auto text-xs">{JSON.stringify(formResult, null, 2)}</pre>
+							<div class="relative mt-2 rounded-md bg-muted p-3">
+								<div class="mb-2 flex items-center justify-between">
+									<h4 class="text-sm font-medium">Raw JSON Response</h4>
+									<button
+										onclick={() => copyToClipboard(JSON.stringify(formResult, null, 2))}
+										class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+										aria-label="Copy raw result"
+									>
+										<CopyIcon class="h-4 w-4" />
+									</button>
+								</div>
+								<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+										formResult,
+										null,
+										2
+									)}</pre>
 							</div>
 						</Collapsible.Content>
 					</Collapsible.Root>

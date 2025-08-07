@@ -6,10 +6,11 @@
 		ServerAnnouncementModel,
 		type ServerAnnouncement
 	} from '$lib/models/serverAnnouncements';
-	import { formatUnixTimestamp, getAvailableCapabilities } from '$lib/utils';
+	import { getAvailableCapabilities, pubkeyToHexColor, copyToClipboard } from '$lib/utils';
 	import { goto } from '$app/navigation';
 	import { Collapsible } from 'bits-ui';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
+	import CopyIcon from '@lucide/svelte/icons/copy';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -27,6 +28,8 @@
 	import ResourceReadForm from '$lib/components/ResourceReadForm.svelte';
 	import PromptGetForm from '$lib/components/PromptGetForm.svelte';
 	import ResourceTemplateReadForm from '$lib/components/ResourceTemplateReadForm.svelte';
+	import ServerInformationCard from '$lib/components/ServerInformationCard.svelte';
+	import ServerConnectionCard from '$lib/components/ServerConnectionCard.svelte';
 	import {
 		createPromptsAnnouncementByPubkeyLoader,
 		createResourcesAnnouncementByPubkeyLoader,
@@ -219,7 +222,6 @@
 </script>
 
 {#if currentServer}
-	{@const publishedAt = formatUnixTimestamp(currentServer.created_at, true)}
 	{@const availableCapabilities = getAvailableCapabilities(currentServer)}
 	<article class="container mx-auto max-w-6xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to servers link -->
@@ -232,13 +234,18 @@
 
 		<!-- Server header with picture -->
 		{#if currentServer.picture}
-			<div class="mb-6 aspect-video overflow-hidden rounded-lg bg-muted sm:mb-8">
+			<div class="mb-6 h-64 overflow-hidden rounded-lg bg-muted sm:mb-8">
 				<img
 					src={currentServer.picture}
 					alt={currentServer.name}
 					class="h-full w-full object-cover"
 				/>
 			</div>
+		{:else}
+			<div
+				class="mb-6 flex h-32 items-center justify-center overflow-hidden rounded-lg bg-muted sm:mb-8"
+				style="background-color: {pubkeyToHexColor(currentServer.pubkey)}"
+			></div>
 		{/if}
 
 		<!-- Two-column layout -->
@@ -417,43 +424,23 @@
 
 			<!-- Right column (1/3 width) -->
 			<div class="lg:col-span-1">
-				<!-- Server metadata -->
-				<Card.Root class="mb-6">
-					<Card.Header>
-						<Card.Title>Server Information</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						<div class="space-y-4">
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Published</p>
-								<time
-									datetime={new Date(currentServer.created_at * 1000).toISOString()}
-									class="text-sm"
-								>
-									{publishedAt}
-								</time>
-							</div>
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Version</p>
-								<p class="text-sm">{currentServer.capabilities.serverInfo?.version || 'Unknown'}</p>
-							</div>
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Public Key</p>
-								<p class="font-mono text-xs break-all">{currentServer.pubkey}</p>
-							</div>
-							{#if currentServer.supportsEncryption}
-								<div>
-									<p class="text-sm font-medium text-muted-foreground">Encryption</p>
-									<span
-										class="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
-									>
-										Supported
-									</span>
-								</div>
-							{/if}
-						</div>
-					</Card.Content>
-				</Card.Root>
+				<!-- Server Information Tabs -->
+				<Tabs.Root value="info" class="mb-6">
+					<Tabs.List class="grid w-full grid-cols-2">
+						<Tabs.Trigger value="info">Information</Tabs.Trigger>
+						<Tabs.Trigger value="connection">Connection</Tabs.Trigger>
+					</Tabs.List>
+
+					<!-- Information Tab -->
+					<Tabs.Content value="info" class="mt-4">
+						<ServerInformationCard server={currentServer} />
+					</Tabs.Content>
+
+					<!-- Connection Tab -->
+					<Tabs.Content value="connection" class="mt-4">
+						<ServerConnectionCard server={currentServer} />
+					</Tabs.Content>
+				</Tabs.Root>
 			</div>
 		</div>
 
@@ -467,11 +454,20 @@
 					<ChevronsUpDownIcon />
 				</Collapsible.Trigger>
 				<Collapsible.Content>
-					<pre class="overflow-x-auto rounded bg-muted p-4 text-xs">{JSON.stringify(
-							currentServer.capabilities,
-							null,
-							2
-						)}</pre>
+					<div class="relative">
+						<pre class="overflow-x-auto rounded bg-muted p-4 pr-12 text-xs">{JSON.stringify(
+								currentServer.capabilities,
+								null,
+								2
+							)}</pre>
+						<button
+							onclick={() => copyToClipboard(JSON.stringify(currentServer.capabilities, null, 2))}
+							class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+							aria-label="Copy raw server data"
+						>
+							<CopyIcon class="h-4 w-4" />
+						</button>
+					</div>
 				</Collapsible.Content>
 			</Collapsible.Root>
 		</div>

@@ -1,4 +1,4 @@
-import { EncryptionMode, SimpleRelayPool } from '@contextvm/sdk';
+import { SimpleRelayPool } from '@contextvm/sdk';
 import { activeAccount } from '$lib/services/accountManager.svelte';
 import { NostrClientTransport } from '@contextvm/sdk';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -85,8 +85,7 @@ export class McpClientService {
 				const transport = new NostrClientTransport({
 					signer,
 					relayHandler: this.relayPool,
-					serverPubkey,
-					encryptionMode: EncryptionMode.DISABLED
+					serverPubkey
 				});
 
 				// Connect with new transport
@@ -140,8 +139,7 @@ export class McpClientService {
 			const transport = new NostrClientTransport({
 				signer,
 				relayHandler: this.relayPool,
-				serverPubkey,
-				encryptionMode: EncryptionMode.DISABLED
+				serverPubkey
 			});
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
