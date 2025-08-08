@@ -168,4 +168,8 @@
 	blockquote {
 		@apply mt-4 mb-4 border-l-2 border-primary pl-4 italic;
 	}
+
+	a {
+		@apply hover:text-primary/80;
+	}
 }

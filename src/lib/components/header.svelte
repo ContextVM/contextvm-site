@@ -35,6 +35,9 @@
 				<a href="/blog" class="text-foreground/60 transition-colors hover:text-foreground/80">
 					Blog
 				</a>
+				<a href="/about" class="text-foreground/60 transition-colors hover:text-foreground/80">
+					About
+				</a>
 				<a
 					href="https://contextvm.org"
 					target="_blank"

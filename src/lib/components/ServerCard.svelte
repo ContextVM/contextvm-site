@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatUnixTimestamp } from '$lib/utils';
+	import { formatUnixTimestamp, pubkeyToHexColor } from '$lib/utils';
 	import type { ServerAnnouncement } from '$lib/models/serverAnnouncements';
 
 	let { server }: { server: ServerAnnouncement } = $props();
@@ -21,6 +21,11 @@
 					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
 				/>
 			</div>
+		{:else}
+			<div
+				class="flex aspect-video items-center justify-center overflow-hidden bg-muted"
+				style="background-color: {pubkeyToHexColor(server.pubkey)}"
+			></div>
 		{/if}
 		<div class="p-6">
 			<div class="mb-2 flex items-center justify-between text-sm text-muted-foreground">
