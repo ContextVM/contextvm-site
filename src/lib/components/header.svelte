@@ -1,10 +1,12 @@
 <script lang="ts">
 	import Github from '@lucide/svelte/icons/github';
+	import Menu from '@lucide/svelte/icons/menu';
 	import ThemeToggle from './theme-toggle.svelte';
 	import AccountLoginDialog from './AccountLoginDialog.svelte';
 	import ProfileCard from './ProfileCard.svelte';
-	import { activeAccount, logout } from '$lib/services/accountManager.svelte';
+	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import Button from './ui/button/button.svelte';
+	import * as Sheet from './ui/sheet/index.js';
 </script>
 
 <header
@@ -28,8 +30,8 @@
 			/>
 		</a>
 
-		<!-- Navigation Links and Theme Toggle -->
-		<div class="flex items-center space-x-4 sm:space-x-6">
+		<!-- Desktop Navigation -->
+		<div class="hidden items-center space-x-4 sm:flex sm:space-x-6">
 			<!-- Navigation Links -->
 			<nav class="flex items-center space-x-4 text-sm font-medium sm:space-x-6">
 				<a href="/blog" class="text-foreground/60 transition-colors hover:text-foreground/80">
@@ -37,6 +39,9 @@
 				</a>
 				<a href="/about" class="text-foreground/60 transition-colors hover:text-foreground/80">
 					About
+				</a>
+				<a href="/faqs" class="text-foreground/60 transition-colors hover:text-foreground/80">
+					FAQs
 				</a>
 				<a
 					href="https://contextvm.org"
@@ -60,7 +65,6 @@
 				{#if $activeAccount}
 					<div class="hidden items-center gap-2 sm:flex sm:gap-3">
 						<ProfileCard pubkey={$activeAccount.pubkey} />
-						<Button variant="outline" onclick={logout}>Logout</Button>
 					</div>
 				{:else}
 					<div class="hidden sm:block">
@@ -72,6 +76,71 @@
 			<div class="flex items-center space-x-2">
 				<ThemeToggle />
 			</div>
+		</div>
+
+		<!-- Mobile Menu Button -->
+		<div class="flex items-center space-x-2 sm:hidden">
+			<ThemeToggle />
+			<Sheet.Root>
+				<Sheet.Trigger>
+					<Button variant="ghost" size="icon" aria-label="Menu">
+						<Menu class="h-5 w-5" />
+					</Button>
+				</Sheet.Trigger>
+				<Sheet.Content side="right" class="w-[300px] p-6 sm:w-[400px]">
+					<div class="py-4">
+						<nav class="flex flex-col space-y-1">
+							<a
+								href="/blog"
+								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+							>
+								Blog
+							</a>
+							<a
+								href="/about"
+								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+							>
+								About
+							</a>
+							<a
+								href="/faqs"
+								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+							>
+								FAQs
+							</a>
+							<a
+								href="https://contextvm.org"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+							>
+								Docs
+							</a>
+							<a
+								href="https://github.com/contextvm"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex items-center gap-2 rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+								aria-label="GitHub"
+							>
+								<Github class="h-4 w-4" />
+								GitHub
+							</a>
+						</nav>
+						<div class="mt-8 border-t pt-6">
+							{#if $activeAccount}
+								<div class="flex flex-col gap-4 px-2">
+									<ProfileCard pubkey={$activeAccount.pubkey} />
+								</div>
+							{:else}
+								<div class="px-2">
+									<AccountLoginDialog />
+								</div>
+							{/if}
+						</div>
+					</div>
+				</Sheet.Content>
+			</Sheet.Root>
 		</div>
 	</div>
 </header>

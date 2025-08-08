@@ -45,24 +45,12 @@
 			<p class="mb-8 text-lg text-muted-foreground">
 				Discover and connect with Model Context Protocol (MCP) servers on Nostr
 			</p>
-
-			<div class="flex flex-col justify-center gap-4 sm:flex-row">
-				<a
-					href="https://contextvm.org"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="rounded-md bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-				>
-					Read docs
-				</a>
-			</div>
 		</div>
 
 		<!-- Server Announcements Section -->
 		<div class="mx-auto max-w-6xl">
-			<h2 class="mb-8 text-3xl font-bold">Available MCP Servers</h2>
-
 			{#if $serverAnnouncements.length}
+				<h2 class="mb-8 text-3xl font-bold">Available MCP Servers</h2>
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each $serverAnnouncements as server (server.id)}
 						<ServerCard {server} />
