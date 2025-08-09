@@ -1,32 +1,11 @@
-// Dialog state interface
-interface DialogState {
-	show: boolean;
-	title: string;
-	description: string;
-	onConfirm: (() => void) | null;
-}
+// Dialog ID constants
+export const DIALOG_IDS = {
+	RELAY_CHANGE: 'relay-change',
+	LOGIN: 'login',
+	RELAY_SELECTOR: 'relay-selector'
+} as const;
 
 // Reactive dialog state object using Svelte 5 $state
-export const dialogState = $state<DialogState>({
-	show: false,
-	title: '',
-	description: '',
-	onConfirm: null
+export const dialogState = $state<{ dialogId: string | null }>({
+	dialogId: null
 });
-
-// Helper functions to control the dialog
-export const dialogActions = {
-	// Show a dialog with specific content
-	showDialog: (title: string, description: string, onConfirm?: () => void) => {
-		dialogState.title = title;
-		dialogState.description = description;
-		dialogState.onConfirm = onConfirm || null;
-		dialogState.show = true;
-	},
-
-	// Hide the dialog
-	hideDialog: () => {
-		dialogState.show = false;
-		dialogState.onConfirm = null;
-	}
-};

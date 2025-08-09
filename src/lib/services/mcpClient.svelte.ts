@@ -13,7 +13,7 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js';
 import { SvelteMap } from 'svelte/reactivity';
 import { relayStore, relayActions } from '../stores/relay-store.svelte';
-import { dialogActions } from '$lib/stores/dialog-state.svelte';
+import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 
 export interface McpConnectionState {
 	connected: boolean;
@@ -40,13 +40,8 @@ export class McpClientService {
 		relayActions.onRelayChange(() => {
 			this.updateRelayPool();
 
-			// Show dialog if there are existing clients
 			if (this.clients.size > 0) {
-				dialogActions.showDialog(
-					'Relay Configuration Changed',
-					'The selected relays have been updated. To use the new relay configuration with your existing server connections, you need to reconnect to the servers.',
-					() => this.reconnectAllClients()
-				);
+				dialogState.dialogId = DIALOG_IDS.RELAY_CHANGE;
 			}
 		});
 	}

@@ -7,10 +7,16 @@
 	import RelayWidget from '$lib/components/RelayWidget.svelte';
 	import RelayChangeDialog from '$lib/components/dialogs/RelayChangeDialog.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
+	import { dialogState } from '$lib/stores/dialog-state.svelte';
+
 	let { children } = $props();
 
 	// Initialize the theme context for shadcn forms
 	setThemeContext({ components });
+
+	$effect(() => {
+		console.log(dialogState.dialogId);
+	});
 </script>
 
 <ModeWatcher />

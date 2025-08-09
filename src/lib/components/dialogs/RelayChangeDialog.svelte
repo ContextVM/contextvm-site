@@ -11,26 +11,36 @@
 		DialogClose
 	} from '$lib/components/ui/dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { dialogState, dialogActions } from '$lib/stores/dialog-state.svelte';
+	import { dialogState, DIALOG_IDS } from '$lib/stores/dialog-state.svelte';
+	import { mcpClientService } from '$lib/services/mcpClient.svelte';
 
 	// Function to handle reconnecting all clients
 	async function handleReconnect() {
-		if (dialogState.onConfirm) {
-			dialogState.onConfirm();
-		}
-		dialogActions.hideDialog();
+		mcpClientService.reconnectAllClients();
+		open = false;
 	}
+
+	// Check if this dialog should be open based on dialog ID
+	let open = $state(false);
+
+	$effect(() => {
+		if (dialogState.dialogId === DIALOG_IDS.RELAY_CHANGE) {
+			open = true;
+		}
+	});
 </script>
 
-<Dialog bind:open={dialogState.show}>
+<Dialog bind:open onOpenChange={() => (dialogState.dialogId = null)}>
 	<DialogPortal>
 		<DialogOverlay class="fixed inset-0 z-50 bg-black/80" />
 		<DialogContent
 			class="fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] border bg-background p-6 shadow-lg sm:max-w-md"
 		>
 			<DialogHeader>
-				<DialogTitle>{dialogState.title}</DialogTitle>
-				<DialogDescription>{dialogState.description}</DialogDescription>
+				<DialogTitle>Relay Configuration Changed</DialogTitle>
+				<DialogDescription
+					>Your relay configuration has changed. Would you like to reconnect all clients?'</DialogDescription
+				>
 			</DialogHeader>
 			<DialogFooter class="mt-4 flex justify-end space-x-2">
 				<DialogClose>

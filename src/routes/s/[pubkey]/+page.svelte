@@ -37,6 +37,9 @@
 		createServerAnnouncementByPubkeyLoader,
 		createToolsAnnouncementByPubkeyLoader
 	} from '$lib/services/loaders.svelte';
+	import * as Alert from '$lib/components/ui/alert/index.js';
+	import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
+	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 
 	const pubkey = page.params.pubkey ?? '';
 
@@ -255,11 +258,9 @@
 				<!-- Server name and website -->
 				<div class="mb-6 flex items-center justify-between">
 					<div>
-						<h1
-							class="mb-3 text-2xl leading-tight font-bold tracking-tight sm:mb-4 sm:text-3xl md:text-4xl"
-						>
+						<h2 class="text-2xl leading-none font-bold sm:text-3xl md:text-4xl">
 							{currentServer.name}
-						</h1>
+						</h2>
 						{#if currentServer.website}
 							<a
 								href={currentServer.website}
@@ -286,6 +287,15 @@
 								Disconnect
 							</Button>
 						{:else}
+							{#if !$activeAccount}
+								<Alert.Root
+									class="cursor-pointer transition-colors hover:bg-muted/50"
+									onclick={() => (dialogState.dialogId = DIALOG_IDS.LOGIN)}
+								>
+									<CircleUserRound />
+									<Alert.Title>Loging to connect</Alert.Title>
+								</Alert.Root>
+							{/if}
 							<Button
 								onclick={connectToServer}
 								disabled={connectionState.loading || !$activeAccount}

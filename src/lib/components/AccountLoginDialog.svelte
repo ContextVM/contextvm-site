@@ -10,12 +10,22 @@
 		ExtensionAccount,
 		NostrConnectAccount
 	} from 'applesauce-accounts/accounts';
+	import QrCode from '$lib/components/QrCode.svelte';
+	import { generateSecretKey } from 'nostr-tools';
+	import { bytesToHex } from 'nostr-tools/utils';
+	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 
 	let open = $state(false);
+
+	$effect(() => {
+		if (dialogState.dialogId === DIALOG_IDS.LOGIN) {
+			open = true;
+		}
+	});
+
 	let selectedTab = $state<'extension' | 'simple' | 'remote'>('extension');
 	let privateKey = $state('');
 	let bunkerUri = $state('');
-	let qrCodeDataUrl = $state('');
 	let nostrConnectUri = $state('');
 	let loading = $state(false);
 	let error = $state('');
@@ -66,6 +76,11 @@
 		}
 	}
 
+	function generatePrivateKey() {
+		const secretKey = generateSecretKey();
+		privateKey = bytesToHex(secretKey);
+	}
+
 	async function generateRemoteSignerUri() {
 		try {
 			loading = true;
@@ -77,15 +92,12 @@
 
 			// Generate nostr connect URI with app metadata and permissions
 			const uri = signer.getNostrConnectURI({
-				name: 'Applesauce',
+				name: 'ContextVM-Site',
 				url: window.location.origin,
 				image: `${window.location.origin}/favicon.svg`
 			});
 
 			nostrConnectUri = uri;
-
-			// Generate QR code using qrserver.com API
-			qrCodeDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`;
 
 			remoteSignerStep = 'connecting';
 
@@ -146,7 +158,6 @@
 	function resetRemoteSignerState() {
 		loading = false;
 		remoteSignerStep = 'generate';
-		qrCodeDataUrl = '';
 		nostrConnectUri = '';
 		error = '';
 	}
@@ -180,7 +191,7 @@
 	});
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root bind:open onOpenChange={() => (dialogState.dialogId = null)}>
 	<Dialog.Trigger class={buttonVariants({ variant: 'outline' })}>Login</Dialog.Trigger>
 	<Dialog.Content class="sm:max-w-[425px]">
 		<Dialog.Header>
@@ -239,14 +250,17 @@
 			{#if selectedTab === 'simple'}
 				<div class="space-y-4">
 					<div class="space-y-2">
-						<Label for="private-key">Private Key</Label>
-						<Input
-							id="private-key"
-							placeholder="Enter your private key (hex format)"
-							bind:value={privateKey}
-							class="font-mono"
-							type="password"
-						/>
+						<Label for="account-private-key">Private Key</Label>
+						<div class="flex gap-2">
+							<Input
+								id="account-private-key"
+								placeholder="Enter your private key (hex format)"
+								bind:value={privateKey}
+								class="flex-1 font-mono"
+								type="password"
+							/>
+							<Button variant="outline" onclick={generatePrivateKey} type="button">Generate</Button>
+						</div>
 						<p class="text-xs text-muted-foreground">
 							Your private key will be stored securely in your browser's local storage.
 						</p>
@@ -278,9 +292,9 @@
 								Scan this QR code with your signer app or copy the connection string:
 							</p>
 
-							{#if qrCodeDataUrl}
+							{#if nostrConnectUri}
 								<div class="flex justify-center">
-									<img src={qrCodeDataUrl} alt="Nostr Connect QR Code" class="rounded-lg border" />
+									<QrCode data={nostrConnectUri} size={300} />
 								</div>
 							{/if}
 

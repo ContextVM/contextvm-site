@@ -3,9 +3,18 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import RelaySelector from './RelaySelector.svelte';
 	import Network from '@lucide/svelte/icons/network';
+	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
+
+	let open = $state(false);
+
+	$effect(() => {
+		if (dialogState.dialogId === DIALOG_IDS.RELAY_SELECTOR) {
+			open = true;
+		}
+	});
 </script>
 
-<Dialog.Root>
+<Dialog.Root onOpenChange={() => (dialogState.dialogId = null)} bind:open>
 	<Dialog.Trigger
 		class={buttonVariants({
 			variant: 'outline',

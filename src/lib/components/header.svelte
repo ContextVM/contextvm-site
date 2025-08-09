@@ -5,7 +5,7 @@
 	import AccountLoginDialog from './AccountLoginDialog.svelte';
 	import ProfileCard from './ProfileCard.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
-	import Button from './ui/button/button.svelte';
+	import { buttonVariants } from './ui/button/index.js';
 	import * as Sheet from './ui/sheet/index.js';
 </script>
 
@@ -82,10 +82,8 @@
 		<div class="flex items-center space-x-2 sm:hidden">
 			<ThemeToggle />
 			<Sheet.Root>
-				<Sheet.Trigger>
-					<Button variant="ghost" size="icon" aria-label="Menu">
-						<Menu class="h-5 w-5" />
-					</Button>
+				<Sheet.Trigger class={buttonVariants({ variant: 'ghost', size: 'icon' })} aria-label="Menu">
+					<Menu class="h-5 w-5" />
 				</Sheet.Trigger>
 				<Sheet.Content side="right" class="w-[300px] p-6 sm:w-[400px]">
 					<div class="py-4">
