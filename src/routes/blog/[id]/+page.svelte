@@ -11,6 +11,7 @@
 	import { getArticleImage, getArticleTitle } from 'applesauce-core/helpers';
 	import DOMPurify from 'dompurify';
 	import { formatUnixTimestamp } from '$lib/utils';
+	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
@@ -86,8 +87,10 @@
 			class="prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none [&>*:not(:first-child)]:mt-6"
 		>
 			{#await marked.parse($storedArticle.content) then html}
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html DOMPurify.sanitize(html)}
+				{#if browser}
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+					{@html DOMPurify.sanitize(html)}
+				{/if}
 			{/await}
 		</div>
 	</article>

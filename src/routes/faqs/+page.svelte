@@ -2,6 +2,7 @@
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import DOMPurify from 'dompurify';
+	import { browser } from '$app/environment';
 
 	// FAQ data structure
 	interface FAQ {
@@ -362,8 +363,10 @@ proxy-cli --private-key "your-key" --relays "wss://relay.nostr.org" --server-pub
 			<div
 				class="prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none border-t bg-muted/50 p-4 px-6"
 			>
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html DOMPurify.sanitize(faq.answer)}
+				{#if browser}
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+					{@html DOMPurify.sanitize(faq.answer)}
+				{/if}
 			</div>
 		</Collapsible.Content>
 	</Collapsible.Root>
