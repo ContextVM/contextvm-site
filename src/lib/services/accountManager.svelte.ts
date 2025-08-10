@@ -40,8 +40,8 @@ if (browser) {
 }
 
 export const logout = () => {
-	if (browser) {
-		localStorage.removeItem('accounts');
-	}
+	// if (browser) {
+	// 	localStorage.removeItem('accounts');
+	// }
 	manager.clearActive();
 };

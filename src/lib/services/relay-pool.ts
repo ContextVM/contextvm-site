@@ -4,9 +4,12 @@ import { RelayPool } from 'applesauce-relay';
 export const relayPool = new RelayPool();
 
 export const defaultRelays = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'];
+
 export const metadataRelays = [
 	'wss://0.kindpag.es/',
 	'wss://relay.nostr.band',
 	'wss://nos.lol',
 	'wss://relay.damus.io'
 ];
+
+export const devRelay = ['ws://localhost:10547'];

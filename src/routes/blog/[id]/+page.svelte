@@ -2,13 +2,13 @@
 	import { page } from '$app/state';
 	import { CONTEXTVM_PUBKEY } from '$lib/constants';
 	import { eventStore } from '$lib/services/eventStore';
-	import { addressLoader } from '$lib/services/loaders';
+	import { addressLoader } from '$lib/services/loaders.svelte';
 	import { defaultRelays } from '$lib/services/relay-pool';
 	import { ReplaceableModel } from 'applesauce-core/models';
 	import { LongFormArticle } from 'nostr-tools/kinds';
 	import { marked } from 'marked';
 	import type { AddressPointer } from 'nostr-tools/nip19';
-	import { getArticleImage, getArticleTitle, getTagValue } from 'applesauce-core/helpers';
+	import { getArticleImage, getArticleTitle } from 'applesauce-core/helpers';
 	import DOMPurify from 'dompurify';
 	import { formatUnixTimestamp } from '$lib/utils';
 	import { onMount } from 'svelte';

@@ -2,6 +2,9 @@
 
 @import 'tw-animate-css';
 
+/* Import shadcn4 theme styles */
+@source "../node_modules/@sjsf/shadcn4-theme/dist";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -138,7 +141,7 @@
 
 	ul,
 	ol {
-		@apply mt-4 mb-4;
+		@apply mt-1 mb-1 pl-6;
 	}
 
 	li {
@@ -147,11 +150,19 @@
 
 	/* Restore list markers with proper alignment */
 	ul li {
-		@apply list-outside list-disc;
+		@apply list-disc;
 	}
 
 	ol li {
-		@apply list-outside list-decimal;
+		@apply list-decimal;
+	}
+
+	/* Nested lists */
+	ul ul,
+	ul ol,
+	ol ul,
+	ol ol {
+		@apply mt-1 mb-1 pl-6;
 	}
 
 	code {
@@ -164,5 +175,36 @@
 
 	blockquote {
 		@apply mt-4 mb-4 border-l-2 border-primary pl-4 italic;
+	}
+
+	a {
+		@apply hover:text-primary/80;
+	}
+
+	/* Table styling improvements */
+	table {
+		@apply w-full border-collapse overflow-hidden rounded-lg;
+	}
+
+	th {
+		@apply border-b border-border bg-muted/50 px-4 py-3 text-left font-medium text-foreground;
+	}
+
+	td {
+		@apply border-b border-border px-4 py-3;
+	}
+
+	tr:last-child td {
+		@apply border-b-0;
+	}
+
+	/* Hover effect for table rows */
+	tbody tr:hover {
+		@apply bg-muted/30;
+	}
+
+	/* Responsive table wrapper */
+	.table-wrapper {
+		@apply overflow-x-auto rounded-lg;
 	}
 }
