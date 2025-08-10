@@ -178,14 +178,12 @@
 	// Connect to server (public or private)
 	async function connectToServer() {
 		if (!pubkey) return;
-
 		try {
 			// For public servers, just get the client
 			if ($server) {
 				await mcpClientService.getClient($server.pubkey);
 				return;
 			}
-
 			// For private servers, get client and load capabilities
 			const client = await mcpClientService.getClient(pubkey);
 			if (!client) return;
@@ -196,7 +194,6 @@
 
 			privateServer = parseServerInitializeMsg(initializeEvent);
 			if (!privateServer) return;
-
 			// Load capabilities
 			const capabilities = getAvailableCapabilities(privateServer);
 			await loadServerCapabilities(pubkey, capabilities);
@@ -346,7 +343,7 @@
 					<!-- Tools tab -->
 					{#if availableCapabilities.includes('tools')}
 						<Tabs.Content value="tools" class="mt-4 flex flex-col gap-2">
-							{#if $server && serverData.tools}
+							{#if serverData.tools}
 								{#each serverData.tools as tool (tool.name)}
 									<ToolCallForm {tool} serverPubkey={currentServer.pubkey} {connectionState} />
 								{/each}
@@ -365,7 +362,7 @@
 					<!-- Resources tab -->
 					{#if availableCapabilities.includes('resources')}
 						<Tabs.Content value="resources" class="mt-4 flex flex-col gap-2">
-							{#if $server && serverData.resources}
+							{#if serverData.resources}
 								{#if serverData.resources?.length}
 									<h3 class="text-lg font-medium">Resources</h3>
 									{#each serverData.resources as resource (resource.uri)}
@@ -385,7 +382,7 @@
 									</Card.Content>
 								</Card.Root>
 							{/if}
-							{#if $server && serverData.resourceTemplates}
+							{#if serverData.resourceTemplates}
 								{#if serverData.resourceTemplates?.length}
 									<h3 class="text-lg font-medium">Resource Templates</h3>
 									<p class="mb-4 text-sm text-muted-foreground">
@@ -414,7 +411,7 @@
 					<!-- Prompts tab -->
 					{#if availableCapabilities.includes('prompts')}
 						<Tabs.Content value="prompts" class="mt-4 flex flex-col gap-2">
-							{#if $server && serverData.prompts}
+							{#if serverData.prompts}
 								{#each serverData.prompts as prompt (prompt.name)}
 									<PromptGetForm {prompt} {connectionState} serverPubkey={currentServer.pubkey} />
 								{/each}

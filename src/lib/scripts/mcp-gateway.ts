@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { devRelay } from '$lib/services/relay-pool';
-import { NostrMCPGateway, PrivateKeySigner, SimpleRelayPool } from '@contextvm/sdk';
+import { ApplesauceRelayPool, NostrMCPGateway, PrivateKeySigner } from '@contextvm/sdk';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { generateSecretKey } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
@@ -33,8 +33,7 @@ async function createGatewayInstance(instanceIndex: number): Promise<NostrMCPGat
 	});
 
 	const signer = new PrivateKeySigner(bytesToHex(generateSecretKey()));
-	const relayPool = new SimpleRelayPool(relayUrl);
-
+	const relayPool = new ApplesauceRelayPool(relayUrl);
 	const gateway = new NostrMCPGateway({
 		mcpServerTransport: transport,
 		nostrTransportOptions: {

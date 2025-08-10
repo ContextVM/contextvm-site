@@ -1,6 +1,5 @@
-import { SimpleRelayPool } from '@contextvm/sdk';
 import { activeAccount } from '$lib/services/accountManager.svelte';
-import { NostrClientTransport } from '@contextvm/sdk';
+import { ApplesauceRelayPool, NostrClientTransport } from '@contextvm/sdk';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type {
 	ListPromptsResult,
@@ -14,6 +13,7 @@ import type {
 import { SvelteMap } from 'svelte/reactivity';
 import { relayStore, relayActions } from '../stores/relay-store.svelte';
 import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
+import { browser } from '$app/environment';
 
 export interface McpConnectionState {
 	connected: boolean;
@@ -24,7 +24,7 @@ export interface McpConnectionState {
 export class McpClientService {
 	private clients = new SvelteMap<string, Client>();
 	private connectionStates = new SvelteMap<string, McpConnectionState>();
-	private relayPool = new SimpleRelayPool(relayStore.selectedRelays);
+	private relayPool: ApplesauceRelayPool | null = null;
 	private static readonly clientConfig = {
 		name: 'ContextVM Web Client',
 		version: '1.0.0'
@@ -35,20 +35,43 @@ export class McpClientService {
 		error: null
 	};
 
-	constructor() {
-		// Register callback for relay changes
-		relayActions.onRelayChange(() => {
-			this.updateRelayPool();
+	// Initialize relay pool only on client side
+	private initializeRelayPool(): void {
+		if (!browser) return;
 
-			if (this.clients.size > 0) {
-				dialogState.dialogId = DIALOG_IDS.RELAY_CHANGE;
-			}
-		});
+		if (!this.relayPool) {
+			this.relayPool = new ApplesauceRelayPool(relayStore.selectedRelays);
+		}
+	}
+
+	// Get the relay pool, initializing it if necessary
+	private getRelayPool(): ApplesauceRelayPool {
+		if (!this.relayPool) {
+			this.initializeRelayPool();
+		}
+		return this.relayPool!;
+	}
+
+	constructor() {
+		// Initialize relay pool only on client side
+		if (browser) {
+			this.initializeRelayPool();
+
+			// Register callback for relay changes
+			relayActions.onRelayChange(() => {
+				this.updateRelayPool();
+
+				if (this.clients.size > 0) {
+					dialogState.dialogId = DIALOG_IDS.RELAY_CHANGE;
+				}
+			});
+		}
 	}
 
 	// Update the relay pool with current selected relays
 	private updateRelayPool(): void {
-		this.relayPool = new SimpleRelayPool(relayStore.selectedRelays);
+		if (!browser) return;
+		this.relayPool = new ApplesauceRelayPool(relayStore.selectedRelays);
 	}
 
 	// Reconnect all existing clients with the new relay pool
@@ -79,7 +102,7 @@ export class McpClientService {
 				// Create new transport with updated relay pool
 				const transport = new NostrClientTransport({
 					signer,
-					relayHandler: this.relayPool,
+					relayHandler: this.getRelayPool(),
 					serverPubkey
 				});
 
@@ -133,7 +156,7 @@ export class McpClientService {
 
 			const transport = new NostrClientTransport({
 				signer,
-				relayHandler: this.relayPool,
+				relayHandler: this.getRelayPool(),
 				serverPubkey
 			});
 			const client = new Client(McpClientService.clientConfig);
