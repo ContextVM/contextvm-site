@@ -69,6 +69,8 @@
 
 	let activeTab = $state('about');
 
+	let triedMcpListCommands = $state(false);
+
 	// Load server capabilities from announcements (for public servers)
 	$effect(() => {
 		if (!$server) return;
@@ -78,6 +80,7 @@
 		let resourcesSub: Subscription | null = null;
 		let resourceTemplatesSub: Subscription | null = null;
 		let promptsSub: Subscription | null = null;
+		let hasLoadedFromAnnouncements = false;
 
 		// Load tools if supported
 		if (capabilities.includes('tools')) {
@@ -86,6 +89,7 @@
 					try {
 						const content = JSON.parse(event.content);
 						serverData.tools = content.tools || [];
+						hasLoadedFromAnnouncements = true;
 					} catch (err) {
 						console.error('Failed to parse tools announcement:', err);
 					}
@@ -100,6 +104,7 @@
 					try {
 						const content = JSON.parse(event.content);
 						serverData.resources = content.resources || [];
+						hasLoadedFromAnnouncements = true;
 					} catch (err) {
 						console.error('Failed to parse resources announcement:', err);
 					}
@@ -112,6 +117,7 @@
 						try {
 							const content = JSON.parse(event.content);
 							serverData.resourceTemplates = content.resourceTemplates || [];
+							hasLoadedFromAnnouncements = true;
 						} catch (err) {
 							console.error('Failed to parse resource templates announcement:', err);
 						}
@@ -127,12 +133,21 @@
 					try {
 						const content = JSON.parse(event.content);
 						serverData.prompts = content.prompts || [];
+						hasLoadedFromAnnouncements = true;
 					} catch (err) {
 						console.error('Failed to parse prompts announcement:', err);
 					}
 				}
 			});
 		}
+
+		// Check if we need to fall back to MCP list commands
+		queueMicrotask(() => {
+			if (!triedMcpListCommands && !hasLoadedFromAnnouncements) {
+				triedMcpListCommands = true;
+				loadServerCapabilities(pubkey, capabilities);
+			}
+		});
 
 		return () => {
 			toolsSub?.unsubscribe();
@@ -196,6 +211,7 @@
 			if (!privateServer) return;
 			// Load capabilities
 			const capabilities = getAvailableCapabilities(privateServer);
+			triedMcpListCommands = true;
 			await loadServerCapabilities(pubkey, capabilities);
 		} catch (err) {
 			console.error('Connection error:', err);
@@ -321,7 +337,9 @@
 					<Tabs.List class="grid w-full grid-cols-5">
 						<Tabs.Trigger value="about">About</Tabs.Trigger>
 						{#each availableCapabilities as capability (capability)}
-							<Tabs.Trigger value={capability}>{capability}</Tabs.Trigger>
+							{#if (capability === 'tools' && serverData.tools?.length) || (capability === 'resources' && (serverData.resources?.length || serverData.resourceTemplates?.length)) || (capability === 'prompts' && serverData.prompts?.length)}
+								<Tabs.Trigger value={capability}>{capability}</Tabs.Trigger>
+							{/if}
 						{/each}
 					</Tabs.List>
 

@@ -31,12 +31,12 @@
 <div class="relay-selector space-y-4">
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold">Relays</h2>
-		<div class="flex gap-2">
+		<!-- <div class="flex gap-2">
 			<Button onclick={relayActions.resetToDefaultRelays} variant="outline" size="sm"
 				>Use Defaults</Button
 			>
 			<Button onclick={relayActions.useDevRelay} variant="outline" size="sm">Use Dev</Button>
-		</div>
+		</div> -->
 	</div>
 
 	<div class="space-y-3">
