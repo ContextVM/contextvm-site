@@ -4,6 +4,8 @@ import { getTagValue } from 'applesauce-core/helpers';
 import { InitializeResultSchema, type InitializeResult } from '@modelcontextprotocol/sdk/types.js';
 import { type Event } from 'nostr-tools';
 import { SERVER_ANNOUNCEMENT_KIND } from '@contextvm/sdk';
+import { queryClient } from '$lib/query-client';
+import { serverKeys } from '$lib/queries/serverQueryKeys';
 
 export interface ServerAnnouncement {
 	id: string;
@@ -63,7 +65,12 @@ export function ServerAnnouncementsModel(): Model<ServerAnnouncement[]> {
 				const announcements = events
 					.map(parseServerInitializeMsg)
 					.filter((announcement): announcement is ServerAnnouncement => announcement !== null);
-
+				for (const announcement of announcements) {
+					queryClient.setQueryData(serverKeys.announcement(announcement.pubkey), {
+						server: announcement,
+						isPublic: true
+					});
+				}
 				// Sort by creation date (newest first)
 				return announcements.sort(
 					(a: ServerAnnouncement, b: ServerAnnouncement) => b.created_at - a.created_at

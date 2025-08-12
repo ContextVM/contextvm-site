@@ -1,5 +1,5 @@
 import { activeAccount } from '$lib/services/accountManager.svelte';
-import { ApplesauceRelayPool, NostrClientTransport } from '@contextvm/sdk';
+import { ApplesauceRelayPool, EncryptionMode, NostrClientTransport } from '@contextvm/sdk';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type {
 	ListPromptsResult,

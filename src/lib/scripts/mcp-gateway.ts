@@ -33,9 +33,10 @@ async function createGatewayInstance(instanceIndex: number): Promise<NostrMCPGat
 	});
 
 	const signer = new PrivateKeySigner(bytesToHex(generateSecretKey()));
+	console.error('Signer:', await signer.getPublicKey());
 	const relayPool = new ApplesauceRelayPool(relayUrl);
 	const gateway = new NostrMCPGateway({
-		mcpServerTransport: transport,
+		mcpClientTransport: transport,
 		nostrTransportOptions: {
 			signer,
 			relayHandler: relayPool,

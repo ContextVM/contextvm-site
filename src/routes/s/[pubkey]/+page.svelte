@@ -1,11 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { eventStore } from '$lib/services/eventStore';
-	import {
-		parseServerInitializeMsg,
-		ServerAnnouncementModel,
-		type ServerAnnouncement
-	} from '$lib/models/serverAnnouncements';
+	import { parseServerInitializeMsg } from '$lib/models/serverAnnouncements';
 	import { getAvailableCapabilities, pubkeyToHexColor, copyToClipboard } from '$lib/utils';
 	import { goto } from '$app/navigation';
 	import { Collapsible } from 'bits-ui';
@@ -15,205 +10,99 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
-	import type {
-		Prompt,
-		Resource,
-		ResourceTemplate,
-		Tool
-	} from '@modelcontextprotocol/sdk/types.js';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import type { NostrClientTransport } from '@contextvm/sdk';
-	import type { Subscription } from 'rxjs';
 	import ToolCallForm from '$lib/components/ToolCallForm.svelte';
 	import ResourceReadForm from '$lib/components/ResourceReadForm.svelte';
 	import PromptGetForm from '$lib/components/PromptGetForm.svelte';
 	import ResourceTemplateReadForm from '$lib/components/ResourceTemplateReadForm.svelte';
 	import ServerInformationCard from '$lib/components/ServerInformationCard.svelte';
 	import ServerConnectionCard from '$lib/components/ServerConnectionCard.svelte';
-	import {
-		createPromptsAnnouncementByPubkeyLoader,
-		createResourcesAnnouncementByPubkeyLoader,
-		createResourcesTemplatesAnnouncementByPubkeyLoader,
-		createServerAnnouncementByPubkeyLoader,
-		createToolsAnnouncementByPubkeyLoader
-	} from '$lib/services/loaders.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
+	import {
+		useServerAnnouncement,
+		useServerTools,
+		useServerResources,
+		useServerResourceTemplates,
+		useServerPrompts
+	} from '$lib/queries/serverQueries';
+	import { queryClient } from '$lib/query-client';
+	import { serverKeys } from '$lib/queries/serverQueryKeys';
 
-	// TODO: Improve fallback to load server capabilities from MCP list commands, currently it call list commands for all capabilities everytime the page loads
 	const pubkey = page.params.pubkey ?? '';
 
-	// Try to load server from public announcements
-	const server = eventStore.model(ServerAnnouncementModel, pubkey);
+	// Use individual queries
+	const serverQuery = useServerAnnouncement(pubkey);
 
-	// For private servers (no public announcement)
-	let privateServer = $state<ServerAnnouncement | null>(null);
-
-	// Combined server object
-	const currentServer = $derived($server || privateServer);
-
-	// Connection state
-	let connectionState = $derived<McpConnectionState>(
-		currentServer
-			? mcpClientService.getConnectionState(currentServer.pubkey)
-			: { connected: false, loading: false, error: null }
+	let toolsQuery = $derived(
+		$serverQuery.isFetched
+			? $serverQuery.data?.isPublic
+				? useServerTools(pubkey, true)
+				: useServerTools(pubkey, false)
+			: undefined
+	);
+	let resourcesQuery = $derived(
+		$serverQuery.isFetched
+			? $serverQuery.data?.isPublic
+				? useServerResources(pubkey, true)
+				: useServerResources(pubkey, false)
+			: undefined
+	);
+	let resourceTemplatesQuery = $derived(
+		$serverQuery.isFetched
+			? $serverQuery.data?.isPublic
+				? useServerResourceTemplates(pubkey, true)
+				: useServerResourceTemplates(pubkey, false)
+			: undefined
+	);
+	let promptsQuery = $derived(
+		$serverQuery.isFetched
+			? $serverQuery.data?.isPublic
+				? useServerPrompts(pubkey, true)
+				: useServerPrompts(pubkey, false)
+			: undefined
 	);
 
+	// Connection state
+	const connectionState = $derived<McpConnectionState>(mcpClientService.getConnectionState(pubkey));
+
 	// Server capabilities data
-	let serverData = $state({
-		tools: null as Tool[] | null,
-		resources: null as Resource[] | null,
-		resourceTemplates: null as ResourceTemplate[] | null,
-		prompts: null as Prompt[] | null
+	const serverData = $derived({
+		tools: $toolsQuery?.data || null,
+		resources: $resourcesQuery?.data || null,
+		resourceTemplates: $resourceTemplatesQuery?.data || null,
+		prompts: $promptsQuery?.data || null
 	});
 
 	let activeTab = $state('about');
-
-	let triedMcpListCommands = $state(false);
-
-	// Load server capabilities from announcements (for public servers)
-	$effect(() => {
-		if (!$server) return;
-
-		const capabilities = getAvailableCapabilities($server);
-		let toolsSub: Subscription | null = null;
-		let resourcesSub: Subscription | null = null;
-		let resourceTemplatesSub: Subscription | null = null;
-		let promptsSub: Subscription | null = null;
-		let hasLoadedFromAnnouncements = false;
-
-		// Load tools if supported
-		if (capabilities.includes('tools')) {
-			toolsSub = createToolsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
-				if (event) {
-					try {
-						const content = JSON.parse(event.content);
-						serverData.tools = content.tools || [];
-						hasLoadedFromAnnouncements = true;
-					} catch (err) {
-						console.error('Failed to parse tools announcement:', err);
-					}
-				}
-			});
-		}
-
-		// Load resources if supported
-		if (capabilities.includes('resources')) {
-			resourcesSub = createResourcesAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
-				if (event) {
-					try {
-						const content = JSON.parse(event.content);
-						serverData.resources = content.resources || [];
-						hasLoadedFromAnnouncements = true;
-					} catch (err) {
-						console.error('Failed to parse resources announcement:', err);
-					}
-				}
-			});
-
-			resourceTemplatesSub = createResourcesTemplatesAnnouncementByPubkeyLoader(pubkey).subscribe(
-				(event) => {
-					if (event) {
-						try {
-							const content = JSON.parse(event.content);
-							serverData.resourceTemplates = content.resourceTemplates || [];
-							hasLoadedFromAnnouncements = true;
-						} catch (err) {
-							console.error('Failed to parse resource templates announcement:', err);
-						}
-					}
-				}
-			);
-		}
-
-		// Load prompts if supported
-		if (capabilities.includes('prompts')) {
-			promptsSub = createPromptsAnnouncementByPubkeyLoader(pubkey).subscribe((event) => {
-				if (event) {
-					try {
-						const content = JSON.parse(event.content);
-						serverData.prompts = content.prompts || [];
-						hasLoadedFromAnnouncements = true;
-					} catch (err) {
-						console.error('Failed to parse prompts announcement:', err);
-					}
-				}
-			});
-		}
-
-		// Check if we need to fall back to MCP list commands
-		queueMicrotask(() => {
-			if (!triedMcpListCommands && !hasLoadedFromAnnouncements) {
-				triedMcpListCommands = true;
-				loadServerCapabilities(pubkey, capabilities);
-			}
-		});
-
-		return () => {
-			toolsSub?.unsubscribe();
-			resourcesSub?.unsubscribe();
-			resourceTemplatesSub?.unsubscribe();
-			promptsSub?.unsubscribe();
-		};
-	});
-
-	// Load server capabilities via MCP (for private servers)
-	async function loadServerCapabilities(
-		serverPubkey: string,
-		capabilities: string[] = ['tools', 'resources', 'prompts']
-	) {
-		serverData.tools = null;
-		serverData.resources = null;
-		serverData.resourceTemplates = null;
-		serverData.prompts = null;
-
-		for (const capability of capabilities) {
-			try {
-				switch (capability) {
-					case 'tools':
-						serverData.tools = (await mcpClientService.listTools(serverPubkey)).tools;
-						break;
-					case 'resources': {
-						const resources = await mcpClientService.listResources(serverPubkey);
-						const templates = await mcpClientService.listResourcesTemplates(serverPubkey);
-						serverData.resources = resources.resources;
-						serverData.resourceTemplates = templates.resourceTemplates;
-						break;
-					}
-					case 'prompts':
-						serverData.prompts = (await mcpClientService.listPrompts(serverPubkey)).prompts;
-						break;
-				}
-			} catch (err) {
-				console.error(`Failed to load ${capability}:`, err);
-			}
-		}
-	}
 
 	// Connect to server (public or private)
 	async function connectToServer() {
 		if (!pubkey) return;
 		try {
 			// For public servers, just get the client
-			if ($server) {
-				await mcpClientService.getClient($server.pubkey);
+			if ($serverQuery.data?.isPublic) {
+				await mcpClientService.getClient(pubkey);
+				// Refetch all queries after connection
+				$serverQuery.refetch();
+				$toolsQuery?.refetch();
+				$resourcesQuery?.refetch();
+				$resourceTemplatesQuery?.refetch();
+				$promptsQuery?.refetch();
 				return;
+			} else {
+				const client = await mcpClientService.getClient(pubkey);
+				if (!client) return null;
+
+				const initializeEvent = (
+					client.transport as NostrClientTransport
+				).getServerInitializeEvent();
+				if (!initializeEvent) return null;
+				const server = parseServerInitializeMsg(initializeEvent);
+				queryClient.setQueryData(serverKeys.announcement(pubkey), { server, isPublic: false });
 			}
-			// For private servers, get client and load capabilities
-			const client = await mcpClientService.getClient(pubkey);
-			if (!client) return;
-
-			// Get server initialization event
-			const initializeEvent = (client.transport as NostrClientTransport).getServerInitializeEvent();
-			if (!initializeEvent) return;
-
-			privateServer = parseServerInitializeMsg(initializeEvent);
-			if (!privateServer) return;
-			// Load capabilities
-			const capabilities = getAvailableCapabilities(privateServer);
-			triedMcpListCommands = true;
-			await loadServerCapabilities(pubkey, capabilities);
 		} catch (err) {
 			console.error('Connection error:', err);
 		}
@@ -221,25 +110,18 @@
 
 	// Disconnect from server
 	async function disconnectFromServer() {
-		if (!currentServer) return;
+		if (!$serverQuery.data?.server) return;
 
 		try {
-			await mcpClientService.disconnect(currentServer.pubkey);
+			await mcpClientService.disconnect(pubkey);
 		} catch (err) {
 			console.error('Disconnection error:', err);
 		}
 	}
-
-	// Load server announcement if not already loaded (for private server detection)
-	$effect(() => {
-		if ($server) return;
-		const sub = createServerAnnouncementByPubkeyLoader(pubkey).subscribe();
-		return () => sub.unsubscribe();
-	});
 </script>
 
-{#if currentServer}
-	{@const availableCapabilities = getAvailableCapabilities(currentServer)}
+{#if $serverQuery.data?.server}
+	{@const availableCapabilities = getAvailableCapabilities($serverQuery.data.server)}
 	<article class="container mx-auto max-w-6xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to servers link -->
 		<button
@@ -250,18 +132,18 @@
 		</button>
 
 		<!-- Server header with picture -->
-		{#if currentServer.picture}
+		{#if $serverQuery.data.server.picture}
 			<div class="mb-6 h-64 overflow-hidden rounded-lg bg-muted sm:mb-8">
 				<img
-					src={currentServer.picture}
-					alt={currentServer.name}
+					src={$serverQuery.data.server.picture}
+					alt={$serverQuery.data.server.name}
 					class="h-full w-full object-cover"
 				/>
 			</div>
 		{:else}
 			<div
 				class="mb-6 flex h-32 items-center justify-center overflow-hidden rounded-lg bg-muted sm:mb-8"
-				style="background-color: {pubkeyToHexColor(currentServer.pubkey)}"
+				style="background-color: {pubkeyToHexColor($serverQuery.data.server.pubkey)}"
 			></div>
 		{/if}
 
@@ -273,16 +155,16 @@
 				<div class="mb-6 flex items-center justify-between">
 					<div>
 						<h2 class="text-2xl leading-none font-bold sm:text-3xl md:text-4xl">
-							{currentServer.name}
+							{$serverQuery.data.server.name}
 						</h2>
-						{#if currentServer.website}
+						{#if $serverQuery.data.server.website}
 							<a
-								href={currentServer.website}
+								href={$serverQuery.data.server.website}
 								target="_blank"
 								rel="noopener noreferrer"
 								class="text-sm text-primary hover:underline"
 							>
-								{currentServer.website}
+								{$serverQuery.data.server.website}
 							</a>
 						{/if}
 					</div>
@@ -348,8 +230,8 @@
 					<Tabs.Content value="about" class="mt-4">
 						<Card.Root>
 							<Card.Content class="pt-6">
-								{#if currentServer.about}
-									<p class="text-sm">{currentServer.about}</p>
+								{#if $serverQuery.data.server.about}
+									<p class="text-sm">{$serverQuery.data.server.about}</p>
 								{:else}
 									<p class="text-sm text-muted-foreground">
 										No description available for this server.
@@ -364,7 +246,11 @@
 						<Tabs.Content value="tools" class="mt-4 flex flex-col gap-2">
 							{#if serverData.tools}
 								{#each serverData.tools as tool (tool.name)}
-									<ToolCallForm {tool} serverPubkey={currentServer.pubkey} {connectionState} />
+									<ToolCallForm
+										{tool}
+										serverPubkey={$serverQuery.data.server.pubkey}
+										{connectionState}
+									/>
 								{/each}
 							{:else}
 								<Card.Root>
@@ -387,7 +273,7 @@
 									{#each serverData.resources as resource (resource.uri)}
 										<ResourceReadForm
 											{resource}
-											serverPubkey={currentServer.pubkey}
+											serverPubkey={$serverQuery.data.server.pubkey}
 											{connectionState}
 										/>
 									{/each}
@@ -410,12 +296,12 @@
 									{#each serverData.resourceTemplates as resourceTemplate (resourceTemplate.uriTemplate)}
 										<ResourceTemplateReadForm
 											{resourceTemplate}
-											serverPubkey={currentServer.pubkey}
+											serverPubkey={$serverQuery.data.server.pubkey}
 											{connectionState}
 										/>
 									{/each}
 								{/if}
-							{:else if $server}
+							{:else if $serverQuery.data}
 								<Card.Root>
 									<Card.Content class="pt-6">
 										<p class="text-center text-sm text-muted-foreground">
@@ -432,7 +318,11 @@
 						<Tabs.Content value="prompts" class="mt-4 flex flex-col gap-2">
 							{#if serverData.prompts}
 								{#each serverData.prompts as prompt (prompt.name)}
-									<PromptGetForm {prompt} {connectionState} serverPubkey={currentServer.pubkey} />
+									<PromptGetForm
+										{prompt}
+										{connectionState}
+										serverPubkey={$serverQuery.data.server.pubkey}
+									/>
 								{/each}
 							{:else}
 								<Card.Root>
@@ -459,12 +349,12 @@
 
 					<!-- Information Tab -->
 					<Tabs.Content value="info" class="mt-4">
-						<ServerInformationCard server={currentServer} />
+						<ServerInformationCard server={$serverQuery.data.server} />
 					</Tabs.Content>
 
 					<!-- Connection Tab -->
 					<Tabs.Content value="connection" class="mt-4">
-						<ServerConnectionCard server={currentServer} />
+						<ServerConnectionCard server={$serverQuery.data.server} />
 					</Tabs.Content>
 				</Tabs.Root>
 			</div>
@@ -482,12 +372,13 @@
 				<Collapsible.Content>
 					<div class="relative">
 						<pre class="overflow-x-auto rounded bg-muted p-4 pr-12 text-xs">{JSON.stringify(
-								currentServer.capabilities,
+								$serverQuery.data.server.capabilities,
 								null,
 								2
 							)}</pre>
 						<button
-							onclick={() => copyToClipboard(JSON.stringify(currentServer.capabilities, null, 2))}
+							onclick={() =>
+								copyToClipboard(JSON.stringify($serverQuery.data?.server?.capabilities, null, 2))}
 							class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
 							aria-label="Copy raw server data"
 						>
