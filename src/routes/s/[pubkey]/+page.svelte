@@ -41,6 +41,7 @@
 	import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 
+	// TODO: Improve fallback to load server capabilities from MCP list commands, currently it call list commands for all capabilities everytime the page loads
 	const pubkey = page.params.pubkey ?? '';
 
 	// Try to load server from public announcements
