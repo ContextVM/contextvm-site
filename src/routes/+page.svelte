@@ -5,6 +5,7 @@
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 
+	// TODO(improve): We are subscribing each time the page loads.
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 	let loading = $state(false);
 

@@ -1,5 +1,5 @@
 import { activeAccount } from '$lib/services/accountManager.svelte';
-import { ApplesauceRelayPool, EncryptionMode, NostrClientTransport } from '@contextvm/sdk';
+import { ApplesauceRelayPool, NostrClientTransport } from '@contextvm/sdk';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type {
 	ListPromptsResult,
@@ -20,11 +20,11 @@ export interface McpConnectionState {
 	loading: boolean;
 	error: string | null;
 }
-// Relay pool is now reactive to the selected relays
+// Relay pool is now per-client to avoid subscription conflicts
 export class McpClientService {
-	private clients = new SvelteMap<string, Client>();
+	public clients = new SvelteMap<string, Client>();
 	private connectionStates = new SvelteMap<string, McpConnectionState>();
-	private relayPool: ApplesauceRelayPool | null = null;
+	private clientRelayPools = new SvelteMap<string, ApplesauceRelayPool>();
 	private static readonly clientConfig = {
 		name: 'ContextVM Web Client',
 		version: '1.0.0'
@@ -35,43 +35,47 @@ export class McpClientService {
 		error: null
 	};
 
-	// Initialize relay pool only on client side
-	private initializeRelayPool(): void {
-		if (!browser) return;
-
-		if (!this.relayPool) {
-			this.relayPool = new ApplesauceRelayPool(relayStore.selectedRelays);
+	// Create a new relay pool for a specific client
+	private createRelayPool(): ApplesauceRelayPool {
+		if (!browser) {
+			throw new Error('Relay pool can only be created on client side');
 		}
+		return new ApplesauceRelayPool(relayStore.selectedRelays);
 	}
 
-	// Get the relay pool, initializing it if necessary
-	private getRelayPool(): ApplesauceRelayPool {
-		if (!this.relayPool) {
-			this.initializeRelayPool();
+	// Get or create a relay pool for a specific client
+	private getRelayPool(serverPubkey: string): ApplesauceRelayPool {
+		let relayPool = this.clientRelayPools.get(serverPubkey);
+		if (!relayPool) {
+			relayPool = this.createRelayPool();
+			this.clientRelayPools.set(serverPubkey, relayPool);
 		}
-		return this.relayPool!;
+		return relayPool;
+	}
+
+	// Update relay pool for a specific client
+	private updateRelayPoolForClient(serverPubkey: string): void {
+		if (!browser) return;
+
+		// Create new relay pool for this client
+		const newRelayPool = this.createRelayPool();
+		this.clientRelayPools.set(serverPubkey, newRelayPool);
 	}
 
 	constructor() {
-		// Initialize relay pool only on client side
+		// Register callback for relay changes
 		if (browser) {
-			this.initializeRelayPool();
-
-			// Register callback for relay changes
 			relayActions.onRelayChange(() => {
-				this.updateRelayPool();
+				// Update relay pools for all connected clients
+				for (const serverPubkey of this.clients.keys()) {
+					this.updateRelayPoolForClient(serverPubkey);
+				}
 
 				if (this.clients.size > 0) {
 					dialogState.dialogId = DIALOG_IDS.RELAY_CHANGE;
 				}
 			});
 		}
-	}
-
-	// Update the relay pool with current selected relays
-	private updateRelayPool(): void {
-		if (!browser) return;
-		this.relayPool = new ApplesauceRelayPool(relayStore.selectedRelays);
 	}
 
 	// Reconnect all existing clients with the new relay pool
@@ -99,10 +103,10 @@ export class McpClientService {
 				// Close existing client
 				await client.close();
 
-				// Create new transport with updated relay pool
+				// Create new transport with updated relay pool for this client
 				const transport = new NostrClientTransport({
 					signer,
-					relayHandler: this.getRelayPool(),
+					relayHandler: this.getRelayPool(serverPubkey),
 					serverPubkey
 				});
 
@@ -156,7 +160,7 @@ export class McpClientService {
 
 			const transport = new NostrClientTransport({
 				signer,
-				relayHandler: this.getRelayPool(),
+				relayHandler: this.getRelayPool(serverPubkey),
 				serverPubkey
 			});
 			const client = new Client(McpClientService.clientConfig);
@@ -270,6 +274,23 @@ export class McpClientService {
 		}
 		const result = await client.getPrompt({ name: promptName, arguments: arguments_ });
 		return result as GetPromptResult;
+	}
+
+	// Clean up all relay pools and clients
+	public async destroy(): Promise<void> {
+		// Close all clients
+		for (const [serverPubkey, client] of this.clients) {
+			try {
+				await client.close();
+			} catch (error) {
+				console.error(`Error closing client for ${serverPubkey}:`, error);
+			}
+
+			// Clear all data
+			this.clients.clear();
+			this.connectionStates.clear();
+			this.clientRelayPools.clear();
+		}
 	}
 }
 
