@@ -42,8 +42,21 @@
 		},
 		{
 			question: 'Is ContextVM open source?',
-			answer: `<p>Yes. ContextVM is fully open source and community-driven. The protocol specification, SDKs, gateway, proxy, and tooling are all publicly available under the GPLv3 license (with potential future evolution based on community input).</p>
+			answer: `<p>Yes. ContextVM is fully open source and community-driven. The protocol specification, SDKs, gateway, proxy, and tooling are all publicly available</p>
 			<p>You can view, contribute to, or fork the code on GitHub: <a href="https://github.com/contextvm" target="_blank" rel="noopener noreferrer">github.com/contextvm</a></p>`
+		},
+		{
+			question: 'Do I need an LLM to use ContextVM?',
+			answer: `<p>No, you don't need an LLM to use ContextVM. While ContextVM is often used with LLMs through MCP (Model Context Protocol), it can be used independently by both humans and machines.</p>
+			<p>MCP uses JSON-RPC messages for communication between clients and servers, making it versatile for various environments:</p>
+			<p>An interesting aspect is that servers and capabilities use natural language to describe what they do. This makes them self-explanatory and understandable by both LLMs and humans, creating a bridge between the two worlds.</p>
+			<p>In summary, ContextVM works indifferently with humans or LLMs—whichever you prefer!</p>
+			<h3>Use Cases Beyond LLMs</h3>
+			<ul>
+				<li><strong>Custom interfaces for servers</strong>: Build web apps, desktop applications, or command-line tools that interact with ContextVM servers directly</li>
+				<li><strong>Library-like implementations</strong>: Use the MCP server as a backend where your application acts as a client, making remote function calls as if they were local library functions</li>
+				<li><strong>Collaborative workspaces</strong>: Create shared workspaces where team members can access and manipulate resources through ContextVM servers</li>
+			</ul>`
 		},
 		{
 			question: 'What happened to DVMCP?',
