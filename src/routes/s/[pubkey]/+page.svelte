@@ -30,8 +30,33 @@
 	} from '$lib/queries/serverQueries';
 	import { queryClient } from '$lib/query-client';
 	import { serverKeys } from '$lib/queries/serverQueryKeys';
+	import Seo from '$lib/components/SEO.svelte';
 
 	const pubkey = page.params.pubkey ?? '';
+
+	// Dynamic SEO data for server pages
+	let seoTitle = $state('Loading server...');
+	let seoDescription = $state('Loading server information...');
+	let seoImage = $state('/logo-black.svg');
+	let seoUrl = $state(`https://contextvm.com/s/${pubkey}`);
+	let seoType = $state('website' as 'website' | 'article');
+
+	// Update SEO data when server loads
+	$effect(() => {
+		if ($serverQuery.data?.server) {
+			const server = $serverQuery.data.server;
+			const serverName = server.name || 'Unnamed Server';
+			const serverAbout = server.about || 'No description available for this server.';
+			const serverPicture = server.picture || '/logo-black.svg';
+
+			seoTitle = serverName;
+			seoDescription =
+				serverAbout.length > 160 ? serverAbout.substring(0, 160) + '...' : serverAbout;
+			seoImage = serverPicture;
+			seoUrl = `https://contextvm.com/s/${pubkey}`;
+			seoType = 'website';
+		}
+	});
 
 	// Use individual queries
 	const serverQuery = useServerAnnouncement(pubkey);
@@ -119,6 +144,8 @@
 		}
 	}
 </script>
+
+<Seo title={seoTitle} description={seoDescription} image={seoImage} url={seoUrl} type={seoType} />
 
 {#if $serverQuery.data?.server}
 	{@const availableCapabilities = getAvailableCapabilities($serverQuery.data.server)}

@@ -4,6 +4,7 @@
 	import { useServerAnnouncements } from '$lib/queries/serverQueries';
 	import { eventStore } from '$lib/services/eventStore';
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
+	import Seo from '$lib/components/SEO.svelte';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 
@@ -12,6 +13,10 @@
 	let loading = $state($serverAnnouncementsQuery.isFetching);
 </script>
 
+<Seo
+	title="Home"
+	description="Discover and connect with Model Context Protocol (MCP) servers on Nostr."
+/>
 <main class="min-h-screen bg-background px-4 py-8">
 	<div class="container mx-auto">
 		<!-- Header Section -->
@@ -27,10 +32,7 @@
 				class="mx-auto mb-8 hidden h-32 w-auto dark:block"
 			/>
 
-			<h1 class="mb-6 text-4xl font-bold tracking-tight sm:text-6xl">Welcome to ContextVM</h1>
-			<p class="mb-8 text-lg text-muted-foreground">
-				Discover and connect with Model Context Protocol (MCP) servers on Nostr
-			</p>
+			<h1 class="mb-6 text-4xl font-bold tracking-tight sm:text-6xl">ContextVM</h1>
 		</div>
 
 		<!-- Server Announcements Section -->

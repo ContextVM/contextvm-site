@@ -3,6 +3,7 @@
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import DOMPurify from 'dompurify';
 	import { browser } from '$app/environment';
+	import SEO from '$lib/components/SEO.svelte';
 
 	// FAQ data structure
 	interface FAQ {
@@ -359,6 +360,11 @@ proxy-cli --private-key "your-key" --relays "wss://relay.nostr.org" --server-pub
 		}
 	];
 </script>
+
+<SEO
+	title="FAQs"
+	description="Find answers to common questions about ContextVM, the decentralized protocol for MCP servers on Nostr. Learn about how it works, security, payments, and getting started."
+/>
 
 {#snippet faqItem(faq: FAQ)}
 	<Collapsible.Root>

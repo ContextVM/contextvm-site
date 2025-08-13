@@ -6,6 +6,7 @@
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import { createBlogArticlesLoader } from '$lib/services/loaders.svelte';
 	import { commonRelays } from '$lib/services/relay-pool';
+	import SEO from '$lib/components/SEO.svelte';
 
 	const blogArticles = eventStore.model(TimelineModel, articlesFilter);
 
@@ -16,6 +17,11 @@
 		};
 	});
 </script>
+
+<SEO
+	title="Blog"
+	description="Read articles and updates about ContextVM, the decentralized protocol for MCP servers on Nostr."
+/>
 
 <div class="container mx-auto px-4 py-8">
 	<h1 class="mb-8 text-3xl font-bold">Blog</h1>

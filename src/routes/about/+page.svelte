@@ -2,6 +2,7 @@
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
 	import { browser } from '$app/environment';
+	import Seo from '$lib/components/SEO.svelte';
 
 	// About page content in markdown
 	const aboutContent = `
@@ -80,6 +81,11 @@ To get involved:
 
 *Built with ❤️ for the decentralized web*`;
 </script>
+
+<Seo
+	title="About"
+	description="Discover what ContextVM is, how it works, and how to get involved."
+/>
 
 <article class="container mx-auto max-w-4xl px-4 py-6 sm:py-8 md:py-12">
 	<!-- About page header -->

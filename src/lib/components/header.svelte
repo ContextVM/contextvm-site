@@ -44,7 +44,7 @@
 					FAQs
 				</a>
 				<a
-					href="https://contextvm.org"
+					href="https://docs.contextvm.org"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="text-foreground/60 transition-colors hover:text-foreground/80"
@@ -107,7 +107,7 @@
 								FAQs
 							</a>
 							<a
-								href="https://contextvm.org"
+								href="https://docs.contextvm.org"
 								target="_blank"
 								rel="noopener noreferrer"
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"

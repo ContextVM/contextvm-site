@@ -14,6 +14,7 @@
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import SEO from '$lib/components/SEO.svelte';
 
 	const pointer: AddressPointer = {
 		kind: LongFormArticle,
@@ -45,9 +46,32 @@
 			gfm: true
 		});
 	});
+
+	// Dynamic SEO data for individual blog posts
+	let seoTitle = $state('Loading...');
+	let seoDescription = $state('Loading article...');
+	let seoImage = $state('/logo-black.svg');
+	let seoUrl = $state(`https://contextvm.com/blog/${page.params.id}`);
+	let seoType = $state('article' as 'website' | 'article');
+
+	// Update SEO data when article loads
+	$effect(() => {
+		if ($storedArticle) {
+			const articleTitle = getArticleTitle($storedArticle) || 'Untitled Article';
+			const articleImage = getArticleImage($storedArticle);
+			const contentPreview = $storedArticle.content.substring(0, 160) + '...';
+
+			seoTitle = articleTitle;
+			seoDescription = contentPreview;
+			seoImage = articleImage || '/logo-black.svg';
+			seoUrl = `https://contextvm.com/blog/${page.params.id}`;
+			seoType = 'article';
+		}
+	});
 </script>
 
 {#if $storedArticle}
+	<SEO title={seoTitle} description={seoDescription} image={seoImage} url={seoUrl} type={seoType} />
 	{@const image = getArticleImage($storedArticle)}
 	{@const title = getArticleTitle($storedArticle)}
 	{@const publishedAt = formatUnixTimestamp($storedArticle.created_at, true)}
