@@ -1,30 +1,15 @@
 <script lang="ts">
-	import { eventStore } from '$lib/services/eventStore';
-	import { createServerAnnouncementsLoader } from '$lib/services/loaders.svelte';
-	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
+	import { useServerAnnouncements } from '$lib/queries/serverQueries';
+	import { eventStore } from '$lib/services/eventStore';
+	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 
-	// TODO(improve): We are subscribing each time the page loads.
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
-	let loading = $state(false);
 
-	// Load announcements when relays change
-	$effect(() => {
-		loading = true;
+	const serverAnnouncementsQuery = useServerAnnouncements();
 
-		const sub = createServerAnnouncementsLoader().subscribe({
-			complete: () => {
-				setTimeout(() => {
-					loading = false;
-				}, 500);
-			}
-		});
-
-		return () => {
-			sub.unsubscribe();
-		};
-	});
+	let loading = $state($serverAnnouncementsQuery.isFetching);
 </script>
 
 <main class="min-h-screen bg-background px-4 py-8">
@@ -50,14 +35,14 @@
 
 		<!-- Server Announcements Section -->
 		<div class="mx-auto max-w-6xl">
-			{#if $serverAnnouncements.length}
+			{#if $serverAnnouncements?.length}
 				<h2 class="mb-8 text-3xl font-bold">Available MCP Servers</h2>
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each $serverAnnouncements as server (server.id)}
 						<ServerCard {server} />
 					{/each}
 				</div>
-			{:else if !$serverAnnouncements.length && !loading}
+			{:else if !$serverAnnouncements?.length && !loading}
 				<div class="mt-8 text-center text-muted-foreground">
 					<p>No MCP servers found. Check back later for server announcements.</p>
 				</div>

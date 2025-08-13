@@ -5,11 +5,12 @@
 	import ArticleCard from '$lib/components/ArticleCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import { createBlogArticlesLoader } from '$lib/services/loaders.svelte';
+	import { commonRelays } from '$lib/services/relay-pool';
 
 	const blogArticles = eventStore.model(TimelineModel, articlesFilter);
 
 	$effect(() => {
-		const sub = createBlogArticlesLoader().subscribe();
+		const sub = createBlogArticlesLoader(commonRelays).subscribe();
 		return () => {
 			sub.unsubscribe();
 		};

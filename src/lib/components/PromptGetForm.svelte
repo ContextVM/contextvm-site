@@ -10,6 +10,8 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 	import { onDestroy } from 'svelte';
+	import { activeAccount } from '$lib/services/accountManager.svelte';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 
 	let {
 		prompt,
@@ -262,8 +264,12 @@
 				</div>
 			{:else if loading}
 				<LoadingSpinner />
-			{:else}
+			{:else if $activeAccount}
 				<BasicForm {form} />
+			{:else if !$activeAccount}
+				<Alert.Root variant="destructive">
+					<Alert.Title>Please log in to get capabilities</Alert.Title>
+				</Alert.Root>
 			{/if}
 		</div>
 	</Collapsible.Content>

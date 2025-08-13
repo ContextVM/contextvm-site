@@ -8,6 +8,8 @@
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
+	import { activeAccount } from '$lib/services/accountManager.svelte';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 
 	let {
 		resourceTemplate,
@@ -206,7 +208,7 @@
 				</div>
 			{:else if loading}
 				<LoadingSpinner />
-			{:else}
+			{:else if $activeAccount}
 				<div class="space-y-4">
 					<!-- URI Template Display -->
 					<div class="space-y-2">
@@ -240,6 +242,10 @@
 						<Button onclick={handleSubmit} disabled={loading} class="w-full">Read Resource</Button>
 					{/if}
 				</div>
+			{:else if !$activeAccount}
+				<Alert.Root variant="destructive">
+					<Alert.Title>Please log in to read capabilities</Alert.Title>
+				</Alert.Root>
 			{/if}
 		</div>
 	</Collapsible.Content>

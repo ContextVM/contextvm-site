@@ -9,6 +9,9 @@
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
+	import { activeAccount } from '$lib/services/accountManager.svelte';
+	import * as Alert from '$lib/components/ui/alert/index.js';
+
 	let {
 		resource,
 		serverPubkey,
@@ -207,8 +210,12 @@
 				<div class="flex items-center justify-center py-8">
 					<LoadingSpinner />
 				</div>
-			{:else}
+			{:else if $activeAccount}
 				<BasicForm {form} />
+			{:else if !$activeAccount}
+				<Alert.Root variant="destructive">
+					<Alert.Title>Please log in to read capabilities</Alert.Title>
+				</Alert.Root>
 			{/if}
 		</div>
 	</Collapsible.Content>

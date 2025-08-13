@@ -7,10 +7,12 @@ import {
 	createToolsAnnouncementByPubkeyLoader,
 	createResourcesAnnouncementByPubkeyLoader,
 	createResourcesTemplatesAnnouncementByPubkeyLoader,
-	createPromptsAnnouncementByPubkeyLoader
+	createPromptsAnnouncementByPubkeyLoader,
+	createServerAnnouncementsLoader
 } from '$lib/services/loaders.svelte';
 import type { Tool, Resource, ResourceTemplate, Prompt } from '@modelcontextprotocol/sdk/types.js';
 import { lastValueFrom } from 'rxjs';
+import type { NostrEvent } from 'nostr-tools';
 
 interface ServerQueryResult {
 	isPublic: boolean;
@@ -167,4 +169,13 @@ async function fetchPromptsFromMCP(pubkey: string): Promise<Prompt[]> {
 		console.error('Failed to fetch prompts from MCP:', error);
 		throw error;
 	}
+}
+
+export function useServerAnnouncements() {
+	return createQuery<NostrEvent>({
+		queryKey: serverKeys.all,
+		queryFn: async () => {
+			return await lastValueFrom(createServerAnnouncementsLoader());
+		}
+	});
 }

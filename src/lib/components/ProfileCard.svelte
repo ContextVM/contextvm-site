@@ -7,6 +7,7 @@
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import { logout } from '$lib/services/accountManager.svelte';
 	import { pubkeyToHexColor } from '$lib/utils';
+	import { Metadata } from 'nostr-tools/kinds';
 
 	let { pubkey }: { pubkey: string } = $props();
 
@@ -14,7 +15,7 @@
 	$effect(() => {
 		if ($profile) return;
 		const sub = addressLoader({
-			kind: 0,
+			kind: Metadata,
 			pubkey,
 			relays: metadataRelays
 		}).subscribe();
