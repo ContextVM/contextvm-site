@@ -216,7 +216,7 @@
 									onclick={() => (dialogState.dialogId = DIALOG_IDS.LOGIN)}
 								>
 									<CircleUserRound />
-									<Alert.Title>Loging to connect</Alert.Title>
+									<Alert.Title>Login to connect</Alert.Title>
 								</Alert.Root>
 							{/if}
 							<Button
