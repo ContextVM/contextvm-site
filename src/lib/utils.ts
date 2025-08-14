@@ -107,3 +107,10 @@ export function slugify(text: string): string {
 		.replace(/[\s-]+/g, '-') // Replace spaces and dashes with a single dash
 		.replace(/^-+|-+$/g, ''); // Trim dashes from the beginning and the end
 }
+
+/**
+ * Trucate a string to a specified length if it exceeds the limit
+ */
+export function truncateString(str: string, limit: number = 164): string {
+	return str.length > limit ? str.slice(0, limit) + '...' : str;
+}

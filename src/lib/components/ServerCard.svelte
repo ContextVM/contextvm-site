@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatUnixTimestamp, pubkeyToHexColor } from '$lib/utils';
+	import { formatUnixTimestamp, pubkeyToHexColor, truncateString } from '$lib/utils';
 	import type { ServerAnnouncement } from '$lib/models/serverAnnouncements';
 
 	let { server }: { server: ServerAnnouncement } = $props();
@@ -12,7 +12,7 @@
 	href={serverHref}
 	class="group block h-full overflow-hidden rounded-lg border border-border bg-card transition-all hover:shadow-md hover:shadow-primary/10"
 >
-	<div class="grid h-full grid-rows-[auto_auto_1fr_auto]">
+	<div class="grid h-full grid-rows-[auto_auto_auto_1fr]">
 		{#if server.picture}
 			<div class="aspect-video overflow-hidden bg-muted">
 				<img
@@ -43,19 +43,14 @@
 			>
 				{server.name}
 			</h3>
-			<div class="mb-4 overflow-hidden text-muted-foreground">
-				<p class="line-clamp-3 text-sm">
-					Version: {server.capabilities?.serverInfo?.version || 'Unknown'}
+			{#if server.about}
+				<p class=" text-sm text-muted-foreground">
+					{truncateString(server.about)}
 				</p>
-			</div>
+			{/if}
 			<div class="flex items-center text-sm font-medium text-primary">
-				{#if server.website}
-					Visit server
-					<span class="ml-1 transition-transform group-hover:translate-x-1">→</span>
-				{:else}
-					View details
-					<span class="ml-1 transition-transform group-hover:translate-x-1">→</span>
-				{/if}
+				Visit server
+				<span class="ml-1 transition-transform group-hover:translate-x-1">→</span>
 			</div>
 		</div>
 	</div>

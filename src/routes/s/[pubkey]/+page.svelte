@@ -424,13 +424,19 @@
 			This might be a private server that doesn't publish announcements.
 		</p>
 		<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
-			<Button onclick={connectToServer} disabled={connectionState.loading || !$activeAccount}>
-				{#if connectionState.loading}
-					Connecting...
-				{:else}
-					Attempt Connect To Server
-				{/if}
-			</Button>
+			{#if !$activeAccount}
+				<Alert.Root variant="destructive" class="w-fit">
+					<Alert.Title>Please log in to connect to a server</Alert.Title>
+				</Alert.Root>
+			{:else}
+				<Button onclick={connectToServer} disabled={connectionState.loading || !$activeAccount}>
+					{#if connectionState.loading}
+						Connecting...
+					{:else}
+						Attempt Connect To Server
+					{/if}
+				</Button>
+			{/if}
 			<button
 				onclick={() => goto('/')}
 				class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
