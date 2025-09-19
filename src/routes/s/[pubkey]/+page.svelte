@@ -73,6 +73,7 @@
 				: useServerTools(pubkey, false)
 			: undefined
 	);
+
 	let resourcesQuery = $derived(
 		$serverQuery.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
@@ -270,6 +271,35 @@
 								{/if}
 							</Card.Content>
 						</Card.Root>
+
+						<!-- Raw server data section -->
+						<Collapsible.Root class="mt-6">
+							<Collapsible.Trigger
+								class="flex w-full items-center justify-between pb-4 text-left text-sm font-medium text-muted-foreground hover:text-primary"
+							>
+								<h3 class="text-lg font-semibold">Raw Server Data</h3>
+								<ChevronsUpDownIcon />
+							</Collapsible.Trigger>
+							<Collapsible.Content>
+								<div class="relative">
+									<pre class="overflow-x-auto rounded bg-muted p-4 pr-12 text-xs">{JSON.stringify(
+											$serverQuery.data.server.capabilities,
+											null,
+											2
+										)}</pre>
+									<button
+										onclick={() =>
+											copyToClipboard(
+												JSON.stringify($serverQuery.data?.server?.capabilities, null, 2)
+											)}
+										class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+										aria-label="Copy raw server data"
+									>
+										<CopyIcon class="h-4 w-4" />
+									</button>
+								</div>
+							</Collapsible.Content>
+						</Collapsible.Root>
 					</Tabs.Content>
 
 					<!-- Tools tab -->
@@ -291,6 +321,35 @@
 										</p>
 									</Card.Content>
 								</Card.Root>
+							{/if}
+
+							<!-- Raw tools data section -->
+							{#if serverData.tools}
+								<Collapsible.Root>
+									<Collapsible.Trigger
+										class="flex w-full items-center justify-between pb-4 text-left text-sm font-medium text-muted-foreground hover:text-primary"
+									>
+										<h3 class="text-lg font-semibold">Raw Tools Data</h3>
+										<ChevronsUpDownIcon />
+									</Collapsible.Trigger>
+									<Collapsible.Content>
+										<div class="relative">
+											<pre
+												class="overflow-x-auto rounded bg-muted p-4 pr-12 text-xs">{JSON.stringify(
+													serverData.tools,
+													null,
+													2
+												)}</pre>
+											<button
+												onclick={() => copyToClipboard(JSON.stringify(serverData.tools, null, 2))}
+												class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+												aria-label="Copy raw tools data"
+											>
+												<CopyIcon class="h-4 w-4" />
+											</button>
+										</div>
+									</Collapsible.Content>
+								</Collapsible.Root>
 							{/if}
 						</Tabs.Content>
 					{/if}
@@ -341,6 +400,48 @@
 									</Card.Content>
 								</Card.Root>
 							{/if}
+
+							<!-- Raw resources data section -->
+							{#if serverData.resources || serverData.resourceTemplates}
+								<Collapsible.Root>
+									<Collapsible.Trigger
+										class="flex w-full items-center justify-between pb-4 text-left text-sm font-medium text-muted-foreground hover:text-primary"
+									>
+										<h3 class="text-lg font-semibold">Raw Resources Data</h3>
+										<ChevronsUpDownIcon />
+									</Collapsible.Trigger>
+									<Collapsible.Content>
+										<div class="relative">
+											<pre
+												class="overflow-x-auto rounded bg-muted p-4 pr-12 text-xs">{JSON.stringify(
+													{
+														resources: serverData.resources,
+														resourceTemplates: serverData.resourceTemplates
+													},
+													null,
+													2
+												)}</pre>
+											<button
+												onclick={() =>
+													copyToClipboard(
+														JSON.stringify(
+															{
+																resources: serverData.resources,
+																resourceTemplates: serverData.resourceTemplates
+															},
+															null,
+															2
+														)
+													)}
+												class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+												aria-label="Copy raw resources data"
+											>
+												<CopyIcon class="h-4 w-4" />
+											</button>
+										</div>
+									</Collapsible.Content>
+								</Collapsible.Root>
+							{/if}
 						</Tabs.Content>
 					{/if}
 
@@ -363,6 +464,35 @@
 										</p>
 									</Card.Content>
 								</Card.Root>
+							{/if}
+
+							<!-- Raw prompts data section -->
+							{#if serverData.prompts}
+								<Collapsible.Root>
+									<Collapsible.Trigger
+										class="flex w-full items-center justify-between pb-4 text-left text-sm font-medium text-muted-foreground hover:text-primary"
+									>
+										<h3 class="text-lg font-semibold">Raw Prompts Data</h3>
+										<ChevronsUpDownIcon />
+									</Collapsible.Trigger>
+									<Collapsible.Content>
+										<div class="relative">
+											<pre
+												class="overflow-x-auto rounded bg-muted p-4 pr-12 text-xs">{JSON.stringify(
+													serverData.prompts,
+													null,
+													2
+												)}</pre>
+											<button
+												onclick={() => copyToClipboard(JSON.stringify(serverData.prompts, null, 2))}
+												class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+												aria-label="Copy raw prompts data"
+											>
+												<CopyIcon class="h-4 w-4" />
+											</button>
+										</div>
+									</Collapsible.Content>
+								</Collapsible.Root>
 							{/if}
 						</Tabs.Content>
 					{/if}
@@ -389,35 +519,6 @@
 					</Tabs.Content>
 				</Tabs.Root>
 			</div>
-		</div>
-
-		<!-- Raw data section -->
-		<div class="mt-8">
-			<Collapsible.Root>
-				<Collapsible.Trigger
-					class="flex w-full items-center justify-between pb-4 text-left text-sm font-medium text-muted-foreground hover:text-primary"
-				>
-					<h2 class="mb-4 text-xl font-semibold">Raw Server Data</h2>
-					<ChevronsUpDownIcon />
-				</Collapsible.Trigger>
-				<Collapsible.Content>
-					<div class="relative">
-						<pre class="overflow-x-auto rounded bg-muted p-4 pr-12 text-xs">{JSON.stringify(
-								$serverQuery.data.server.capabilities,
-								null,
-								2
-							)}</pre>
-						<button
-							onclick={() =>
-								copyToClipboard(JSON.stringify($serverQuery.data?.server?.capabilities, null, 2))}
-							class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
-							aria-label="Copy raw server data"
-						>
-							<CopyIcon class="h-4 w-4" />
-						</button>
-					</div>
-				</Collapsible.Content>
-			</Collapsible.Root>
 		</div>
 	</article>
 {:else}

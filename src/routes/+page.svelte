@@ -86,7 +86,7 @@
 						</div>
 					{/each}
 				</div>
-			{:else if searchTerm && !loading}
+			{:else if searchTerm}
 				{@const isValidPubkey = isHexKey(searchTerm)}
 				{#if filteredServerAnnouncements?.length === 0}
 					<div class="mt-12 text-center">

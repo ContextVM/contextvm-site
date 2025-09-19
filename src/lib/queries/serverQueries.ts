@@ -27,8 +27,7 @@ export function useServerAnnouncement(pubkey: string) {
 			const event = await lastValueFrom(createServerAnnouncementByPubkeyLoader(pubkey));
 			server = parseServerInitializeMsg(event);
 			return { server, isPublic: true };
-		},
-		retry: false
+		}
 	});
 }
 

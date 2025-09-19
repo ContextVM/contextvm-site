@@ -166,7 +166,6 @@ export class McpClientService {
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
 			client.setNotificationHandler(ProgressNotificationSchema, async (req) => {
-
 				// Store progress notification
 				if (req.params?.progressToken) {
 					const notification: McpProgressNotification = {
@@ -309,7 +308,6 @@ export class McpClientService {
 		toolName: string,
 		arguments_: Record<string, unknown>
 	): Promise<CallToolResult> {
-		console.log('callTool', serverPubkey, toolName, arguments_);
 		const client = await this.getClient(serverPubkey);
 		if (!client) {
 			throw new Error('Not connected to server');
