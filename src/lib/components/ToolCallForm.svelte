@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { createForm, BasicForm, type Schema } from '@sjsf/form';
 	import { formDefaults } from '$lib/form-defaults';
-	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
+	import {
+		mcpClientService,
+		type McpConnectionState,
+		type McpProgressNotification
+	} from '$lib/services/mcpClient.svelte';
 	import { copyToClipboard } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
@@ -20,11 +24,14 @@
 		connectionState: McpConnectionState;
 		serverPubkey: string;
 	} = $props();
-
+	// TODO: improve the display of notifications
 	// Form state
 	let formResult = $state<CallToolResult | null>(null);
 	let formError = $state<string | null>(null);
 	let showResult = $state(false);
+	let progressNotifications = $derived<McpProgressNotification[]>(
+		mcpClientService.getProgressNotifications(serverPubkey)
+	);
 
 	// Collapsible state
 	let open = $state(false);
@@ -54,6 +61,7 @@
 				loading = false;
 			} catch (error) {
 				formError = error instanceof Error ? error.message : 'Failed to call tool';
+				loading = false;
 			}
 		}
 	});
@@ -199,6 +207,29 @@
 				<Alert.Root variant="destructive">
 					<Alert.Title>Please log in to call capabilities</Alert.Title>
 				</Alert.Root>
+			{/if}
+			{#if progressNotifications.length > 0}
+				Notifications length: {progressNotifications.length}
+				<div class="space-y-2">
+					<h4 class="text-sm font-medium text-muted-foreground">Progress</h4>
+					{#each progressNotifications as notification}
+						<div class="rounded-md bg-muted p-3">
+							<div class="mb-2 flex items-center justify-between">
+								{#if notification.message}
+									<span class="text-xs text-muted-foreground">
+										{notification.message}
+									</span>
+								{/if}
+							</div>
+							<div class="h-2 w-full rounded-full bg-background">
+								<div
+									class="h-2 rounded-full bg-primary transition-all duration-300"
+									style="width: {notification.progress}%"
+								></div>
+							</div>
+						</div>
+					{/each}
+				</div>
 			{/if}
 		</div>
 	</Collapsible.Content>

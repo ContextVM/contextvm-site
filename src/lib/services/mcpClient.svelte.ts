@@ -1,14 +1,15 @@
 import { activeAccount } from '$lib/services/accountManager.svelte';
 import { ApplesauceRelayPool, NostrClientTransport } from '@contextvm/sdk';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type {
-	ListPromptsResult,
-	ListResourcesResult,
-	ListResourceTemplatesResult,
-	ListToolsResult,
-	CallToolResult,
-	ReadResourceResult,
-	GetPromptResult
+import {
+	type ListPromptsResult,
+	type ListResourcesResult,
+	type ListResourceTemplatesResult,
+	type ListToolsResult,
+	type CallToolResult,
+	type ReadResourceResult,
+	type GetPromptResult,
+	ProgressNotificationSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { SvelteMap } from 'svelte/reactivity';
 import { relayStore, relayActions } from '../stores/relay-store.svelte';
@@ -20,10 +21,19 @@ export interface McpConnectionState {
 	loading: boolean;
 	error: string | null;
 }
+
+export interface McpProgressNotification {
+	progressToken: string;
+	serverPubkey: string;
+	progress: number;
+	message?: string;
+	timestamp: number;
+}
 // Relay pool is now per-client to avoid subscription conflicts
 export class McpClientService {
 	public clients = new SvelteMap<string, Client>();
 	private connectionStates = new SvelteMap<string, McpConnectionState>();
+	private progressNotifications = new SvelteMap<string, McpProgressNotification[]>();
 	private clientRelayPools = new SvelteMap<string, ApplesauceRelayPool>();
 	private static readonly clientConfig = {
 		name: 'ContextVM Web Client',
@@ -78,6 +88,26 @@ export class McpClientService {
 		}
 	}
 
+	// Helper method to create a new transport for a client
+	private createTransport(serverPubkey: string): NostrClientTransport {
+		// Check if user is logged in
+		const currentAccount = activeAccount.getValue();
+		if (!currentAccount) {
+			throw new Error('Please log in to connect to servers');
+		}
+
+		const signer = currentAccount.signer;
+		if (!signer) {
+			throw new Error('Failed to get signer from account');
+		}
+
+		return new NostrClientTransport({
+			signer,
+			relayHandler: this.getRelayPool(serverPubkey),
+			serverPubkey
+		});
+	}
+
 	// Reconnect all existing clients with the new relay pool
 	public async reconnectAllClients(): Promise<void> {
 		for (const [serverPubkey, client] of this.clients) {
@@ -89,26 +119,11 @@ export class McpClientService {
 					error: null
 				});
 
-				// Check if user is logged in
-				const currentAccount = activeAccount.getValue();
-				if (!currentAccount) {
-					throw new Error('Please log in to connect to servers');
-				}
-
-				const signer = currentAccount.signer;
-				if (!signer) {
-					throw new Error('Failed to get signer from account');
-				}
-
 				// Close existing client
 				await client.close();
 
 				// Create new transport with updated relay pool for this client
-				const transport = new NostrClientTransport({
-					signer,
-					relayHandler: this.getRelayPool(serverPubkey),
-					serverPubkey
-				});
+				const transport = this.createTransport(serverPubkey);
 
 				// Connect with new transport
 				await client.connect(transport);
@@ -147,24 +162,42 @@ export class McpClientService {
 				error: null
 			});
 
-			// Check if user is logged in
-			const currentAccount = activeAccount.getValue();
-			if (!currentAccount) {
-				throw new Error('Please log in to connect to servers');
-			}
-
-			const signer = currentAccount.signer;
-			if (!signer) {
-				throw new Error('Failed to get signer from account');
-			}
-
-			const transport = new NostrClientTransport({
-				signer,
-				relayHandler: this.getRelayPool(serverPubkey),
-				serverPubkey
-			});
+			const transport = this.createTransport(serverPubkey);
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
+			client.setNotificationHandler(ProgressNotificationSchema, async (req) => {
+
+				// Store progress notification
+				if (req.params?.progressToken) {
+					const notification: McpProgressNotification = {
+						progressToken: req.params.progressToken as string,
+						serverPubkey: serverPubkey,
+						progress: req.params.progress || 0,
+						message: req.params.message,
+						timestamp: Date.now()
+					};
+
+					// Get existing notifications for this server
+					const existingNotifications = this.progressNotifications.get(serverPubkey) || [];
+
+					// Update or add the notification
+					const existingIndex = existingNotifications.findIndex(
+						(n) => n.progressToken === notification.progressToken
+					);
+
+					if (existingIndex >= 0) {
+						console.log('updating existing progress notification');
+						existingNotifications[existingIndex] = notification;
+					} else {
+						console.log('adding new progress notification');
+						existingNotifications.push(notification);
+					}
+					console.log('existingNotifications', existingNotifications);
+					// Store updated notifications
+					// TODO: this is not being updated or reactive
+					this.progressNotifications.set(serverPubkey, existingNotifications);
+				}
+			});
 			this.clients.set(serverPubkey, client);
 
 			// Set connected state
@@ -200,6 +233,38 @@ export class McpClientService {
 	// Get connection state for a server
 	getConnectionState(serverPubkey: string): McpConnectionState {
 		return this.connectionStates.get(serverPubkey) ?? McpClientService.defaultConnectionState;
+	}
+
+	// Get progress notifications for a server
+	getProgressNotifications(serverPubkey: string): McpProgressNotification[] {
+		return this.progressNotifications.get(serverPubkey) || [];
+	}
+
+	// Get all progress notifications across all servers
+	getAllProgressNotifications(): McpProgressNotification[] {
+		const allNotifications: McpProgressNotification[] = [];
+		for (const notifications of this.progressNotifications.values()) {
+			allNotifications.push(...notifications);
+		}
+		return allNotifications.sort((a, b) => b.timestamp - a.timestamp);
+	}
+
+	// Clear progress notifications for a server
+	clearProgressNotifications(serverPubkey: string): void {
+		this.progressNotifications.delete(serverPubkey);
+	}
+
+	// Clear a specific progress notification
+	clearProgressNotification(serverPubkey: string, progressToken: string): void {
+		const notifications = this.progressNotifications.get(serverPubkey);
+		if (notifications) {
+			const filteredNotifications = notifications.filter((n) => n.progressToken !== progressToken);
+			if (filteredNotifications.length > 0) {
+				this.progressNotifications.set(serverPubkey, filteredNotifications);
+			} else {
+				this.progressNotifications.delete(serverPubkey);
+			}
+		}
 	}
 
 	// List tools for a server
@@ -244,11 +309,17 @@ export class McpClientService {
 		toolName: string,
 		arguments_: Record<string, unknown>
 	): Promise<CallToolResult> {
+		console.log('callTool', serverPubkey, toolName, arguments_);
 		const client = await this.getClient(serverPubkey);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
-		const result = await client.callTool({ name: toolName, arguments: arguments_ });
+
+		const result = await client.callTool({
+			name: toolName,
+			arguments: arguments_,
+			_meta: { progressToken: Math.random().toString(36).substring(2, 15) }
+		});
 		return result as CallToolResult;
 	}
 
@@ -289,6 +360,7 @@ export class McpClientService {
 			// Clear all data
 			this.clients.clear();
 			this.connectionStates.clear();
+			this.progressNotifications.clear();
 			this.clientRelayPools.clear();
 		}
 	}

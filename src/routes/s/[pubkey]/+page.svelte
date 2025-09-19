@@ -41,6 +41,13 @@
 	let seoUrl = $state(`https://contextvm.com/s/${pubkey}`);
 	let seoType = $state('website' as 'website' | 'article');
 
+	const serverQuery = useServerAnnouncement(pubkey);
+
+	// Get available capabilities when server data is loaded
+	let availableCapabilities = $derived(
+		$serverQuery.data?.server ? getAvailableCapabilities($serverQuery.data.server) : []
+	);
+
 	// Update SEO data when server loads
 	$effect(() => {
 		if ($serverQuery.data?.server) {
@@ -58,32 +65,30 @@
 		}
 	});
 
-	// Use individual queries
-	const serverQuery = useServerAnnouncement(pubkey);
-
+	// Only load queries for capabilities that are actually available
 	let toolsQuery = $derived(
-		$serverQuery.isFetched
+		$serverQuery.isFetched && availableCapabilities.includes('tools')
 			? $serverQuery.data?.isPublic
 				? useServerTools(pubkey, true)
 				: useServerTools(pubkey, false)
 			: undefined
 	);
 	let resourcesQuery = $derived(
-		$serverQuery.isFetched
+		$serverQuery.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
 				? useServerResources(pubkey, true)
 				: useServerResources(pubkey, false)
 			: undefined
 	);
 	let resourceTemplatesQuery = $derived(
-		$serverQuery.isFetched
+		$serverQuery.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
 				? useServerResourceTemplates(pubkey, true)
 				: useServerResourceTemplates(pubkey, false)
 			: undefined
 	);
 	let promptsQuery = $derived(
-		$serverQuery.isFetched
+		$serverQuery.isFetched && availableCapabilities.includes('prompts')
 			? $serverQuery.data?.isPublic
 				? useServerPrompts(pubkey, true)
 				: useServerPrompts(pubkey, false)
@@ -110,12 +115,12 @@
 			// For public servers, just get the client
 			if ($serverQuery.data?.isPublic) {
 				await mcpClientService.getClient(pubkey);
-				// Refetch all queries after connection
+				// Refetch all queries after connection, but only if they exist
 				$serverQuery.refetch();
-				$toolsQuery?.refetch();
-				$resourcesQuery?.refetch();
-				$resourceTemplatesQuery?.refetch();
-				$promptsQuery?.refetch();
+				if ($toolsQuery) $toolsQuery.refetch();
+				if ($resourcesQuery) $resourcesQuery.refetch();
+				if ($resourceTemplatesQuery) $resourceTemplatesQuery.refetch();
+				if ($promptsQuery) $promptsQuery.refetch();
 				return;
 			} else {
 				const client = await mcpClientService.getClient(pubkey);
@@ -148,7 +153,6 @@
 <Seo title={seoTitle} description={seoDescription} image={seoImage} url={seoUrl} type={seoType} />
 
 {#if $serverQuery.data?.server}
-	{@const availableCapabilities = getAvailableCapabilities($serverQuery.data.server)}
 	<article class="container mx-auto max-w-6xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to servers link -->
 		<button
