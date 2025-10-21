@@ -18,13 +18,14 @@
 
 	function addCustomRelay() {
 		if (customRelayInput) {
+			relayPool.relay(new URL(customRelayInput).href);
 			relayActions.setSelectedRelays([...relayStore.selectedRelays, customRelayInput]);
 			customRelayInput = '';
 		}
 	}
 
-	function removeSelectedRelay(relays: string[]) {
-		relayActions.removeRelays(relays);
+	function removeSelectedRelay(relays: string) {
+		relayActions.removeRelays([relays]);
 	}
 </script>
 
@@ -63,7 +64,7 @@
 						relay={relay[1]}
 						isSelected={true}
 						onRemove={(url) => {
-							removeSelectedRelay([url]);
+							removeSelectedRelay(url);
 						}}
 					/>
 				{/each}

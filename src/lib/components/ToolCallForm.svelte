@@ -212,7 +212,7 @@
 				Notifications length: {progressNotifications.length}
 				<div class="space-y-2">
 					<h4 class="text-sm font-medium text-muted-foreground">Progress</h4>
-					{#each progressNotifications as notification}
+					{#each progressNotifications as notification (notification.timestamp)}
 						<div class="rounded-md bg-muted p-3">
 							<div class="mb-2 flex items-center justify-between">
 								{#if notification.message}

@@ -3,7 +3,6 @@
 	import { CONTEXTVM_PUBKEY } from '$lib/constants';
 	import { eventStore } from '$lib/services/eventStore';
 	import { addressLoader } from '$lib/services/loaders.svelte';
-	import { defaultRelays } from '$lib/services/relay-pool';
 	import { ReplaceableModel } from 'applesauce-core/models';
 	import { LongFormArticle } from 'nostr-tools/kinds';
 	import { marked } from 'marked';
@@ -15,25 +14,35 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SEO from '$lib/components/SEO.svelte';
+	import { relayStore } from '$lib/stores/relay-store.svelte';
+	import { commonRelays } from '$lib/services/relay-pool';
 
-	const pointer: AddressPointer = {
+	const pointer: AddressPointer = $derived({
 		kind: LongFormArticle,
 		pubkey: CONTEXTVM_PUBKEY,
 		identifier: page.params.id ?? '',
-		relays: defaultRelays
-	};
+		relays: relayStore.selectedRelays.some((url) => commonRelays.includes(url))
+			? relayStore.selectedRelays
+			: commonRelays
+	});
 
-	const article = addressLoader(pointer);
+	let loading = $state(true);
+	const article = $derived(addressLoader(pointer));
 
-	const storedArticle = eventStore.model(
-		ReplaceableModel,
-		pointer.kind,
-		pointer.pubkey,
-		pointer.identifier
+	const storedArticle = $derived(
+		eventStore.model(ReplaceableModel, pointer.kind, pointer.pubkey, pointer.identifier)
 	);
 
 	$effect(() => {
-		const sub = article.subscribe();
+		const sub = article.subscribe({
+			error: () => {
+				loading = false;
+			},
+			complete: () => {
+				loading = false;
+			}
+		});
+		if ($storedArticle) loading = false;
 		return () => {
 			sub.unsubscribe();
 		};
@@ -118,6 +127,29 @@
 			{/await}
 		</div>
 	</article>
+{:else if loading}
+	<div class="container mx-auto px-4 py-16 text-center">
+		<div class="aspect-video overflow-hidden bg-muted">
+			<div class="h-full w-full animate-pulse bg-muted-foreground/20"></div>
+		</div>
+		<div class="space-y-4 p-6">
+			<div class="flex items-center">
+				<div class="h-4 w-20 animate-pulse rounded bg-muted-foreground/40"></div>
+			</div>
+			<div class="space-y-2">
+				<div class="h-6 w-3/4 animate-pulse rounded bg-muted-foreground/40"></div>
+				<div class="h-4 w-1/2 animate-pulse rounded bg-muted-foreground/30"></div>
+			</div>
+			<div class="space-y-2">
+				<div class="h-4 w-full animate-pulse rounded bg-muted-foreground/30"></div>
+				<div class="h-4 w-5/6 animate-pulse rounded bg-muted-foreground/30"></div>
+				<div class="h-4 w-4/6 animate-pulse rounded bg-muted-foreground/30"></div>
+			</div>
+			<div class="flex items-center">
+				<div class="h-4 w-24 animate-pulse rounded bg-muted-foreground/40"></div>
+			</div>
+		</div>
+	</div>
 {:else}
 	<div class="container mx-auto px-4 py-16 text-center">
 		<h1 class="mb-4 text-2xl font-bold">Article not found</h1>
