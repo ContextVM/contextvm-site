@@ -8,13 +8,13 @@
 	} from 'applesauce-core/helpers';
 	import type { Event } from 'nostr-tools';
 
-	let { article, href = `/blog/${getTagValue(article, 'd')}` }: { article: Event; href?: string } =
-		$props();
+	let { article }: { article: Event } = $props();
 
-	const title = getArticleTitle(article);
-	const summary = getArticleSummary(article);
-	const image = getArticleImage(article);
-	const date = formatUnixTimestamp(article.created_at, true);
+	const href = $derived(`/blog/${getTagValue(article, 'd')}`);
+	const title = $derived(getArticleTitle(article));
+	const summary = $derived(getArticleSummary(article));
+	const image = $derived(getArticleImage(article));
+	const date = $derived(formatUnixTimestamp(article.created_at, true));
 </script>
 
 <a

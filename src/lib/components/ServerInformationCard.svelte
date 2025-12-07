@@ -5,7 +5,7 @@
 
 	let { server }: { server: ServerAnnouncement } = $props();
 
-	const publishedAt = formatUnixTimestamp(server.created_at, true);
+	const publishedAt = $derived(formatUnixTimestamp(server.created_at, true));
 </script>
 
 <Card.Root>

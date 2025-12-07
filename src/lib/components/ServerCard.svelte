@@ -4,8 +4,8 @@
 
 	let { server }: { server: ServerAnnouncement } = $props();
 
-	const date = formatUnixTimestamp(server.created_at, true);
-	const serverHref = `/s/${server.pubkey}`;
+	const date = $derived(formatUnixTimestamp(server.created_at, true));
+	const serverHref = $derived(`/s/${server.pubkey}`);
 </script>
 
 <a

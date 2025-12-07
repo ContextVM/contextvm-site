@@ -38,33 +38,35 @@
 	let rawOpen = $state(false);
 	let loading = $state(false);
 	// Create form instance
-	const form = createForm({
-		...formDefaults,
-		schema: tool.inputSchema as Schema,
-		onSubmit: async (data) => {
-			loading = true;
-			try {
-				if (!connectionState.connected) {
-					await mcpClientService.getClient(serverPubkey);
-				}
-				formError = null;
-				formResult = null;
+	const form = $derived(
+		createForm({
+			...formDefaults,
+			schema: tool.inputSchema as Schema,
+			onSubmit: async (data) => {
+				loading = true;
+				try {
+					if (!connectionState.connected) {
+						await mcpClientService.getClient(serverPubkey);
+					}
+					formError = null;
+					formResult = null;
 
-				// Call the tool with the form data
-				const result = await mcpClientService.callTool(
-					serverPubkey,
-					tool.name,
-					data as Record<string, unknown>
-				);
-				formResult = result;
-				showResult = true;
-				loading = false;
-			} catch (error) {
-				formError = error instanceof Error ? error.message : 'Failed to call tool';
-				loading = false;
+					// Call the tool with the form data
+					const result = await mcpClientService.callTool(
+						serverPubkey,
+						tool.name,
+						data as Record<string, unknown>
+					);
+					formResult = result;
+					showResult = true;
+					loading = false;
+				} catch (error) {
+					formError = error instanceof Error ? error.message : 'Failed to call tool';
+					loading = false;
+				}
 			}
-		}
-	});
+		})
+	);
 
 	// Reset form
 	function resetForm() {
@@ -154,7 +156,29 @@
 								</div>
 							{/each}
 						</div>
-					{:else}
+					{/if}
+					{#if formResult.structuredContent && Object.keys(formResult.structuredContent).length > 0}
+						<div class="space-y-2">
+							<div class="relative rounded-md bg-muted p-3">
+								<div class="pr-8 text-sm">
+									<pre class="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(
+											formResult.structuredContent,
+											null,
+											2
+										)}</pre>
+								</div>
+								<button
+									onclick={() =>
+										copyToClipboard(JSON.stringify(formResult!.structuredContent, null, 2))}
+									class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+									aria-label="Copy structured content"
+								>
+									<CopyIcon class="h-4 w-4" />
+								</button>
+							</div>
+						</div>
+					{/if}
+					{#if !formResult.content && !formResult.structuredContent}
 						<div class="rounded-md bg-muted p-3 text-sm text-muted-foreground">
 							No content returned
 						</div>
