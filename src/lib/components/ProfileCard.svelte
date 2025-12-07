@@ -11,7 +11,7 @@
 
 	let { pubkey }: { pubkey: string } = $props();
 
-	const profile = eventStore.model(ProfileModel, pubkey);
+	const profile = $derived(eventStore.model(ProfileModel, pubkey));
 	$effect(() => {
 		if ($profile) return;
 		const sub = addressLoader({

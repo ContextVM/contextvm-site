@@ -9,17 +9,17 @@
 	let { server }: { server: ServerAnnouncement } = $props();
 
 	// Raw command text
-	const rawCommand = `proxy-cli --server-pubkey ${server.pubkey}`;
+	const rawCommand = $derived(`proxy-cli --server-pubkey ${server.pubkey}`);
 
 	// Config JSON text
-	const configJson = `{
+	const configJson = $derived(`{
 	"mcpServers": {
 		"${slugify(server.name) || 'contextvm-server'}": {
 		"command": "proxy-cli",
 		"args": ["--server-pubkey", "${server.pubkey}"]
 		}
 	}
-}`;
+}`);
 </script>
 
 <Card.Root>

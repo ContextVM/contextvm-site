@@ -16,7 +16,7 @@
 		isSelected?: boolean;
 	} = $props();
 
-	const relayConnected = relay.connected$;
+	const relayConnected = $derived(relay.connected$);
 </script>
 
 <div

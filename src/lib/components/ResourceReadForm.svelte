@@ -33,7 +33,7 @@
 	let loading = $state(false);
 
 	// Create form schema for reading resource
-	const formSchema: Schema = {
+	const formSchema: Schema = $derived({
 		type: 'object',
 		title: resource.name || resource.uri,
 		description: resource.description || `Read resource at ${resource.uri}`,
@@ -44,32 +44,34 @@
 			}
 		},
 		required: ['uri']
-	};
+	});
 
 	// Create form instance
-	const form = createForm({
-		...formDefaults,
-		schema: formSchema,
-		onSubmit: async (data: { uri: string }) => {
-			loading = true;
-			try {
-				if (!connectionState.connected) {
-					await mcpClientService.getClient(serverPubkey);
-				}
-				formError = null;
-				formResult = null;
+	const form = $derived(
+		createForm({
+			...formDefaults,
+			schema: formSchema,
+			onSubmit: async (data: { uri: string }) => {
+				loading = true;
+				try {
+					if (!connectionState.connected) {
+						await mcpClientService.getClient(serverPubkey);
+					}
+					formError = null;
+					formResult = null;
 
-				// Read the resource
-				const result = await mcpClientService.readResource(serverPubkey, data.uri);
-				formResult = result;
-				showResult = true;
-			} catch (error) {
-				formError = error instanceof Error ? error.message : 'Failed to read resource';
-			} finally {
-				loading = false;
+					// Read the resource
+					const result = await mcpClientService.readResource(serverPubkey, data.uri);
+					formResult = result;
+					showResult = true;
+				} catch (error) {
+					formError = error instanceof Error ? error.message : 'Failed to read resource';
+				} finally {
+					loading = false;
+				}
 			}
-		}
-	});
+		})
+	);
 
 	// Reset form
 	function resetForm() {
