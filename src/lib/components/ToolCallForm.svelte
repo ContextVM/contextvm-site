@@ -110,6 +110,7 @@
 
 					{#if formResult.content && formResult.content.length > 0}
 						<div class="space-y-2">
+							<span class="text-sm">Content</span>
 							{#each formResult.content as content, i (i + '-' + content.type)}
 								<div class="relative rounded-md bg-muted p-3">
 									{#if content.type === 'text'}
@@ -159,6 +160,7 @@
 					{/if}
 					{#if formResult.structuredContent && Object.keys(formResult.structuredContent).length > 0}
 						<div class="space-y-2">
+							<span class="text-sm">Structured Content</span>
 							<div class="relative rounded-md bg-muted p-3">
 								<div class="pr-8 text-sm">
 									<pre class="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(
