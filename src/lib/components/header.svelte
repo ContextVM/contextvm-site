@@ -10,7 +10,7 @@
 </script>
 
 <header
-	class="fixed top-0 right-0 left-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+	class="fixed top-0 right-0 left-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60"
 >
 	<div class="flex h-14 items-center justify-between px-4 py-4 sm:px-6">
 		<!-- Logo -->
@@ -34,6 +34,9 @@
 		<div class="hidden items-center space-x-4 sm:flex sm:space-x-6">
 			<!-- Navigation Links -->
 			<nav class="flex items-center space-x-4 text-sm font-medium sm:space-x-6">
+				<a href="/servers" class="text-foreground/60 transition-colors hover:text-foreground/80">
+					Servers
+				</a>
 				<a href="/blog" class="text-foreground/60 transition-colors hover:text-foreground/80">
 					Blog
 				</a>
@@ -88,6 +91,12 @@
 				<Sheet.Content side="right" class="w-[300px] p-6 sm:w-[400px]">
 					<div class="py-4">
 						<nav class="flex flex-col space-y-1">
+							<a
+								href="/servers"
+								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+							>
+								Servers
+							</a>
 							<a
 								href="/blog"
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"

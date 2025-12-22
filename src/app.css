@@ -208,3 +208,32 @@
 		@apply overflow-x-auto rounded-lg;
 	}
 }
+
+/* Subtle background patterns */
+.bg-grid-pattern {
+	background-image:
+		linear-gradient(to right, rgb(var(--color-primary) / 0.15) 1px, transparent 1px),
+		linear-gradient(to bottom, rgb(var(--color-primary) / 0.15) 1px, transparent 1px);
+	background-size: 40px 40px;
+}
+
+.bg-dot-pattern {
+	background-image: radial-gradient(rgb(var(--color-primary) / 0.15) 1px, transparent 1px);
+	background-size: 20px 20px;
+}
+
+/* Smooth fade-in animation for page load */
+@keyframes fade-in-up {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animate-fade-in-up {
+	animation: fade-in-up 0.8s ease-out;
+}
