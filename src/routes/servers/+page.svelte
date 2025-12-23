@@ -44,8 +44,8 @@
 		<div class="mx-auto mb-12 max-w-4xl text-center">
 			<h1 class="mb-6 text-4xl font-bold tracking-tight sm:text-6xl">Public MCP Servers</h1>
 			<p class="mx-auto max-w-2xl text-lg text-muted-foreground">
-				Discover and connect with Model Context Protocol servers running on the Nostr network.
-				No domains, no OAuth, no port forwarding—just cryptographic keys and relays.
+				Discover and connect with Model Context Protocol servers running on the Nostr network. No
+				domains, no OAuth, no port forwarding—just cryptographic keys and relays.
 			</p>
 		</div>
 

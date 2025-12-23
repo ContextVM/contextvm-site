@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Header from '$lib/components/header.svelte';
+	import Footer from '$lib/components/footer.svelte';
 	import { ModeWatcher } from 'mode-watcher';
 	import '../app.css';
 	import { setThemeContext } from '@sjsf/shadcn4-theme';
@@ -24,9 +25,10 @@
 	<Header />
 	<RelayWidget />
 	<Toaster />
-	<div class=" pt-14">
+	<div class="min-h-screen pt-14">
 		{@render children()}
 	</div>
+	<Footer />
 
 	<!-- Global dialog for relay change notifications -->
 	<RelayChangeDialog />
