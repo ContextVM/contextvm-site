@@ -12,11 +12,6 @@ export const commonRelays = [
 	'wss://nostr.mom'
 ];
 
-export const metadataRelays = [
-	'wss://0.kindpag.es/',
-	'wss://relay.nostr.band',
-	'wss://nos.lol',
-	'wss://relay.damus.io'
-];
+export const metadataRelays = ['wss://purplepag.es/', 'wss://nos.lol', 'wss://relay.damus.io'];
 
 export const devRelay = ['ws://localhost:10547'];
