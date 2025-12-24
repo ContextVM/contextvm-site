@@ -387,7 +387,7 @@
 				<div class="mt-8">
 					<Button
 						variant="outline"
-						href="/faqs#how-does-contextvm-achieve-decentralization"
+						href="/faqs"
 						class="text-sm transition-transform duration-200 hover:scale-105"
 					>
 						Learn more about the protocol
