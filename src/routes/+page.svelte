@@ -7,7 +7,16 @@
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 	import Seo from '$lib/components/SEO.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { CheckCircle, Lock, Zap, Globe, Key, Bitcoin } from '@lucide/svelte/icons';
+	import {
+		CheckCircle,
+		Lock,
+		Zap,
+		Globe,
+		Key,
+		Bitcoin,
+		Users,
+		TrendingUp
+	} from '@lucide/svelte/icons';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 	const serverAnnouncementsQuery = useServerAnnouncements();
@@ -75,25 +84,24 @@
 				class="mx-auto mb-6 hidden h-24 w-auto sm:mb-8 sm:h-32 dark:block"
 			/>
 
-			<h1 class="mb-4 text-3xl font-bold tracking-tight sm:mb-6 sm:text-4xl lg:text-6xl">
+			<h1 class="mb-4 text-4xl font-bold tracking-tight sm:mb-6 sm:text-5xl lg:text-7xl">
 				ContextVM
 			</h1>
 
 			<p
 				class="mx-auto mb-6 max-w-2xl px-4 text-base leading-relaxed text-muted-foreground sm:mb-8 sm:px-0 sm:text-lg"
 			>
-				ContextVM lets clients and services communicate through Nostr relays acting as a message
-				bus. No domains, no inbound ports—just keys, transport, and fun.
+				A protocol built on MCP that enables servers and clients to communicate over the Nostr
+				network. Servers are addressed by public keys, requests are signed and encrypted, and relays
+				act as a distributed message bus. No domains, DNS, or IPs. Fun and permissionless.
 			</p>
 
-			<p
-				class="mx-auto mb-6 max-w-2xl px-4 text-base font-medium text-muted-foreground sm:mb-8 sm:px-0 sm:text-lg"
-			>
-				Deploy from your room, access from anywhere.
+			<p class="mx-auto mb-6 max-w-2xl px-4 text-lg font-semibold text-foreground sm:mb-8 sm:px-0">
+				Your backend can move—your address stays.
 			</p>
 
 			<div
-				class="flex w-full flex-col items-center justify-center gap-3 px-4 sm:w-auto sm:gap-4 sm:px-0"
+				class="flex w-full flex-col items-center justify-center gap-3 px-4 sm:flex-row sm:gap-4 sm:px-0"
 			>
 				<Button
 					size="lg"
@@ -114,7 +122,7 @@
 			</div>
 
 			<div
-				class="mt-6 flex flex-wrap items-center justify-center gap-3 px-4 text-sm text-muted-foreground sm:gap-4 sm:px-0"
+				class="mt-8 flex flex-wrap items-center justify-center gap-3 px-4 text-sm text-muted-foreground sm:gap-4 sm:px-0"
 			>
 				<a
 					href="https://github.com/contextvm"
@@ -136,13 +144,13 @@
 	<section class="relative border-t bg-muted/30 py-12 sm:py-16">
 		<div class="container mx-auto px-4">
 			<div class="mx-auto max-w-4xl text-center">
-				<h2
-					class="mb-8 px-4 text-2xl font-bold tracking-tight sm:mb-12 sm:px-0 sm:text-3xl lg:text-4xl"
-				>
-					Why relay-native services?
-				</h2>
-
-				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+				<div class="mb-8">
+					<h2 class="mb-3 px-4 text-2xl font-bold tracking-tight sm:px-0 sm:text-3xl lg:text-4xl">
+						Why?
+					</h2>
+					<p class="text-lg font-medium text-muted-foreground">Permissionless by design</p>
+				</div>
+				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-4">
 					<div
 						class="group flex flex-col items-center text-center transition-transform duration-200 hover:scale-105"
 					>
@@ -151,9 +159,10 @@
 						>
 							<Globe class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">No infrastructure</h3>
+						<h3 class="mb-2 text-lg font-semibold">No centralized dependencies</h3>
 						<p class="text-sm text-muted-foreground">
-							No domains or inbound ports. Relays carry traffic like a message bus.
+							No domains, DNS, static IPs, or port forwarding—just relays acting as a distributed
+							message bus.
 						</p>
 					</div>
 
@@ -165,9 +174,10 @@
 						>
 							<Key class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">Keys as identity</h3>
+						<h3 class="mb-2 text-lg font-semibold">Public keys, no accounts</h3>
 						<p class="text-sm text-muted-foreground">
-							Address and authorize services with cryptographic keys—no OAuth required.
+							Identity and authorization via public key cryptography—no OAuth, no API keys. Just
+							permissionless math.
 						</p>
 					</div>
 
@@ -181,7 +191,8 @@
 						</div>
 						<h3 class="mb-2 text-lg font-semibold">Encrypted by default</h3>
 						<p class="text-sm text-muted-foreground">
-							Signed requests + end-to-end encryption (NIP-44).
+							End-to-end encryption (NIP-44). Relays just relay—they can't read or mutate your
+							messages.
 						</p>
 					</div>
 
@@ -193,9 +204,10 @@
 						>
 							<Zap class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">Public or private</h3>
+						<h3 class="mb-2 text-lg font-semibold">Rolling services</h3>
 						<p class="text-sm text-muted-foreground">
-							Announce publicly—or stay private and share only a pubkey.
+							Move backends across networks and jurisdictions without breaking clients. Your public
+							key stays the same.
 						</p>
 					</div>
 
@@ -207,9 +219,10 @@
 						>
 							<CheckCircle class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">Works with existing MCP</h3>
+						<h3 class="mb-2 text-lg font-semibold">Works with any MCP server</h3>
 						<p class="text-sm text-muted-foreground">
-							Gateway/Proxy lets you reuse MCP servers and clients without rewrites.
+							Build servers and clients using the official MCP SDK and our TypeScript SDK. Reuse
+							existing MCP servers and clients using the Gateway/Proxy.
 						</p>
 					</div>
 
@@ -221,11 +234,118 @@
 						>
 							<Bitcoin class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">Optional payments</h3>
+						<h3 class="mb-2 text-lg font-semibold">Payments</h3>
 						<p class="text-sm text-muted-foreground">
-							Native Lightning pay-per-call, subscriptions, or free access.
+							Monetize services with Bitcoin micropayments. This can be extended to any custom
+							payment method.
 						</p>
 					</div>
+
+					<div
+						class="group flex flex-col items-center text-center transition-transform duration-200 hover:scale-105"
+					>
+						<div
+							class="mb-4 rounded-full bg-primary/10 p-3 transition-colors group-hover:bg-primary/20"
+						>
+							<Users class="h-6 w-6 text-primary" />
+						</div>
+						<h3 class="mb-2 text-lg font-semibold">No gatekeepers</h3>
+						<p class="text-sm text-muted-foreground">
+							Decentralized registry of servers on Nostr. Discover and use services organically—no
+							gated registries.
+						</p>
+					</div>
+
+					<div
+						class="group flex flex-col items-center text-center transition-transform duration-200 hover:scale-105"
+					>
+						<div
+							class="mb-4 rounded-full bg-primary/10 p-3 transition-colors group-hover:bg-primary/20"
+						>
+							<TrendingUp class="h-6 w-6 text-primary" />
+						</div>
+						<h3 class="mb-2 text-lg font-semibold">Organic reputation</h3>
+						<p class="text-sm text-muted-foreground">
+							Servers and providers grow reputation. Users curate and share lists—trust emerges from
+							the network, not authorities.
+						</p>
+					</div>
+				</div>
+				<div class="mt-10 text-center">
+					<Button
+						variant="outline"
+						href="/faqs"
+						class="transition-transform duration-200 hover:scale-105"
+					>
+						Find more answers in our FAQs
+					</Button>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Not Just for AI Section -->
+	<section class="relative border-t py-12 sm:py-16">
+		<div class="container mx-auto px-4">
+			<div class="mx-auto max-w-4xl text-center">
+				<h2
+					class="mb-8 px-4 text-2xl font-bold tracking-tight sm:mb-12 sm:px-0 sm:text-3xl lg:text-4xl"
+				>
+					Not just for AI
+				</h2>
+
+				<div class="mx-auto max-w-3xl">
+					<p class="mb-8 text-base leading-relaxed text-muted-foreground sm:text-lg">
+						While ContextVM allows you to connect AI agents to services over Nostr, MCP servers are
+						far more versatile. They provide a common language for servers to define their APIs and
+						clients to consume them—creating shared semantics that solve interoperability.
+					</p>
+
+					<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
+						<div class="group text-center transition-transform duration-200 hover:scale-105">
+							<div
+								class="rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+							>
+								<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
+									Dual API
+								</h3>
+								<p class="text-sm text-muted-foreground">
+									Write your server once and use it through a custom interface or let an LLM operate
+									it—one protocol for humans and machines.
+								</p>
+							</div>
+						</div>
+
+						<div class="group text-center transition-transform duration-200 hover:scale-105">
+							<div
+								class="rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+							>
+								<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
+									Universal Semantics
+								</h3>
+								<p class="text-sm text-muted-foreground">
+									MCP's natural language descriptions make servers self-documenting. Both humans and
+									LLMs understand what services do without complex documentation. Since MCP uses
+									JSON Schema for all definitions, you can infer types, validate inputs and outputs,
+									and much more.
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<p class="mt-8 text-center text-base leading-relaxed text-muted-foreground sm:text-lg">
+						Build once, deploy everywhere. Your service becomes a reusable component in any language
+						or platform—accessible through code, web interfaces, or AI agents.
+					</p>
+				</div>
+				<div class="mt-10 text-center">
+					<Button
+						variant="outline"
+						href="/blog/HeekLEB1p4rU61ngbuFrH"
+						class="transition-transform duration-200 hover:scale-105"
+					>
+						Discover CtxCN
+					</Button>
 				</div>
 			</div>
 		</div>
@@ -243,15 +363,16 @@
 					</h2>
 				</div>
 
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
 					<div
 						class="group rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 					>
 						<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
-							Composable tool services
+							Composable micro-backends
 						</h3>
 						<p class="text-sm text-muted-foreground">
-							Wrap scripts, APIs, or agents as reusable services you can chain together.
+							Wrap scripts, APIs, or agents as reusable services you can chain together. The
+							possibilities are endless.
 						</p>
 					</div>
 
@@ -262,7 +383,8 @@
 							Private org tooling
 						</h3>
 						<p class="text-sm text-muted-foreground">
-							Ship internal services with pubkey-only access—no public endpoint required.
+							Ship internal services with public key-only access—no public endpoint required.
+							Secured by public key cryptography.
 						</p>
 					</div>
 
@@ -273,7 +395,8 @@
 							Monetized endpoints
 						</h3>
 						<p class="text-sm text-muted-foreground">
-							Charge per call with Lightning—no payment processor, no accounts.
+							Charge per call with Lightning or other payment methods—permissionless, no accounts
+							required.
 						</p>
 					</div>
 
@@ -281,10 +404,11 @@
 						class="group rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 					>
 						<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
-							Community infrastructure
+							IoT Command Hub
 						</h3>
 						<p class="text-sm text-muted-foreground">
-							Publish shared services communities can discover and use (opt-in public).
+							Trigger physical actions from anywhere—"turn on lights," "open garage," all private,
+							secure, and addressable by a public key.
 						</p>
 					</div>
 
@@ -292,10 +416,10 @@
 						class="group rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 					>
 						<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
-							Automation & CI runners
+							Code Sandbox
 						</h3>
 						<p class="text-sm text-muted-foreground">
-							Trigger workflows from anywhere; integrate with bots and pipelines.
+							Execute untrusted code safely and return results. Isolated, auditable, sovereign.
 						</p>
 					</div>
 
@@ -303,24 +427,27 @@
 						class="group rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 					>
 						<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
-							Data transforms & validation
+							Multi-jurisdiction apps
 						</h3>
 						<p class="text-sm text-muted-foreground">
-							Offer normalization, scoring, redaction, or analysis as a callable service.
+							Static frontends anywhere; backend moves like a caravan. Deploy resilient,
+							geographically distributed applications.
 						</p>
 					</div>
 				</div>
 
-				<div class="mt-8 text-center">
-					<a
+				<div class="mt-10 flex flex-col items-center gap-4 text-center">
+					<p class="text-lg font-medium text-muted-foreground">And much more</p>
+
+					<Button
+						variant="outline"
 						href="https://github.com/contextvm/awesome"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="group inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+						class="w-fit transition-transform duration-200 hover:scale-105"
 					>
 						Discover more use cases in the Awesome list
-						<span class="ml-2 transition-transform group-hover:translate-x-1">→</span>
-					</a>
+					</Button>
 				</div>
 			</div>
 		</div>
@@ -336,9 +463,9 @@
 					How it works
 				</h2>
 
-				<div class="mb-6 sm:mb-8">
+				<div class="mb-8 sm:mb-12">
 					<div
-						class="mb-4 inline-block rounded-lg bg-primary/10 px-4 py-2 font-mono text-base sm:mb-6 sm:px-6 sm:py-3 sm:text-lg"
+						class="inline-block rounded-lg bg-primary/10 px-4 py-2 font-mono text-base sm:px-6 sm:py-3 sm:text-lg"
 					>
 						Client ⇄ Relay(s) ⇄ Server
 					</div>
@@ -353,7 +480,7 @@
 						</div>
 						<h3 class="mb-3 text-lg font-semibold">Run</h3>
 						<p class="text-sm text-muted-foreground">
-							Start a ContextVM-enabled server (or wrap an existing MCP server via Gateway).
+							Start a ContextVM-enabled server (or wrap an existing MCP server via the Gateway).
 						</p>
 					</div>
 
@@ -366,7 +493,7 @@
 						<h3 class="mb-3 text-lg font-semibold">Connect</h3>
 						<p class="text-sm text-muted-foreground">
 							Clients can discover public servers via relays—or connect directly using the server's
-							pubkey.
+							public key.
 						</p>
 					</div>
 
@@ -378,17 +505,19 @@
 						</div>
 						<h3 class="mb-3 text-lg font-semibold">Relay</h3>
 						<p class="text-sm text-muted-foreground">
-							Relays forward signed, encrypted requests and responses. They don't interpret your
-							protocol or auth—they just route messages.
+							Relays forward encrypted messages. If one dies, switch routes—the protocol keeps
+							moving.
 						</p>
 					</div>
 				</div>
 
-				<div class="mt-8">
+				<div class="mt-10">
 					<Button
 						variant="outline"
-						href="/faqs"
-						class="text-sm transition-transform duration-200 hover:scale-105"
+						href="https://docs.contextvm.org"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="transition-transform duration-200 hover:scale-105"
 					>
 						Learn more about the protocol
 					</Button>
@@ -423,7 +552,7 @@
 						{/each}
 					</div>
 
-					<div class="mt-8 text-center sm:mt-12">
+					<div class="mt-10 text-center sm:mt-12">
 						<Button size="lg" href="/servers">View all public servers</Button>
 					</div>
 				</div>
@@ -455,101 +584,62 @@
 		</section>
 	{/if}
 
-	<!-- Get Started Section -->
+	<!-- Getting Started as Developer Section -->
 	<section class="relative border-t bg-muted/30 py-12 sm:py-16">
 		<div class="container mx-auto px-4">
-			<div class="mx-auto max-w-5xl">
-				<div class="text-center">
-					<h2
-						class="mb-8 px-4 text-2xl font-bold tracking-tight sm:mb-12 sm:px-0 sm:text-3xl lg:text-4xl"
-					>
-						Get started
-					</h2>
-				</div>
+			<div class="mx-auto max-w-4xl text-center">
+				<h2
+					class="mb-8 px-4 text-2xl font-bold tracking-tight sm:mb-12 sm:px-0 sm:text-3xl lg:text-4xl"
+				>
+					Getting started as a developer
+				</h2>
 
-				<div class="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2">
-					<div
-						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg sm:p-6 lg:p-8"
-					>
-						<h3
-							class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary sm:mb-4 sm:text-xl"
-						>
-							Run a server
-						</h3>
-						<p class="mb-4 text-sm text-muted-foreground sm:mb-6">
-							Use the ContextVM Gateway to expose any existing MCP server over Nostr.
-						</p>
-						<div
-							class="mb-4 rounded-lg bg-muted p-3 transition-colors group-hover:bg-muted/80 sm:mb-6 sm:p-4"
-						>
-							<pre class="overflow-x-auto text-xs"><code
-									>gateway-cli \
-	 --private-key "your-key" \
-	 --relays "wss://relay.nostr.org" \
-	 --server "python my-mcp-server.py"</code
-								></pre>
+				<div class="mx-auto max-w-3xl">
+					<div class="grid grid-cols-1 gap-8 sm:grid-cols-2">
+						<div class="group text-center transition-transform duration-200 hover:scale-105">
+							<div
+								class="rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+							>
+								<div class="mb-3 text-2xl font-bold text-primary">1</div>
+								<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
+									Build or pick a server
+								</h3>
+								<p class="text-sm text-muted-foreground">
+									Use the official MCP SDK to build a server, or pick any existing MCP server. If
+									you're using TypeScript, our SDK provides native Nostr transports that plug
+									directly into MCP servers. For existing servers, use the Gateway CLI to expose
+									them—just define your private key and relays.
+								</p>
+							</div>
 						</div>
-						<div class="flex flex-col gap-2 sm:flex-row sm:gap-3">
-							<Button
-								size="sm"
-								href="https://github.com/contextvm/gateway-cli"
-								target="_blank"
-								class="transition-transform duration-200 hover:scale-105"
+
+						<div class="group text-center transition-transform duration-200 hover:scale-105">
+							<div
+								class="rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 							>
-								Gateway repo
-							</Button>
-							<Button
-								size="sm"
-								variant="outline"
-								href="https://docs.contextvm.org"
-								target="_blank"
-								class="transition-transform duration-200 hover:scale-105"
-							>
-								Docs
-							</Button>
+								<div class="mb-3 text-2xl font-bold text-primary">2</div>
+								<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
+									Build or connect a client
+								</h3>
+								<p class="text-sm text-muted-foreground">
+									If your client is in TypeScript, use our SDK to build a client with Nostr
+									transport. Want to use your server with AI models? Use the Proxy CLI to expose it
+									as a regular MCP server in any MCP host application.
+								</p>
+							</div>
 						</div>
 					</div>
 
-					<div
-						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg sm:p-6 lg:p-8"
-					>
-						<h3
-							class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary sm:mb-4 sm:text-xl"
+					<div class="mt-10 text-center">
+						<Button
+							variant="outline"
+							href="https://docs.contextvm.org"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="transition-transform duration-200 hover:scale-105"
 						>
-							Connect a client
-						</h3>
-						<p class="mb-4 text-sm text-muted-foreground sm:mb-6">
-							Use the ContextVM Proxy to let any MCP client access Nostr-hosted services.
-						</p>
-						<div
-							class="mb-4 rounded-lg bg-muted p-3 transition-colors group-hover:bg-muted/80 sm:mb-6 sm:p-4"
-						>
-							<pre class="overflow-x-auto text-xs"><code
-									>proxy-cli \
-	 --private-key "your-key" \
-	 --relays "wss://relay.nostr.org" \
-	 --server-pubkey "npub1..."</code
-								></pre>
-						</div>
-						<div class="flex flex-col gap-2 sm:flex-row sm:gap-3">
-							<Button
-								size="sm"
-								href="https://github.com/contextvm/proxy-cli"
-								target="_blank"
-								class="transition-transform duration-200 hover:scale-105"
-							>
-								Proxy repo
-							</Button>
-							<Button
-								size="sm"
-								variant="outline"
-								href="https://docs.contextvm.org"
-								target="_blank"
-								class="transition-transform duration-200 hover:scale-105"
-							>
-								Docs
-							</Button>
-						</div>
+							Read the docs for detailed instructions
+						</Button>
 					</div>
 				</div>
 			</div>
@@ -566,12 +656,12 @@
 					Explore the ecosystem
 				</h2>
 
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4">
 					<a
 						href="https://docs.contextvm.org"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
@@ -585,7 +675,7 @@
 						href="https://github.com/contextvm/ts-sdk"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
@@ -599,7 +689,7 @@
 						href="https://github.com/contextvm/gateway-cli"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
@@ -613,7 +703,7 @@
 						href="https://github.com/contextvm/proxy-cli"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
@@ -627,7 +717,7 @@
 						href="https://github.com/contextvm/awesome"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
@@ -638,22 +728,22 @@
 					</a>
 
 					<a
-						href="https://github.com/contextvm"
+						href="https://github.com/ContextVM/ctxcn"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
 						>
-							GitHub org
+							CtxCN
 						</div>
-						<div class="text-xs text-muted-foreground">All repositories</div>
+						<div class="text-xs text-muted-foreground">Build clients faster</div>
 					</a>
 
 					<a
 						href={resolve(blogHref)}
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
@@ -665,7 +755,7 @@
 
 					<a
 						href={resolve(faqsHref)}
-						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
 					>
 						<div
 							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"

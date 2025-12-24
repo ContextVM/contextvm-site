@@ -30,9 +30,7 @@
 	let loading = $state(true);
 	const article = $derived(addressLoader(pointer));
 
-	const storedArticle = $derived(
-		eventStore.model(ReplaceableModel, pointer.kind, pointer.pubkey, pointer.identifier)
-	);
+	const storedArticle = $derived(eventStore.model(ReplaceableModel, pointer));
 
 	const blogHref = $derived<`/blog`>('/blog');
 
