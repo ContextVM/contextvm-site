@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 /* Import shadcn4 theme styles */
-@source "../node_modules/@sjsf/shadcn4-theme/dist";
+@source '../node_modules/@sjsf/shadcn4-theme/dist';
 
 @custom-variant dark (&:is(.dark *));
 
