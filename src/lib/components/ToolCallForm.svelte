@@ -92,7 +92,7 @@
 		/>
 	</Collapsible.Trigger>
 	<Collapsible.Content
-		class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+		class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 	>
 		<div class="border-t bg-muted/50 p-4">
 			{#if formError}
@@ -197,7 +197,7 @@
 							</div>
 						</Collapsible.Trigger>
 						<Collapsible.Content
-							class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+							class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 						>
 							<div class="relative mt-2 rounded-md bg-muted p-3">
 								<div class="mb-2 flex items-center justify-between">

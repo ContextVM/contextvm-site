@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { CONTEXTVM_PUBKEY } from '$lib/constants';
 	import { eventStore } from '$lib/services/eventStore';
@@ -32,6 +33,8 @@
 	const storedArticle = $derived(
 		eventStore.model(ReplaceableModel, pointer.kind, pointer.pubkey, pointer.identifier)
 	);
+
+	const blogHref = $derived<`/blog`>('/blog');
 
 	$effect(() => {
 		const sub = article.subscribe({
@@ -88,7 +91,7 @@
 	<article class="container mx-auto max-w-4xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to blog link -->
 		<button
-			onclick={() => goto('/blog')}
+			onclick={() => goto(resolve(blogHref))}
 			class="mb-4 flex items-center text-sm font-medium text-muted-foreground hover:text-primary sm:mb-6"
 		>
 			← Back to blog
@@ -157,7 +160,7 @@
 			The article you're looking for doesn't exist or couldn't be loaded.
 		</p>
 		<button
-			onclick={() => goto('/blog')}
+			onclick={() => goto(resolve(blogHref))}
 			class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
 		>
 			Back to blog

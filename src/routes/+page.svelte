@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import { useServerAnnouncements } from '$lib/queries/serverQueries';
@@ -11,12 +12,16 @@
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 	const serverAnnouncementsQuery = useServerAnnouncements();
 
-	let loading = $state($serverAnnouncementsQuery.isFetching);
-
 	// Get top 4 newest servers for preview
 	const latestServers = $derived.by(() => {
 		return $serverAnnouncements?.slice(0, 4) ?? [];
 	});
+
+	const loading = $derived.by(() => $serverAnnouncementsQuery.isFetching);
+
+	const faqsHref = $derived<`/faqs`>('/faqs');
+	const aboutHref = $derived<`/about`>('/about');
+	const blogHref = $derived<`/blog`>('/blog');
 </script>
 
 <Seo
@@ -35,7 +40,7 @@
 		</div>
 
 		<!-- 3D Background Shapes -->
-		<div class="isometric-bg grid-pattern">
+		<div class="isometric-bg bg-mask">
 			<!-- Rectangles - varied sizes -->
 			<div class="isometric-square shape-rect" data-size="xl"></div>
 			<div class="isometric-square shape-rect" data-size="sm"></div>
@@ -120,9 +125,9 @@
 					GitHub
 				</a>
 				<span>•</span>
-				<a href="/faqs" class="transition-colors hover:text-foreground">FAQs</a>
+				<a href={resolve(faqsHref)} class="transition-colors hover:text-foreground">FAQs</a>
 				<span>•</span>
-				<a href="/about" class="transition-colors hover:text-foreground">About</a>
+				<a href={resolve(aboutHref)} class="transition-colors hover:text-foreground">About</a>
 			</div>
 		</div>
 	</section>
@@ -647,7 +652,7 @@
 					</a>
 
 					<a
-						href="/blog"
+						href={resolve(blogHref)}
 						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
 					>
 						<div
@@ -659,7 +664,7 @@
 					</a>
 
 					<a
-						href="/faqs"
+						href={resolve(faqsHref)}
 						class="group rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-4"
 					>
 						<div

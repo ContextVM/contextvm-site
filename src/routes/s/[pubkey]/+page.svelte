@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { parseServerInitializeMsg } from '$lib/models/serverAnnouncements';
 	import { getAvailableCapabilities, pubkeyToHexColor, copyToClipboard } from '$lib/utils';
@@ -31,8 +32,12 @@
 	import { queryClient } from '$lib/query-client';
 	import { serverKeys } from '$lib/queries/serverQueryKeys';
 	import Seo from '$lib/components/SEO.svelte';
+	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 
 	const pubkey = page.params.pubkey ?? '';
+
+	const serversHref = $derived<`/servers`>('/servers');
+	const homeHref = $derived<`/`>('/');
 
 	// Dynamic SEO data for server pages
 	let seoTitle = $state('Loading server...');
@@ -157,7 +162,7 @@
 	<article class="container mx-auto max-w-6xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to servers link -->
 		<button
-			onclick={() => goto('/')}
+			onclick={() => goto(resolve(serversHref))}
 			class="mb-4 flex items-center text-sm font-medium text-muted-foreground hover:text-primary sm:mb-6"
 		>
 			← Back to servers
@@ -523,17 +528,11 @@
 	</article>
 {:else}
 	<div class="container mx-auto px-4 py-16 text-center">
-		<h1 class="mb-4 text-2xl font-bold">Server not found</h1>
-		<p class="mb-6 text-muted-foreground">
-			The server you're looking for doesn't exist or couldn't be loaded from public announcements.
-			This might be a private server that doesn't publish announcements.
-		</p>
-		<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
-			{#if !$activeAccount}
-				<Alert.Root variant="destructive" class="w-fit">
-					<Alert.Title>Please log in to connect to a server</Alert.Title>
-				</Alert.Root>
-			{:else}
+		{#if $serverQuery.isLoading}
+			<LoadingSpinner />
+			<h1 class="mt-6 mb-4 text-2xl font-bold">Searching...</h1>
+			<p class="mb-6 text-muted-foreground">Looking for: {pubkey}</p>
+			<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
 				<Button onclick={connectToServer} disabled={connectionState.loading || !$activeAccount}>
 					{#if connectionState.loading}
 						Connecting...
@@ -541,14 +540,41 @@
 						Attempt Connect To Server
 					{/if}
 				</Button>
-			{/if}
-			<button
-				onclick={() => goto('/')}
-				class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-			>
-				Back to servers
-			</button>
-		</div>
+				<button
+					onclick={() => goto(resolve(homeHref))}
+					class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+				>
+					Back to servers
+				</button>
+			</div>
+		{:else}
+			<h1 class="mb-4 text-2xl font-bold">No public announcement</h1>
+			<p class="mb-6 text-muted-foreground">
+				This server isn't publicly announced. Try connecting directly if it's a private server.
+			</p>
+			<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
+				{#if !$activeAccount}
+					<Alert.Root variant="destructive" class="w-fit">
+						<Alert.Title>Log in to connect</Alert.Title>
+					</Alert.Root>
+				{:else}
+					<Button onclick={connectToServer} disabled={connectionState.loading || !$activeAccount}>
+						{#if connectionState.loading}
+							Connecting...
+						{:else}
+							Attempt Connect To Server
+						{/if}
+					</Button>
+				{/if}
+				<Button
+					variant="outline"
+					onclick={() => goto(resolve(serversHref))}
+					class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+				>
+					Back to servers
+				</Button>
+			</div>
+		{/if}
 		{#if connectionState.error}
 			<Card.Root class="mx-auto mt-6 max-w-md border-destructive">
 				<Card.Content class="pt-6">

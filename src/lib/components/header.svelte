@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import Github from '@lucide/svelte/icons/github';
 	import Menu from '@lucide/svelte/icons/menu';
 	import ThemeToggle from './theme-toggle.svelte';
@@ -7,6 +8,12 @@
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import { buttonVariants } from './ui/button/index.js';
 	import * as Sheet from './ui/sheet/index.js';
+
+	const homeHref = $derived<`/`>('/');
+	const serversHref = $derived<`/servers`>('/servers');
+	const blogHref = $derived<`/blog`>('/blog');
+	const aboutHref = $derived<`/about`>('/about');
+	const faqsHref = $derived<`/faqs`>('/faqs');
 </script>
 
 <header
@@ -15,7 +22,7 @@
 	<div class="flex h-14 items-center justify-between px-4 py-4 sm:px-6">
 		<!-- Logo -->
 		<a
-			href="/"
+			href={resolve(homeHref)}
 			class="flex items-center space-x-2 transition-transform duration-200 hover:scale-105"
 		>
 			<img
@@ -34,16 +41,28 @@
 		<div class="hidden items-center space-x-4 sm:flex sm:space-x-6">
 			<!-- Navigation Links -->
 			<nav class="flex items-center space-x-4 text-sm font-medium sm:space-x-6">
-				<a href="/servers" class="text-foreground/60 transition-colors hover:text-foreground/80">
+				<a
+					href={resolve(serversHref)}
+					class="text-foreground/60 transition-colors hover:text-foreground/80"
+				>
 					Servers
 				</a>
-				<a href="/blog" class="text-foreground/60 transition-colors hover:text-foreground/80">
+				<a
+					href={resolve(blogHref)}
+					class="text-foreground/60 transition-colors hover:text-foreground/80"
+				>
 					Blog
 				</a>
-				<a href="/about" class="text-foreground/60 transition-colors hover:text-foreground/80">
+				<a
+					href={resolve(aboutHref)}
+					class="text-foreground/60 transition-colors hover:text-foreground/80"
+				>
 					About
 				</a>
-				<a href="/faqs" class="text-foreground/60 transition-colors hover:text-foreground/80">
+				<a
+					href={resolve(faqsHref)}
+					class="text-foreground/60 transition-colors hover:text-foreground/80"
+				>
 					FAQs
 				</a>
 				<a
@@ -92,25 +111,25 @@
 					<div class="py-4">
 						<nav class="flex flex-col space-y-1">
 							<a
-								href="/servers"
+								href={resolve(serversHref)}
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
 							>
 								Servers
 							</a>
 							<a
-								href="/blog"
+								href={resolve(blogHref)}
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
 							>
 								Blog
 							</a>
 							<a
-								href="/about"
+								href={resolve(aboutHref)}
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
 							>
 								About
 							</a>
 							<a
-								href="/faqs"
+								href={resolve(faqsHref)}
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
 							>
 								FAQs

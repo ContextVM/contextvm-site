@@ -1,15 +1,16 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { formatUnixTimestamp, pubkeyToHexColor, truncateString } from '$lib/utils';
 	import type { ServerAnnouncement } from '$lib/models/serverAnnouncements';
 
 	let { server }: { server: ServerAnnouncement } = $props();
 
 	const date = $derived(formatUnixTimestamp(server.created_at, true));
-	const serverHref = $derived(`/s/${server.pubkey}`);
+	const serverHref = $derived<`/s/${string}`>(`/s/${server.pubkey}`);
 </script>
 
 <a
-	href={serverHref}
+	href={resolve(serverHref)}
 	class="group block h-full overflow-hidden rounded-lg border border-border bg-card transition-all hover:shadow-md hover:shadow-primary/10"
 >
 	<div class="grid h-full grid-rows-[auto_auto_auto_1fr]">

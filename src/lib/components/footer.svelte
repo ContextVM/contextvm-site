@@ -1,6 +1,12 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import Github from '@lucide/svelte/icons/github';
 	import Mail from '@lucide/svelte/icons/mail';
+
+	const serversHref = $derived<`/servers`>('/servers');
+	const blogHref = $derived<`/blog`>('/blog');
+	const aboutHref = $derived<`/about`>('/about');
+	const faqsHref = $derived<`/faqs`>('/faqs');
 </script>
 
 <footer class="border-t bg-muted/30">
@@ -42,25 +48,25 @@
 				<h3 class="text-sm font-semibold">Navigation</h3>
 				<nav class="flex flex-col space-y-2">
 					<a
-						href="/servers"
+						href={resolve(serversHref)}
 						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
 					>
 						Servers
 					</a>
 					<a
-						href="/blog"
+						href={resolve(blogHref)}
 						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
 					>
 						Blog
 					</a>
 					<a
-						href="/about"
+						href={resolve(aboutHref)}
 						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
 					>
 						About
 					</a>
 					<a
-						href="/faqs"
+						href={resolve(faqsHref)}
 						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
 					>
 						FAQs
@@ -132,6 +138,14 @@
 						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
 					>
 						Contact Us
+					</a>
+					<a
+						href="https://njump.me/npub1dvmcpmefwtnn6dctsj3728n64xhrf06p9yude77echmrkgs5zmyqw33jdm"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Follow us
 					</a>
 				</nav>
 			</div>

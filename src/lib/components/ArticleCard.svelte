@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { formatUnixTimestamp } from '$lib/utils';
 	import {
 		getArticleSummary,
@@ -10,7 +11,7 @@
 
 	let { article }: { article: Event } = $props();
 
-	const href = $derived(`/blog/${getTagValue(article, 'd')}`);
+	const href = $derived<`/blog/${string}`>(`/blog/${getTagValue(article, 'd')}`);
 	const title = $derived(getArticleTitle(article));
 	const summary = $derived(getArticleSummary(article));
 	const image = $derived(getArticleImage(article));
@@ -18,7 +19,7 @@
 </script>
 
 <a
-	{href}
+	href={resolve(href)}
 	class="group block h-full overflow-hidden rounded-lg border border-border bg-card transition-all hover:shadow-md hover:shadow-primary/10"
 >
 	<div class="grid h-full grid-rows-[auto_auto_1fr_auto]">
