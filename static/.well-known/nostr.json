@@ -1,0 +1,8 @@
+{
+  "names": {
+    "_": "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8"
+  },
+  "relays": {
+    "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8": ["wss://relay.contextvm.org", "wss://relay.nostr.net", "wss://relay.damus.io", "wss://nos.lol"]
+  }
+}

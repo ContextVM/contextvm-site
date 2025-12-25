@@ -17,6 +17,15 @@
 	} = $props();
 
 	const relayConnected = $derived(relay.connected$);
+	const relayAttempts = $derived(relay.attempts$);
+	const relayError = $derived(relay.error$);
+
+	const connectionStatus = $derived(() => {
+		if ($relayConnected) return 'connected';
+		if ($relayAttempts > 0) return 'connecting';
+		if ($relayError) return 'error';
+		return 'disconnected';
+	});
 </script>
 
 <div
@@ -25,12 +34,14 @@
 		: ''}"
 >
 	<div class="flex items-center gap-2">
-		{#if $relayConnected}
+		{#if connectionStatus() === 'connected'}
 			<Wifi class="h-4 w-4 text-green-500" />
-		{:else if !$relayConnected && relay.attempts$.value > 0}
+		{:else if connectionStatus() === 'connecting'}
 			<Loader class="h-4 w-4 animate-spin text-yellow-500" />
-		{:else}
+		{:else if connectionStatus() === 'error'}
 			<WifiOff class="h-4 w-4 text-red-500" />
+		{:else}
+			<Loader class="h-4 w-4" />
 		{/if}
 		<span class="max-w-[200px] truncate text-sm">{relay.url}</span>
 		{#if isSelected}

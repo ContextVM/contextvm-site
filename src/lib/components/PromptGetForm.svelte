@@ -5,7 +5,13 @@
 	import { copyToClipboard } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import type { Prompt, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+	import type {
+		Prompt,
+		GetPromptResult,
+		TextContent,
+		ImageContent,
+		AudioContent
+	} from '@modelcontextprotocol/sdk/types.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
@@ -113,7 +119,7 @@
 		/>
 	</Collapsible.Trigger>
 	<Collapsible.Content
-		class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+		class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 	>
 		<div class="border-t bg-muted/50 p-4">
 			{#if formError}
@@ -197,7 +203,7 @@
 
 									{#if message.content?.type === 'text'}
 										<button
-											onclick={() => copyToClipboard(message.content.text as BlobPart)}
+											onclick={() => copyToClipboard((message.content as TextContent).text)}
 											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
 											aria-label="Copy message text"
 										>
@@ -205,7 +211,7 @@
 										</button>
 									{:else if message.content?.type === 'audio'}
 										<button
-											onclick={() => copyToClipboard(message.content.data as BlobPart)}
+											onclick={() => copyToClipboard((message.content as AudioContent).data)}
 											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
 											aria-label="Copy audio info"
 										>
@@ -213,7 +219,7 @@
 										</button>
 									{:else if message.content?.type && message.content.type !== 'image'}
 										<button
-											onclick={() => copyToClipboard(message.content.data as BlobPart)}
+											onclick={() => copyToClipboard((message.content as ImageContent).data)}
 											class="absolute top-2 right-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
 											aria-label="Copy message content"
 										>
@@ -240,7 +246,7 @@
 							</div>
 						</Collapsible.Trigger>
 						<Collapsible.Content
-							class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+							class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 						>
 							<div class="relative mt-2 rounded-md bg-muted p-3">
 								<div class="mb-2 flex items-center justify-between">

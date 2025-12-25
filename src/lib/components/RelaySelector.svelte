@@ -8,8 +8,10 @@
 
 	let customRelayInput = $state('');
 
+	// Get all relays from the pool
 	const relays$ = relayPool.relays$;
 
+	// Get selected relays (normalized URLs)
 	const selectedRelays = $derived(
 		Array.from($relays$).filter(([url, _]) =>
 			relayStore.selectedRelays.some((selectedUrl) => url.startsWith(selectedUrl))
@@ -32,12 +34,6 @@
 <div class="relay-selector space-y-4">
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold">Relays</h2>
-		<!-- <div class="flex gap-2">
-			<Button onclick={relayActions.resetToDefaultRelays} variant="outline" size="sm"
-				>Use Defaults</Button
-			>
-			<Button onclick={relayActions.useDevRelay} variant="outline" size="sm">Use Dev</Button>
-		</div> -->
 	</div>
 
 	<div class="space-y-3">
@@ -55,10 +51,10 @@
 	</div>
 
 	<div class="space-y-2">
-		<p class="text-sm font-medium">Active Relays ({$relays$.size})</p>
+		<p class="text-sm font-medium">Active Relays ({relayStore.selectedRelays.length})</p>
 		<div class="max-h-60 space-y-2 overflow-y-auto">
 			{#if selectedRelays.length > 0}
-				<p class="text-xs font-medium text-muted-foreground">Load Relays</p>
+				<p class="text-xs font-medium text-muted-foreground">Selected Relays</p>
 				{#each selectedRelays as relay (relay[0])}
 					<RelayItem
 						relay={relay[1]}

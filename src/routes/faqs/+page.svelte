@@ -377,7 +377,7 @@ proxy-cli --private-key "your-key" --relays "wss://relay.nostr.org" --server-pub
 			<ChevronsUpDownIcon class="h-4 w-4" />
 		</Collapsible.Trigger>
 		<Collapsible.Content
-			class="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+			class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 		>
 			<div
 				class="prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none border-t bg-muted/50 p-4 px-6"
