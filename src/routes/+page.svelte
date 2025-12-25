@@ -92,8 +92,9 @@
 				class="mx-auto mb-6 max-w-2xl px-4 text-base leading-relaxed text-muted-foreground sm:mb-8 sm:px-0 sm:text-lg"
 			>
 				A protocol built on MCP that enables servers and clients to communicate over the Nostr
-				network. Servers are addressed by public keys, requests are signed and encrypted, and relays
-				act as a distributed message bus. No domains, DNS, or IPs. Fun and permissionless.
+				network. Servers are addressed by public keys, and requests are signed and encrypted. Relays
+				act as a distributed message bus. No domains, DNS, IPs, or complex configurations. Deploy
+				with ease <br /> Fun and permissionless.
 			</p>
 
 			<p class="mx-auto mb-6 max-w-2xl px-4 text-lg font-semibold text-foreground sm:mb-8 sm:px-0">
@@ -106,18 +107,18 @@
 				<Button
 					size="lg"
 					class="w-full px-6 text-base transition-transform duration-200 hover:scale-105 sm:w-auto sm:px-8"
-					href="/servers"
+					href="https://docs.contextvm.org"
+					target="_blank"
 				>
-					Browse public servers
+					Read docs
 				</Button>
 				<Button
 					size="lg"
 					variant="outline"
 					class="w-full px-6 text-base transition-transform duration-200 hover:scale-105 sm:w-auto sm:px-8"
-					href="https://docs.contextvm.org"
-					target="_blank"
+					href="/servers"
 				>
-					Read docs
+					Browse public servers
 				</Button>
 			</div>
 
@@ -125,17 +126,19 @@
 				class="mt-8 flex flex-wrap items-center justify-center gap-3 px-4 text-sm text-muted-foreground sm:gap-4 sm:px-0"
 			>
 				<a
-					href="https://github.com/contextvm"
+					href="https://jumble.social/npub1dvmcpmefwtnn6dctsj3728n64xhrf06p9yude77echmrkgs5zmyqw33jdm"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="transition-colors hover:text-foreground"
 				>
-					GitHub
+					Nostr
 				</a>
 				<span>•</span>
 				<a href={resolve(faqsHref)} class="transition-colors hover:text-foreground">FAQs</a>
 				<span>•</span>
 				<a href={resolve(aboutHref)} class="transition-colors hover:text-foreground">About</a>
+				<span>•</span>
+				<a href={resolve(blogHref)} class="transition-colors hover:text-foreground">Blog</a>
 			</div>
 		</div>
 	</section>
@@ -325,9 +328,7 @@
 								</h3>
 								<p class="text-sm text-muted-foreground">
 									MCP's natural language descriptions make servers self-documenting. Both humans and
-									LLMs understand what services do without complex documentation. Since MCP uses
-									JSON Schema for all definitions, you can infer types, validate inputs and outputs,
-									and much more.
+									LLMs understand what services do without complex documentation.
 								</p>
 							</div>
 						</div>

@@ -74,7 +74,7 @@ Whether you're a developer wanting to share your tools, a community looking to b
 No gates. No permission slips. Just keys, cryptography, and a network that anyone can join.
 
 To get involved:
-*   Follow us on [Nostr](https://njump.me/npub1dvmcpmefwtnn6dctsj3728n64xhrf06p9yude77echmrkgs5zmyqw33jdm)
+*   Follow us on [Nostr](https://jumble.social/npub1dvmcpmefwtnn6dctsj3728n64xhrf06p9yude77echmrkgs5zmyqw33jdm)
 *   Join our public [Signal channel](https://signal.group/#CjQKIOgvfFJf8ZFZ1SsMx7teFqNF73sZ9Elaj_v5i6RSjDHmEhAB3wO1Rg-0gLNdusnb3wLR)
 
 ---

@@ -140,12 +140,20 @@
 						Contact Us
 					</a>
 					<a
-						href="https://njump.me/npub1dvmcpmefwtnn6dctsj3728n64xhrf06p9yude77echmrkgs5zmyqw33jdm"
+						href="https://jumble.social/npub1dvmcpmefwtnn6dctsj3728n64xhrf06p9yude77echmrkgs5zmyqw33jdm"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
 					>
 						Follow us
+					</a>
+					<a
+						href="https://signal.group/#CjQKIOgvfFJf8ZFZ1SsMx7teFqNF73sZ9Elaj_v5i6RSjDHmEhAB3wO1Rg-0gLNdusnb3wLR"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Signal group
 					</a>
 				</nav>
 			</div>
