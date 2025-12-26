@@ -15,8 +15,9 @@
 	const faqs: FAQ[] = [
 		{
 			question: 'What is ContextVM?',
-			answer: `<p>ContextVM is a decentralized protocol that enables Model Context Protocol (MCP) servers and clients to communicate over the Nostr network. It uses Nostr as a secure, distributed transport layer—leveraging cryptographic keys for identity, decentralized discovery, and Bitcoin-powered micropayments.</p>
-			<p>Rather than relying on centralized infrastructure like domains, OAuth, or cloud hosting, ContextVM allows anyone to run or access services using only Nostr and a internet-connected device. It transforms any computational service into a discoverable, accessible, and monetizable resource—while preserving privacy, security, and user sovereignty.</p>`
+			answer: `<p>ContextVM is a protocol that liberates the Model Context Protocol by running it over Nostr—a simple, open communication network built on cryptographic, censorship-resistant, and permissionless foundations. It enables anyone to run computational services from any device without centralized dependencies.</p>
+			<p>Rather than relying on centralized infrastructure like domains, OAuth, or cloud hosting, ContextVM allows anyone to run or access services using only Nostr and an internet-connected device. It transforms any computational service into a discoverable, accessible, and monetizable resource—while preserving privacy, security, and user sovereignty.</p>
+			<p><strong>This is more than technology—it is a movement.</strong> ContextVM represents a fundamental shift in how we think about computation and infrastructure, building the foundation for a more equitable decentralized internet.</p>`
 		},
 		{
 			question: 'Why run MCP over Nostr?',
@@ -48,15 +49,14 @@
 		},
 		{
 			question: 'Do I need an LLM to use ContextVM?',
-			answer: `<p>No, you don't need an LLM to use ContextVM. While ContextVM is often used with LLMs through MCP (Model Context Protocol), it can be used independently by both humans and machines.</p>
-			<p>MCP uses JSON-RPC messages for communication between clients and servers, making it versatile for various environments:</p>
-			<p>An interesting aspect is that servers and capabilities use natural language to describe what they do. This makes them self-explanatory and understandable by both LLMs and humans, creating a bridge between the two worlds.</p>
-			<p>In summary, ContextVM works indifferently with humans or LLMs—whichever you prefer!</p>
-			<h3>Use Cases Beyond LLMs</h3>
+			answer: `<p>No, you don't need an LLM to use ContextVM. ContextVM presents a unique <strong>dual API</strong> that lets you write your server once and make it accessible to both humans and machines through one protocol.</p>
+			<p>You can use it programmatically to build the backend of any application and consume it through a custom interface or web app, while the same service can be operated by LLMs without any changes because it is built on MCP, the first common language for large language models.</p>
+			<p>All the power from MCP is available out of the box as ContextVM plugs into the transport layer—AI compatibility, input and output schemas, rich primitives like tools, static resources, prompts, real-time communication, and bidirectional communication are all there. As MCP advances, ContextVM advances at the same pace.</p>
+			<h3>The Dual API Advantage</h3>
 			<ul>
-				<li><strong>Custom interfaces for servers</strong>: Build web apps, desktop applications, or command-line tools that interact with ContextVM servers directly</li>
-				<li><strong>Library-like implementations</strong>: Use the MCP server as a backend where your application acts as a client, making remote function calls as if they were local library functions</li>
-				<li><strong>Collaborative workspaces</strong>: Create shared workspaces where team members can access and manipulate resources through ContextVM servers</li>
+				<li><strong>For Developers</strong>: Build web apps, desktop applications, or command-line tools that interact with ContextVM servers directly. Call remote functions as if they were local.</li>
+				<li><strong>For AI Agents</strong>: LLMs operate the same service naturally through MCP's self-documenting capabilities.</li>
+				<li><strong>Build Once, Deploy Everywhere</strong>: Your service becomes a reusable component in any language or platform—accessible through code, web interfaces, or AI agents.</li>
 			</ul>`
 		},
 		{
@@ -242,14 +242,8 @@
 			</ul>
 			<h3>Be Your Own Infrastructure Provider</h3>
 			<p>With ContextVM, <strong>you are the infrastructure</strong>. There's no need to rent servers, configure cloud firewalls, or rely on SaaS platforms.</p>
-			<p>Just:</p>
-			<ol>
-				<li>Write your logic</li>
-				<li>Wrap it in an MCP server</li>
-				<li>Deploy it using ContextVM</li>
-			</ol>
-			<p>You can run it on your laptop, Raspberry Pi, or old phone—and it's instantly reachable (or private). No DevOps, no ops.</p>
-			<p>This empowers individuals and communities to <strong>reclaim control over computation</strong>, data, and value exchange.</p>`
+			<p>This empowers individuals and communities to <strong>reclaim control over computation</strong>, data, and value exchange. Success looks like communities running their own infrastructure without relying on corporate providers, individual developers launching services from their garages reaching global audiences instantly, and creators earning Bitcoin directly from their computational work without intermediaries.</p>
+			<p>This is the foundation for a new computational commons where the right to compute is as fundamental as the right to speak.</p>`
 		},
 		{
 			question: 'Comparison: Traditional Remote MCP vs ContextVM',

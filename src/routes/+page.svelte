@@ -92,13 +92,13 @@
 				class="mx-auto mb-6 max-w-2xl px-4 text-base leading-relaxed text-muted-foreground sm:mb-8 sm:px-0 sm:text-lg"
 			>
 				A protocol built on MCP that enables servers and clients to communicate over the Nostr
-				network. Servers are addressed by public keys, and requests are signed and encrypted. Relays
-				act as a distributed message bus. No domains, DNS, IPs, or complex configurations. Deploy
-				with ease <br /> Fun and permissionless.
+				network —an open communication network built on cryptographic, censorship-resistant, and
+				permissionless foundations. No domains, no OAuth, no port forwarding—just keys, relays, and
+				fun.
 			</p>
 
 			<p class="mx-auto mb-6 max-w-2xl px-4 text-lg font-semibold text-foreground sm:mb-8 sm:px-0">
-				Your backend can move—your address stays.
+				Your backend can move—your address stays. Your infrastructure, your rules.
 			</p>
 
 			<div
@@ -151,7 +151,9 @@
 					<h2 class="mb-3 px-4 text-2xl font-bold tracking-tight sm:px-0 sm:text-3xl lg:text-4xl">
 						Why?
 					</h2>
-					<p class="text-lg font-medium text-muted-foreground">Permissionless by design</p>
+					<p class="text-lg font-medium text-muted-foreground">
+						Sovereign infrastructure. Permissionless by design.
+					</p>
 				</div>
 				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-4">
 					<div
@@ -164,8 +166,8 @@
 						</div>
 						<h3 class="mb-2 text-lg font-semibold">No centralized dependencies</h3>
 						<p class="text-sm text-muted-foreground">
-							No domains, DNS, static IPs, or port forwarding—just relays acting as a distributed
-							message bus.
+							Run services from anywhere—laptop, Raspberry Pi, or phone. No domains, DNS, or static
+							IPs needed.
 						</p>
 					</div>
 
@@ -179,8 +181,7 @@
 						</div>
 						<h3 class="mb-2 text-lg font-semibold">Public keys, no accounts</h3>
 						<p class="text-sm text-muted-foreground">
-							Identity and authorization via public key cryptography—no OAuth, no API keys. Just
-							permissionless math.
+							Your keys, your identity. Public key cryptography replaces OAuth and API keys.
 						</p>
 					</div>
 
@@ -192,7 +193,7 @@
 						>
 							<Lock class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">Encrypted by default</h3>
+						<h3 class="mb-2 text-lg font-semibold">Encrypted by Default</h3>
 						<p class="text-sm text-muted-foreground">
 							End-to-end encryption (NIP-44). Relays just relay—they can't read or mutate your
 							messages.
@@ -237,10 +238,10 @@
 						>
 							<Bitcoin class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">Payments</h3>
+						<h3 class="mb-2 text-lg font-semibold">Direct Value Exchange</h3>
 						<p class="text-sm text-muted-foreground">
-							Monetize services with Bitcoin micropayments. This can be extended to any custom
-							payment method.
+							Monetize with Bitcoin micropayments. Creators connect directly with users—no
+							intermediaries. This can be extended to any custom payment method.
 						</p>
 					</div>
 
@@ -252,10 +253,9 @@
 						>
 							<Users class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">No gatekeepers</h3>
+						<h3 class="mb-2 text-lg font-semibold">No Gatekeepers</h3>
 						<p class="text-sm text-muted-foreground">
-							Decentralized registry of servers on Nostr. Discover and use services organically—no
-							gated registries.
+							Decentralized discovery on Nostr. Build, deploy, and earn without asking permission.
 						</p>
 					</div>
 
@@ -267,7 +267,7 @@
 						>
 							<TrendingUp class="h-6 w-6 text-primary" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold">Organic reputation</h3>
+						<h3 class="mb-2 text-lg font-semibold">Organic Reputation</h3>
 						<p class="text-sm text-muted-foreground">
 							Servers and providers grow reputation. Users curate and share lists—trust emerges from
 							the network, not authorities.
@@ -287,14 +287,14 @@
 		</div>
 	</section>
 
-	<!-- Not Just for AI Section -->
+	<!-- Dual API Section -->
 	<section class="relative border-t py-12 sm:py-16">
 		<div class="container mx-auto px-4">
 			<div class="mx-auto max-w-4xl text-center">
 				<h2
 					class="mb-8 px-4 text-2xl font-bold tracking-tight sm:mb-12 sm:px-0 sm:text-3xl lg:text-4xl"
 				>
-					Not just for AI
+					One Protocol, Infinite Possibilities
 				</h2>
 
 				<div class="mx-auto max-w-3xl">
@@ -310,11 +310,11 @@
 								class="rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 							>
 								<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
-									Dual API
+									For Developers
 								</h3>
 								<p class="text-sm text-muted-foreground">
-									Write your server once and use it through a custom interface or let an LLM operate
-									it—one protocol for humans and machines.
+									Use it programmatically to build applications. Call remote functions as if they
+									were local. Create web apps, desktop tools, or CLI utilities.
 								</p>
 							</div>
 						</div>
@@ -324,19 +324,20 @@
 								class="rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 							>
 								<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
-									Universal Semantics
+									For AI Agents
 								</h3>
 								<p class="text-sm text-muted-foreground">
-									MCP's natural language descriptions make servers self-documenting. Both humans and
-									LLMs understand what services do without complex documentation.
+									LLMs operate the same service naturally. MCP is the first common language for
+									large language models—no changes needed.
 								</p>
 							</div>
 						</div>
 					</div>
 
 					<p class="mt-8 text-center text-base leading-relaxed text-muted-foreground sm:text-lg">
-						Build once, deploy everywhere. Your service becomes a reusable component in any language
-						or platform—accessible through code, web interfaces, or AI agents.
+						All MCP power is available out of the box. AI compatibility, schemas, tools, resources,
+						prompts, real-time communication—everything works. As MCP advances, ContextVM advances
+						at the same pace.
 					</p>
 				</div>
 				<div class="mt-10 text-center">
