@@ -210,7 +210,7 @@
 						</div>
 						<h3 class="mb-2 text-lg font-semibold">Rolling services</h3>
 						<p class="text-sm text-muted-foreground">
-							Move backends across networks and jurisdictions without breaking clients. Your public
+							Move backends across networks and geographic locations without breaking clients. Your public
 							key stays the same.
 						</p>
 					</div>
@@ -429,11 +429,11 @@
 						class="group rounded-lg border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
 					>
 						<h3 class="mb-3 text-lg font-semibold transition-colors group-hover:text-primary">
-							Multi-jurisdiction apps
+							Geographically distributed apps
 						</h3>
 						<p class="text-sm text-muted-foreground">
 							Static frontends anywhere; backend moves like a caravan. Deploy resilient,
-							geographically distributed applications.
+							location-independent applications across multiple regions.
 						</p>
 					</div>
 				</div>
