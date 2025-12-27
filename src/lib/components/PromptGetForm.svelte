@@ -69,7 +69,8 @@
 	const form = createForm({
 		...formDefaults,
 		schema: formSchema,
-		onSubmit: async (data: Record<string, string>) => {
+		onSubmit: async (value: unknown, _e: SubmitEvent) => {
+			const data = value as Record<string, string>;
 			loading = true;
 			try {
 				if (!connectionState.connected) {
