@@ -1,12 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { formatUnixTimestamp } from '$lib/utils';
-	import {
-		getArticleSummary,
-		getArticleTitle,
-		getArticleImage,
-		getTagValue
-	} from 'applesauce-core/helpers';
+	import { getArticleImage, getArticleSummary, getArticleTitle } from 'applesauce-common/helpers';
+	import { getTagValue } from 'applesauce-core/helpers';
 	import type { Event } from 'nostr-tools';
 
 	let { article }: { article: Event } = $props();

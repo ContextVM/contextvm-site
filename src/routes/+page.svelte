@@ -210,8 +210,8 @@
 						</div>
 						<h3 class="mb-2 text-lg font-semibold">Rolling services</h3>
 						<p class="text-sm text-muted-foreground">
-							Move backends across networks and geographic locations without breaking clients. Your public
-							key stays the same.
+							Move backends across networks and geographic locations without breaking clients. Your
+							public key stays the same.
 						</p>
 					</div>
 
