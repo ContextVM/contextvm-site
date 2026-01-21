@@ -1,8 +1,10 @@
 {
   "names": {
-    "_": "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8"
+    "_": "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8",
+    "relatr": "750682303c9f0ddad75941b49edc9d46e3ed306b9ee3335338a21a3e404c5fa3"
   },
   "relays": {
-    "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8": ["wss://wotr.relatr.xyz", "wss://relay.nostr.net", "wss://relay.damus.io", "wss://nos.lol"]
+    "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8": ["wss://wotr.relatr.xyz", "wss://relay.nostr.net", "wss://relay.damus.io", "wss://nos.lol"],
+    "750682303c9f0ddad75941b49edc9d46e3ed306b9ee3335338a21a3e404c5fa3": ["wss://wotr.relatr.xyz", "wss://relay.nostr.net", "wss://relay.damus.io", "wss://nos.lol"]
   }
 }
