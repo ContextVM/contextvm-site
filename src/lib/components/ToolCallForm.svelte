@@ -115,8 +115,6 @@
 					<span class="rounded bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
 						Paid · {formatCapTagPrice(toolCap)}
 					</span>
-				{:else}
-					<span class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">Free</span>
 				{/if}
 			</div>
 			{#if tool.description}
