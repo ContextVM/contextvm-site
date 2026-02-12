@@ -307,9 +307,7 @@
 			{:else if loading}
 				<div class="flex items-center gap-3 py-2">
 					<LoadingSpinner />
-					<span class="text-sm text-muted-foreground">
-						Waiting for the server… if payment is required, it will appear above.
-					</span>
+					<span class="text-sm text-muted-foreground"> Waiting for the server… </span>
 				</div>
 			{:else if $activeAccount}
 				<BasicForm {form} />

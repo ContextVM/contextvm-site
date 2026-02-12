@@ -36,10 +36,12 @@
 	let formResult = $state<CallToolResult | null>(null);
 	let formError = $state<string | null>(null);
 	let showResult = $state(false);
-	let progressNotifications = $derived<McpProgressNotification[]>(
+	let progressNotifications = $derived.by(() =>
 		mcpClientService.getProgressNotifications(serverPubkey)
 	);
-	let paymentState = $derived(paymentNotificationsService.getLatestForServer(serverPubkey));
+	let paymentState = $derived.by(() =>
+		paymentNotificationsService.getLatestForServer(serverPubkey)
+	);
 	let paymentOpen = $state(true);
 
 	const initializeEvent = $derived(mcpClientService.getServerToolsListEvent(serverPubkey));
@@ -267,9 +269,7 @@
 			{:else if loading}
 				<div class="flex items-center gap-3 py-2">
 					<LoadingSpinner />
-					<span class="text-sm text-muted-foreground">
-						Waiting for the server… if payment is required, it will appear above.
-					</span>
+					<span class="text-sm text-muted-foreground"> Waiting for the server… </span>
 				</div>
 			{:else if $activeAccount}
 				<BasicForm {form} />

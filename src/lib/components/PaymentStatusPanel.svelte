@@ -44,9 +44,7 @@
 		>
 			<Card.Content class="space-y-2">
 				{#if payment.status === 'payment_required'}
-					<p class="text-sm text-muted-foreground">
-						Payment is required to continue. Pay the invoice below.
-					</p>
+					<p class="text-sm text-muted-foreground">Payment is required to continue.</p>
 				{:else if payment.status === 'payment_accepted'}
 					<Alert.Root>
 						<Alert.Title>Payment accepted</Alert.Title>
@@ -83,7 +81,7 @@
 
 						<div class="mt-3">
 							<div class="flex items-center justify-between">
-								<p class="text-xs font-medium text-muted-foreground">pay_req</p>
+								<p class="text-xs font-medium text-muted-foreground">Payment request</p>
 								<button
 									onclick={() => copyToClipboard(payment.notification.params.pay_req as string)}
 									class="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted/50 hover:text-primary"
@@ -96,7 +94,7 @@
 
 							<Tabs.Root value="invoice" class="mt-2 w-full">
 								<Tabs.List class="grid w-full grid-cols-2">
-									<Tabs.Trigger value="invoice">Invoice</Tabs.Trigger>
+									<Tabs.Trigger value="invoice">Payment Request</Tabs.Trigger>
 									<Tabs.Trigger value="qr">QR</Tabs.Trigger>
 								</Tabs.List>
 

@@ -10,6 +10,7 @@ This commit introduces CEP-8 payment support for ContextVM, enabling
 servers to charge for capabilities and clients to handle payments.
 
 Key changes include:
+
 - Added payment notification handling services and UI components
 - Integrated with @contextvm/sdk payments middleware
 - Updated dependencies (e.g., @contextvm/sdk v0.4.1)
