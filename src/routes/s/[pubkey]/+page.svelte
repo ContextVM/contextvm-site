@@ -12,7 +12,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
-	import type { NostrClientTransport } from '@contextvm/sdk';
+	// NOTE: transport may be wrapped (payments middleware), so we access initialize via service.
 	import ToolCallForm from '$lib/components/ToolCallForm.svelte';
 	import ResourceReadForm from '$lib/components/ResourceReadForm.svelte';
 	import PromptGetForm from '$lib/components/PromptGetForm.svelte';
@@ -132,9 +132,7 @@
 				const client = await mcpClientService.getClient(pubkey);
 				if (!client) return null;
 
-				const initializeEvent = (
-					client.transport as NostrClientTransport
-				).getServerInitializeEvent();
+				const initializeEvent = mcpClientService.getServerInitializeEvent(pubkey);
 				if (!initializeEvent) return null;
 				const server = parseServerInitializeMsg(initializeEvent);
 				queryClient.setQueryData(serverKeys.announcement(pubkey), { server, isPublic: false });

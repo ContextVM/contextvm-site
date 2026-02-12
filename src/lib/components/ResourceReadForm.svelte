@@ -11,6 +11,13 @@
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import PaymentStatusPanel from '$lib/components/PaymentStatusPanel.svelte';
+	import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
+	import {
+		findCapTagForResource,
+		formatCapTagPrice,
+		parseCapTagsFromEvent
+	} from '$lib/services/payments/cep8-tags';
 
 	let {
 		resource,
@@ -31,6 +38,15 @@
 	let open = $state(false);
 	let rawOpen = $state(false);
 	let loading = $state(false);
+	let paymentState = $derived(paymentNotificationsService.getLatestForServer(serverPubkey));
+	let paymentOpen = $state(true);
+	const initializeEvent = $derived(mcpClientService.getServerResourcesListEvent(serverPubkey));
+	const capTags = $derived(parseCapTagsFromEvent(initializeEvent));
+	const resourceCap = $derived(findCapTagForResource(capTags, resource.uri));
+
+	$effect(() => {
+		if (showResult && formResult) paymentOpen = false;
+	});
 
 	// Create form schema for reading resource
 	const formSchema: Schema = $derived({
@@ -54,6 +70,10 @@
 			onSubmit: async (value: unknown, _e: SubmitEvent) => {
 				const data = value as { uri: string };
 				loading = true;
+				// Ensure payment panel is visible for subsequent reads.
+				paymentOpen = true;
+				paymentNotificationsService.clearServer(serverPubkey);
+				open = true;
 				try {
 					if (!connectionState.connected) {
 						await mcpClientService.getClient(serverPubkey);
@@ -80,6 +100,9 @@
 		formResult = null;
 		formError = null;
 		showResult = false;
+		paymentNotificationsService.clearServer(serverPubkey);
+		paymentOpen = true;
+		open = true;
 	}
 </script>
 
@@ -88,9 +111,18 @@
 		class="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left shadow-sm hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none"
 	>
 		<div class="flex flex-col space-y-1">
-			<h3 class="text-lg leading-none font-semibold tracking-tight">
-				{resource.name || resource.uri}
-			</h3>
+			<div class="flex flex-wrap items-center gap-2">
+				<h3 class="text-lg leading-none font-semibold tracking-tight">
+					{resource.name || resource.uri}
+				</h3>
+				{#if resourceCap}
+					<span class="rounded bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
+						Paid · {formatCapTagPrice(resourceCap)}
+					</span>
+				{:else}
+					<span class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">Free</span>
+				{/if}
+			</div>
 			{#if resource.description}
 				<p class="text-sm text-muted-foreground">{resource.description}</p>
 			{/if}
@@ -103,6 +135,11 @@
 		class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 	>
 		<div class="border-t bg-muted/50 p-4">
+			{#if paymentState}
+				<div class="mb-4">
+					<PaymentStatusPanel payment={paymentState} open={paymentOpen} />
+				</div>
+			{/if}
 			{#if formError}
 				<div class="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
 					{formError}
@@ -210,8 +247,11 @@
 					</Collapsible.Root>
 				</div>
 			{:else if loading}
-				<div class="flex items-center justify-center py-8">
+				<div class="flex items-center justify-center gap-3 py-8">
 					<LoadingSpinner />
+					<span class="text-sm text-muted-foreground">
+						Waiting for the server… if payment is required, it will appear above.
+					</span>
 				</div>
 			{:else if $activeAccount}
 				<BasicForm {form} />

@@ -15,6 +15,13 @@
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import PaymentStatusPanel from '$lib/components/PaymentStatusPanel.svelte';
+	import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
+	import {
+		findCapTagForTool,
+		formatCapTagPrice,
+		parseCapTagsFromEvent
+	} from '$lib/services/payments/cep8-tags';
 	let {
 		tool,
 		connectionState,
@@ -32,6 +39,17 @@
 	let progressNotifications = $derived<McpProgressNotification[]>(
 		mcpClientService.getProgressNotifications(serverPubkey)
 	);
+	let paymentState = $derived(paymentNotificationsService.getLatestForServer(serverPubkey));
+	let paymentOpen = $state(true);
+
+	const initializeEvent = $derived(mcpClientService.getServerToolsListEvent(serverPubkey));
+	const capTags = $derived(parseCapTagsFromEvent(initializeEvent));
+	const toolCap = $derived(findCapTagForTool(capTags, tool.name));
+
+	$effect(() => {
+		// Auto-collapse when we have a final result.
+		if (showResult && formResult) paymentOpen = false;
+	});
 
 	// Collapsible state
 	let open = $state(false);
@@ -44,12 +62,17 @@
 			schema: tool.inputSchema as Schema,
 			onSubmit: async (data) => {
 				loading = true;
+				// Ensure the payment UI is visible for subsequent calls.
+				paymentOpen = true;
+				paymentNotificationsService.clearServer(serverPubkey);
 				try {
 					if (!connectionState.connected) {
 						await mcpClientService.getClient(serverPubkey);
 					}
 					formError = null;
 					formResult = null;
+					// Re-open the main collapsible so the user can see payment status / loading.
+					open = true;
 
 					// Call the tool with the form data
 					const result = await mcpClientService.callTool(
@@ -74,6 +97,10 @@
 		formResult = null;
 		formError = null;
 		showResult = false;
+		paymentNotificationsService.clearServer(serverPubkey);
+		// Keep payment panel visible for the next invocation.
+		paymentOpen = true;
+		open = true;
 	}
 </script>
 
@@ -82,7 +109,16 @@
 		class="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left shadow-sm hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none"
 	>
 		<div class="flex flex-col space-y-1">
-			<h3 class="text-lg leading-none font-semibold tracking-tight">{tool.name}</h3>
+			<div class="flex flex-wrap items-center gap-2">
+				<h3 class="text-lg leading-none font-semibold tracking-tight">{tool.name}</h3>
+				{#if toolCap}
+					<span class="rounded bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
+						Paid · {formatCapTagPrice(toolCap)}
+					</span>
+				{:else}
+					<span class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">Free</span>
+				{/if}
+			</div>
 			{#if tool.description}
 				<p class="text-sm text-muted-foreground">{tool.description}</p>
 			{/if}
@@ -95,6 +131,11 @@
 		class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 	>
 		<div class="border-t bg-muted/50 p-4">
+			{#if paymentState}
+				<div class="mb-4">
+					<PaymentStatusPanel payment={paymentState} open={paymentOpen} />
+				</div>
+			{/if}
 			{#if formError}
 				<div class="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
 					{formError}
@@ -226,7 +267,12 @@
 					{/if}
 				</div>
 			{:else if loading}
-				<LoadingSpinner />
+				<div class="flex items-center gap-3 py-2">
+					<LoadingSpinner />
+					<span class="text-sm text-muted-foreground">
+						Waiting for the server… if payment is required, it will appear above.
+					</span>
+				</div>
 			{:else if $activeAccount}
 				<BasicForm {form} />
 			{:else if !$activeAccount}

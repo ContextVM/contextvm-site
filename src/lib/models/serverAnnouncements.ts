@@ -22,6 +22,12 @@ export interface ServerAnnouncement {
 /** A helper function to parse server announcement events */
 export function parseServerInitializeMsg(event: Event): ServerAnnouncement | null {
 	try {
+		// Check for empty content before parsing
+		if (!event.content || event.content.trim() === '') {
+			console.warn('Server announcement has empty content, skipping:', event.id);
+			return null;
+		}
+
 		// Parse the content to get server capabilities
 		const content = JSON.parse(event.content);
 		const resultInContent = 'result' in content;

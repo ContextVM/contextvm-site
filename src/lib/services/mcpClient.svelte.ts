@@ -15,6 +15,10 @@ import { SvelteMap } from 'svelte/reactivity';
 import { relayStore, relayActions } from '../stores/relay-store.svelte';
 import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 import { browser } from '$app/environment';
+import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
+import { withClientPayments, PMI_BITCOIN_LIGHTNING_BOLT11 } from '@contextvm/sdk';
+import { UiOnlyPaymentHandler } from '$lib/services/payments/ui-payment-handler';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 
 export interface McpConnectionState {
 	connected: boolean;
@@ -32,6 +36,7 @@ export interface McpProgressNotification {
 // Relay pool is now per-client to avoid subscription conflicts
 export class McpClientService {
 	public clients = new SvelteMap<string, Client>();
+	private clientTransports = new SvelteMap<string, NostrClientTransport>();
 	private connectionStates = new SvelteMap<string, McpConnectionState>();
 	private progressNotifications = new SvelteMap<string, McpProgressNotification[]>();
 	private clientRelayPools = new SvelteMap<string, ApplesauceRelayPool>();
@@ -44,6 +49,7 @@ export class McpClientService {
 		loading: false,
 		error: null
 	};
+	private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
 	// Create a new relay pool for a specific client
 	private createRelayPool(): ApplesauceRelayPool {
@@ -89,7 +95,7 @@ export class McpClientService {
 	}
 
 	// Helper method to create a new transport for a client
-	private createTransport(serverPubkey: string): NostrClientTransport {
+	private createTransport(serverPubkey: string): Transport {
 		// Check if user is logged in
 		const currentAccount = activeAccount.getValue();
 		if (!currentAccount) {
@@ -101,11 +107,48 @@ export class McpClientService {
 			throw new Error('Failed to get signer from account');
 		}
 
-		return new NostrClientTransport({
+		const baseTransport = new NostrClientTransport({
 			signer,
 			relayHandler: this.getRelayPool(serverPubkey),
 			serverPubkey
 		});
+		this.clientTransports.set(serverPubkey, baseTransport);
+
+		// UI-only payments integration using the SDK middleware.
+		// - advertises PMIs via `pmi` tags
+		// - captures payment_required in our handler
+		// - does not attempt to pay
+		const uiHandler = new UiOnlyPaymentHandler({
+			pmi: PMI_BITCOIN_LIGHTNING_BOLT11,
+			serverPubkey
+		});
+		return withClientPayments(baseTransport, { handlers: [uiHandler] });
+	}
+
+	/**
+	 * Accessor for the last known server initialize event for a connected server.
+	 *
+	 * NOTE: `client.transport` may be wrapped (payments middleware), so callers should not
+	 * depend on `client.transport.getServerInitializeEvent()`.
+	 */
+	public getServerInitializeEvent(serverPubkey: string) {
+		return this.clientTransports.get(serverPubkey)?.getServerInitializeEvent();
+	}
+
+	public getServerToolsListEvent(serverPubkey: string) {
+		return this.clientTransports.get(serverPubkey)?.getServerToolsListEvent();
+	}
+
+	public getServerResourcesListEvent(serverPubkey: string) {
+		return this.clientTransports.get(serverPubkey)?.getServerResourcesListEvent();
+	}
+
+	public getServerResourceTemplatesListEvent(serverPubkey: string) {
+		return this.clientTransports.get(serverPubkey)?.getServerResourceTemplatesListEvent();
+	}
+
+	public getServerPromptsListEvent(serverPubkey: string) {
+		return this.clientTransports.get(serverPubkey)?.getServerPromptsListEvent();
 	}
 
 	// Reconnect all existing clients with the new relay pool
@@ -165,6 +208,10 @@ export class McpClientService {
 			const transport = this.createTransport(serverPubkey);
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
+
+			// Note: CEP-8 `payment_required` is captured by the payments middleware handler.
+			// We intentionally keep this UI-only iteration minimal and do not register a generic
+			// NotificationSchema handler here.
 			client.setNotificationHandler(ProgressNotificationSchema, async (req) => {
 				// Store progress notification
 				if (req.params?.progressToken) {
@@ -185,13 +232,10 @@ export class McpClientService {
 					);
 
 					if (existingIndex >= 0) {
-						console.log('updating existing progress notification');
 						existingNotifications[existingIndex] = notification;
 					} else {
-						console.log('adding new progress notification');
 						existingNotifications.push(notification);
 					}
-					console.log('existingNotifications', existingNotifications);
 					// Store updated notifications
 					// TODO: this is not being updated or reactive
 					this.progressNotifications.set(serverPubkey, existingNotifications);
@@ -224,6 +268,8 @@ export class McpClientService {
 		if (client) {
 			await client.close();
 			this.clients.delete(serverPubkey);
+			this.clientTransports.delete(serverPubkey);
+			paymentNotificationsService.clearServer(serverPubkey);
 			// Reset to default state
 			this.connectionStates.set(serverPubkey, { ...McpClientService.defaultConnectionState });
 		}
@@ -272,7 +318,7 @@ export class McpClientService {
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
-		return client.listTools();
+		return client.listTools(undefined, { timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS });
 	}
 
 	// List resources for a server
@@ -281,7 +327,9 @@ export class McpClientService {
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
-		return client.listResources();
+		return client.listResources(undefined, {
+			timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS
+		});
 	}
 
 	// List resources for a server
@@ -290,7 +338,9 @@ export class McpClientService {
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
-		return client.listResourceTemplates();
+		return client.listResourceTemplates(undefined, {
+			timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS
+		});
 	}
 
 	// List prompts for a server
@@ -299,7 +349,7 @@ export class McpClientService {
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
-		return client.listPrompts();
+		return client.listPrompts(undefined, { timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS });
 	}
 
 	// Call a tool on a server
@@ -313,11 +363,15 @@ export class McpClientService {
 			throw new Error('Not connected to server');
 		}
 
-		const result = await client.callTool({
-			name: toolName,
-			arguments: arguments_,
-			_meta: { progressToken: Math.random().toString(36).substring(2, 15) }
-		});
+		const result = await client.callTool(
+			{
+				name: toolName,
+				arguments: arguments_,
+				_meta: { progressToken: Math.random().toString(36).substring(2, 15) }
+			},
+			undefined,
+			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS, resetTimeoutOnProgress: true }
+		);
 		return result as CallToolResult;
 	}
 
@@ -327,7 +381,10 @@ export class McpClientService {
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
-		const result = await client.readResource({ uri });
+		const result = await client.readResource(
+			{ uri },
+			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS }
+		);
 		return result as ReadResourceResult;
 	}
 
@@ -341,7 +398,10 @@ export class McpClientService {
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
-		const result = await client.getPrompt({ name: promptName, arguments: arguments_ });
+		const result = await client.getPrompt(
+			{ name: promptName, arguments: arguments_ },
+			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS }
+		);
 		return result as GetPromptResult;
 	}
 

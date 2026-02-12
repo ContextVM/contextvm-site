@@ -2,10 +2,20 @@
 	import { formatUnixTimestamp, pubkeyToHexColor } from '$lib/utils';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import type { ServerAnnouncement } from '$lib/models/serverAnnouncements';
+	import { mcpClientService } from '$lib/services/mcpClient.svelte';
+	import {
+		parseCapTagsFromEvent,
+		parsePmiTagsFromEvent,
+		toParsedCapTags,
+		formatCapTagPrice
+	} from '$lib/services/payments/cep8-tags';
 
 	let { server }: { server: ServerAnnouncement } = $props();
 
 	const publishedAt = $derived(formatUnixTimestamp(server.created_at, true));
+
+	const initializeEvent = $derived(mcpClientService.getServerInitializeEvent(server.pubkey));
+	const serverPmis = $derived(parsePmiTagsFromEvent(initializeEvent));
 </script>
 
 <Card.Root>
@@ -42,6 +52,21 @@
 					>
 						Supported
 					</span>
+				</div>
+			{/if}
+
+			{#if serverPmis.length > 0}
+				<div>
+					<p class="text-sm font-medium text-muted-foreground">Payment methods (PMIs)</p>
+					<div class="mt-1 flex flex-wrap gap-2">
+						{#each serverPmis as pmi (pmi)}
+							<span
+								class="rounded-full bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground"
+							>
+								{pmi}
+							</span>
+						{/each}
+					</div>
 				</div>
 			{/if}
 		</div>
