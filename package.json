@@ -45,7 +45,7 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
-		"@contextvm/sdk": "^0.4.10",
+		"@contextvm/sdk": "^0.4.13",
 		"@sjsf/ajv8-validator": "^3.3.0",
 		"@sjsf/form": "^3.3.0",
 		"@sjsf/shadcn4-theme": "^3.3.0",
