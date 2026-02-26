@@ -1,0 +1,6 @@
+[submodule "awesome"]
+	path = awesome
+	url = https://github.com/contextvm/awesome
+[submodule "contextvm-docs"]
+	path = contextvm-docs
+	url = https://github.com/contextvm/contextvm-docs
