@@ -31,6 +31,7 @@
 	const faqsHref = $derived<`/faqs`>('/faqs');
 	const aboutHref = $derived<`/about`>('/about');
 	const blogHref = $derived<`/blog`>('/blog');
+	const assetBase = import.meta.env.BASE_URL;
 </script>
 
 <Seo
@@ -74,12 +75,12 @@
 
 		<div class="animate-fade-in-up z-10 mx-auto max-w-4xl px-4 text-center sm:px-0">
 			<img
-				src="/logo-black.svg"
+				src={`${assetBase}logo-black.svg`}
 				alt="ContextVM Logo"
 				class="mx-auto mb-6 h-24 w-auto sm:mb-8 sm:h-32 dark:hidden"
 			/>
 			<img
-				src="/logo-white.svg"
+				src={`${assetBase}logo-white.svg`}
 				alt="ContextVM Logo"
 				class="mx-auto mb-6 hidden h-24 w-auto sm:mb-8 sm:h-32 dark:block"
 			/>

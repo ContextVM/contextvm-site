@@ -7,6 +7,7 @@
 	const blogHref = $derived<`/blog`>('/blog');
 	const aboutHref = $derived<`/about`>('/about');
 	const faqsHref = $derived<`/faqs`>('/faqs');
+	const assetBase = import.meta.env.BASE_URL;
 </script>
 
 <footer class="border-t bg-muted/30">
@@ -15,8 +16,16 @@
 			<!-- Brand Section -->
 			<div class="space-y-4">
 				<div class="flex items-center space-x-2">
-					<img src="/logo-black.svg" alt="ContextVM Logo" class="h-8 w-auto dark:hidden" />
-					<img src="/logo-white.svg" alt="ContextVM Logo" class="hidden h-8 w-auto dark:block" />
+					<img
+						src={`${assetBase}logo-black.svg`}
+						alt="ContextVM Logo"
+						class="h-8 w-auto dark:hidden"
+					/>
+					<img
+						src={`${assetBase}logo-white.svg`}
+						alt="ContextVM Logo"
+						class="hidden h-8 w-auto dark:block"
+					/>
 					<span class="text-lg font-bold">ContextVM</span>
 				</div>
 				<p class="text-sm text-muted-foreground">

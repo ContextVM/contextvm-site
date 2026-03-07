@@ -14,6 +14,7 @@
 	const blogHref = $derived<`/blog`>('/blog');
 	const aboutHref = $derived<`/about`>('/about');
 	const faqsHref = $derived<`/faqs`>('/faqs');
+	const assetBase = import.meta.env.BASE_URL;
 </script>
 
 <header
@@ -26,12 +27,12 @@
 			class="flex items-center space-x-2 transition-transform duration-200 hover:scale-105"
 		>
 			<img
-				src="/logo-black.svg"
+				src={`${assetBase}logo-black.svg`}
 				alt="ContextVM Logo"
 				class="h-6 min-h-[24px] w-auto max-w-[120px] transition-opacity duration-200 hover:opacity-90 sm:h-8 dark:hidden"
 			/>
 			<img
-				src="/logo-white.svg"
+				src={`${assetBase}logo-white.svg`}
 				alt="ContextVM Logo"
 				class="hidden h-6 min-h-[24px] w-auto max-w-[120px] transition-opacity duration-200 hover:opacity-90 sm:h-8 dark:block"
 			/>

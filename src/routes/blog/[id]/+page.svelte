@@ -57,10 +57,12 @@
 		});
 	});
 
+	const assetBase = import.meta.env.BASE_URL;
+
 	// Dynamic SEO data for individual blog posts
 	let seoTitle = $state('Loading...');
 	let seoDescription = $state('Loading article...');
-	let seoImage = $state('/logo-black.svg');
+	let seoImage = $state(`${assetBase}logo-black.svg`);
 	let seoUrl = $state(`https://contextvm.com/blog/${page.params.id}`);
 	let seoType = $state('article' as 'website' | 'article');
 
@@ -73,7 +75,7 @@
 
 			seoTitle = articleTitle;
 			seoDescription = contentPreview;
-			seoImage = articleImage || '/logo-black.svg';
+			seoImage = articleImage || `${assetBase}logo-black.svg`;
 			seoUrl = `https://contextvm.com/blog/${page.params.id}`;
 			seoType = 'article';
 		}

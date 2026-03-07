@@ -38,11 +38,12 @@
 
 	const serversHref = $derived<`/servers`>('/servers');
 	const homeHref = $derived<`/`>('/');
+	const assetBase = import.meta.env.BASE_URL;
 
 	// Dynamic SEO data for server pages
 	let seoTitle = $state('Loading server...');
 	let seoDescription = $state('Loading server information...');
-	let seoImage = $state('/logo-black.svg');
+	let seoImage = $state(`${assetBase}logo-black.svg`);
 	let seoUrl = $state(`https://contextvm.com/s/${pubkey}`);
 	let seoType = $state('website' as 'website' | 'article');
 
@@ -59,7 +60,7 @@
 			const server = $serverQuery.data.server;
 			const serverName = server.name || 'Unnamed Server';
 			const serverAbout = server.about || 'No description available for this server.';
-			const serverPicture = server.picture || '/logo-black.svg';
+			const serverPicture = server.picture || `${assetBase}logo-black.svg`;
 
 			seoTitle = serverName;
 			seoDescription =
