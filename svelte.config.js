@@ -1,6 +1,9 @@
 import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
+const isGitHubPages = process.env.GITHUB_PAGES === 'true';
+const githubPagesBasePath = '/contextvm-site';
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	// Consult https://svelte.dev/docs/kit/integrations
@@ -11,6 +14,9 @@ const config = {
 		adapter: adapter({
 			fallback: 'index.html'
 		}),
+		paths: {
+			base: isGitHubPages ? githubPagesBasePath : ''
+		},
 		alias: {
 			'@/*': './path/to/lib/*'
 		},
