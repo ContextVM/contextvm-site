@@ -10,6 +10,7 @@ import {
 	SERVER_ANNOUNCEMENT_KIND,
 	TOOLS_LIST_KIND
 } from '@contextvm/sdk';
+import { kinds } from 'nostr-tools';
 
 // Create address loader
 export const addressLoader = createAddressLoader(relayPool, { eventStore });
@@ -80,6 +81,16 @@ export const createPromptsAnnouncementByPubkeyLoader = (pubkey: string, relays?:
 	return addressLoader({
 		pubkey,
 		kind: PROMPTS_LIST_KIND,
+		relays: selectedRelays
+	});
+};
+
+// Function to create a server relay list loader by pubkey with dynamic relays
+export const createServerRelayListByPubkeyLoader = (pubkey: string, relays?: string[]) => {
+	const selectedRelays = relays || relayStore.selectedRelays;
+	return addressLoader({
+		pubkey,
+		kind: kinds.RelayList,
 		relays: selectedRelays
 	});
 };

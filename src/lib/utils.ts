@@ -3,6 +3,7 @@ import { twMerge } from 'tailwind-merge';
 import type { InitializeResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ServerAnnouncement } from './models/serverAnnouncements';
 import { toast } from 'svelte-sonner';
+import { npubEncode, nprofileEncode, type ProfilePointer } from 'nostr-tools/nip19';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -113,4 +114,29 @@ export function slugify(text: string): string {
  */
 export function truncateString(str: string, limit: number = 164): string {
 	return str.length > limit ? str.slice(0, limit) + '...' : str;
+}
+
+export interface ServerIdentity {
+	pubkey: string;
+	npub: string;
+	nprofile: string;
+	relayHints: string[];
+	relaySource: 'kind10002' | 'announcement' | 'connection' | 'selected';
+	hasPublishedRelayList: boolean;
+}
+
+export function encodeServerIdentity(pubkey: string, relayHints: string[]): ServerIdentity {
+	const pointer: ProfilePointer = {
+		pubkey,
+		relays: relayHints.length > 0 ? relayHints : undefined
+	};
+
+	return {
+		pubkey,
+		npub: npubEncode(pubkey),
+		nprofile: nprofileEncode(pointer),
+		relayHints,
+		relaySource: 'selected',
+		hasPublishedRelayList: false
+	};
 }

@@ -2,6 +2,7 @@ export const serverKeys = {
 	all: ['servers'] as const,
 	detail: (pubkey: string) => [...serverKeys.all, pubkey] as const,
 	announcement: (pubkey: string) => [...serverKeys.detail(pubkey), 'announcement'] as const,
+	identity: (pubkey: string) => [...serverKeys.detail(pubkey), 'identity'] as const,
 	capabilities: {
 		all: (pubkey: string) => [...serverKeys.detail(pubkey), 'capabilities'] as const,
 		tools: (pubkey: string) => [...serverKeys.capabilities.all(pubkey), 'tools'] as const,

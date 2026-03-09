@@ -24,6 +24,7 @@
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 	import {
 		useServerAnnouncement,
+		useServerIdentity,
 		useServerTools,
 		useServerResources,
 		useServerResourceTemplates,
@@ -48,6 +49,7 @@
 	let seoType = $state('website' as 'website' | 'article');
 
 	const serverQuery = useServerAnnouncement(pubkey);
+	const serverIdentityQuery = useServerIdentity(pubkey);
 
 	// Get available capabilities when server data is loaded
 	let availableCapabilities = $derived(
@@ -514,7 +516,10 @@
 
 					<!-- Information Tab -->
 					<Tabs.Content value="info" class="mt-4">
-						<ServerInformationCard server={$serverQuery.data.server} />
+						<ServerInformationCard
+							server={$serverQuery.data.server}
+							identity={$serverIdentityQuery.data}
+						/>
 					</Tabs.Content>
 
 					<!-- Connection Tab -->
