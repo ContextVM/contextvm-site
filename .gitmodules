@@ -4,3 +4,6 @@
 [submodule "contextvm-docs"]
 	path = contextvm-docs
 	url = https://github.com/contextvm/contextvm-docs
+[submodule "cvmi"]
+	path = cvmi
+	url = https://github.com/contextvm/cvmi

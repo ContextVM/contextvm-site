@@ -12,6 +12,7 @@
 	const homeHref = $derived<`/`>('/');
 	const serversHref = $derived<`/servers`>('/servers');
 	const blogHref = $derived<`/blog`>('/blog');
+	const slidesHref = $derived<`/slides`>('/slides');
 	const aboutHref = $derived<`/about`>('/about');
 	const faqsHref = $derived<`/faqs`>('/faqs');
 	const assetBase = import.meta.env.BASE_URL;
@@ -73,6 +74,12 @@
 					class="text-foreground/60 transition-colors hover:text-foreground/80"
 				>
 					Docs
+				</a>
+				<a
+					href={resolve(slidesHref)}
+					class="text-foreground/60 transition-colors hover:text-foreground/80"
+				>
+					Slides
 				</a>
 				<a
 					href="https://github.com/contextvm"
@@ -142,6 +149,12 @@
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
 							>
 								Docs
+							</a>
+							<a
+								href={resolve(slidesHref)}
+								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+							>
+								Slides
 							</a>
 							<a
 								href="https://github.com/contextvm"

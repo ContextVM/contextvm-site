@@ -38,6 +38,17 @@ ContextVM presents a unique dual API that lets you write your server once and ma
 
 All the power from MCP is available out of the box as ContextVM plugs into the transport layer—AI compatibility, input and output schemas, rich primitives like tools, static resources, prompts, real-time communication, and bidirectional communication are all there. As MCP advances, ContextVM advances at the same pace. Build once, deploy everywhere.
 
+## The Current Ecosystem
+
+ContextVM is not just a protocol specification. It is an ecosystem of tools for different workflows:
+
+*   **TypeScript SDK**: Build ContextVM-native clients and servers with 'NostrClientTransport' and 'NostrServerTransport'
+*   **Gateway and Proxy patterns**: Bridge existing MCP servers and clients into the ContextVM network without rewriting them
+*   **CVMI**: A CLI for installing skills, exposing MCP servers to Nostr, and using remote ContextVM servers from standard MCP workflows
+*   **CtxCN**: A compiler-oriented tool in the broader ecosystem for building clients faster
+
+This means you can adopt ContextVM incrementally: start by bridging an existing MCP server, or go fully native with the SDK.
+
 ## Real Impact, Real Freedom
 
 **For the Community:** Build and share resources across many devices, forming a resilient network that no single failure can break.
@@ -48,7 +59,16 @@ All the power from MCP is available out of the box as ContextVM plugs into the t
 
 ## Built for Builders, Born from Community
 
-ContextVM operates purely at the transport layer, so your MCP-compliant servers and clients can adopt it with zero code changes. Our open-source toolkit includes:
+ContextVM operates at the transport layer, so MCP-compliant servers and clients can adopt it incrementally. Existing software can be bridged through gateway and proxy workflows, while new applications can build directly on the SDK and CVMI toolchain.
+
+## Public and Private by Design
+
+ContextVM supports both public and private servers.
+
+*   **Public servers** can publish announcements to relays for discovery
+*   **Private servers** can remain unannounced and be accessed only by known public key
+
+Both models preserve the same core ideas: portable identity, outbound-only connectivity, and optional payments.
 
 ## Our Principles
 
@@ -64,7 +84,7 @@ ContextVM is completely [open source](https://github.com/contextvm) and communit
 
 As AI and automation reshape our world, the infrastructure that powers these systems is becoming increasingly centralized. ContextVM offers an alternative—infrastructure that cannot be censored, services that cannot be deplatformed, and value that flows directly to creators.
 
-We are 100 percent open source and community governed. No venture capital, no exit strategy, no compromise on principles. Built for longevity, not for acquisition. Designed to be forked, modified, and owned by the community.
+We are 100 percent open source and community governed. Built for longevity, not for acquisition. Designed to be forked, modified, and owned by the community.
 
 We are not asking for permission to build this future. We are building it.
 

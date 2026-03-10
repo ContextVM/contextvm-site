@@ -1,0 +1,10 @@
+{
+	"version": 1,
+	"skills": {
+		"slides-skill": {
+			"source": "gzuuus/slides-skill",
+			"sourceType": "github",
+			"computedHash": "a1540fbd4cc55f964422c193d837a4f7f227128d48f23d4d68bfcc3808a1fdbd"
+		}
+	}
+}

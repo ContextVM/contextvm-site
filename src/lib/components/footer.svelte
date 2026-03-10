@@ -5,6 +5,7 @@
 
 	const serversHref = $derived<`/servers`>('/servers');
 	const blogHref = $derived<`/blog`>('/blog');
+	const slidesHref = $derived<`/slides`>('/slides');
 	const aboutHref = $derived<`/about`>('/about');
 	const faqsHref = $derived<`/faqs`>('/faqs');
 	const assetBase = import.meta.env.BASE_URL;
@@ -67,6 +68,12 @@
 						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
 					>
 						Blog
+					</a>
+					<a
+						href={resolve(slidesHref)}
+						class="text-sm text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Slides
 					</a>
 					<a
 						href={resolve(aboutHref)}

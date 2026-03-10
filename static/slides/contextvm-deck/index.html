@@ -1,0 +1,1209 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>ContextVM — Permissionless Infrastructure for MCP</title>
+		<style>
+			:root {
+				--bg: #07090f;
+				--bg-soft: #0d1220;
+				--panel: rgba(18, 24, 40, 0.78);
+				--panel-strong: rgba(12, 17, 29, 0.94);
+				--text: #eef2ff;
+				--muted: #97a3bf;
+				--accent: #f59e0b;
+				--accent-2: #8b5cf6;
+				--accent-3: #22c55e;
+				--danger: #fb7185;
+				--border: rgba(255, 255, 255, 0.12);
+				--shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+				--mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+				--sans:
+					Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+				background:
+					radial-gradient(circle at top left, rgba(139, 92, 246, 0.18), transparent 30%),
+					radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 28%),
+					linear-gradient(180deg, #06070c 0%, #0a1020 100%);
+				color: var(--text);
+				font-family: var(--sans);
+			}
+
+			body::before {
+				content: '';
+				position: fixed;
+				inset: 0;
+				background-image:
+					linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+					linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+				background-size: 32px 32px;
+				mask-image: radial-gradient(circle at center, black 55%, transparent 100%);
+				pointer-events: none;
+			}
+
+			.deck {
+				position: relative;
+				width: 100vw;
+				height: 100vh;
+			}
+
+			.slide {
+				position: absolute;
+				inset: 0;
+				display: grid;
+				grid-template-columns: 1fr;
+				grid-template-rows: auto 1fr auto;
+				gap: 24px;
+				padding: 56px 64px 76px;
+				opacity: 0;
+				transform: translateX(40px) scale(0.985);
+				transition:
+					opacity 320ms ease,
+					transform 320ms ease;
+				pointer-events: none;
+			}
+
+			.slide.active {
+				opacity: 1;
+				transform: translateX(0) scale(1);
+				pointer-events: auto;
+			}
+
+			.slide-header,
+			.slide-footer {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 16px;
+			}
+
+			.eyebrow,
+			.meta,
+			.kicker,
+			.mono {
+				font-family: var(--mono);
+			}
+
+			.eyebrow,
+			.pill,
+			.meta {
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				font-size: 12px;
+			}
+
+			.pill-row,
+			.pill-stack {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 10px;
+			}
+
+			.pill {
+				display: inline-flex;
+				align-items: center;
+				padding: 8px 12px;
+				border-radius: 999px;
+				background: rgba(255, 255, 255, 0.06);
+				border: 1px solid rgba(255, 255, 255, 0.08);
+				color: var(--muted);
+			}
+
+			.pill.accent {
+				color: #fff4d4;
+				border-color: rgba(245, 158, 11, 0.28);
+				background: rgba(245, 158, 11, 0.16);
+			}
+
+			.pill.purple {
+				color: #ece3ff;
+				border-color: rgba(139, 92, 246, 0.25);
+				background: rgba(139, 92, 246, 0.14);
+			}
+
+			.pill.green {
+				color: #dfffea;
+				border-color: rgba(34, 197, 94, 0.24);
+				background: rgba(34, 197, 94, 0.12);
+			}
+
+			h1,
+			h2,
+			h3,
+			p {
+				margin: 0;
+			}
+
+			h1 {
+				font-size: clamp(48px, 7vw, 84px);
+				line-height: 0.95;
+				letter-spacing: -0.04em;
+				max-width: 12ch;
+			}
+
+			h2 {
+				font-size: clamp(34px, 5vw, 56px);
+				line-height: 1.02;
+				letter-spacing: -0.03em;
+				max-width: 14ch;
+			}
+
+			.subhead {
+				font-size: clamp(20px, 2.2vw, 28px);
+				color: #d8ddf1;
+				max-width: 42ch;
+				line-height: 1.3;
+			}
+
+			.lede,
+			.body-copy,
+			.list,
+			td,
+			th {
+				font-size: 18px;
+				line-height: 1.45;
+			}
+
+			.lede {
+				max-width: 54ch;
+				color: #d7def5;
+			}
+
+			.body-copy {
+				color: var(--muted);
+			}
+
+			.hero {
+				align-self: center;
+			}
+
+			.hero-grid,
+			.two-col,
+			.three-col,
+			.four-col,
+			.comparison-grid {
+				display: grid;
+				gap: 20px;
+			}
+
+			.hero-grid,
+			.two-col,
+			.comparison-grid {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+			}
+
+			.three-col {
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+			}
+
+			.four-col {
+				grid-template-columns: repeat(4, minmax(0, 1fr));
+			}
+
+			.card,
+			.diagram-box,
+			.stat,
+			.quote,
+			.timeline-item,
+			table {
+				border-radius: 24px;
+				background: var(--panel);
+				border: 1px solid var(--border);
+				box-shadow: var(--shadow);
+				backdrop-filter: blur(14px);
+			}
+
+			.card,
+			.diagram-box,
+			.quote,
+			.timeline-item,
+			.stat {
+				padding: 22px;
+			}
+
+			.card h3,
+			.stat h3,
+			.diagram-box h3 {
+				font-size: 19px;
+				margin-bottom: 10px;
+			}
+
+			.card p,
+			.stat p,
+			.diagram-box p,
+			.quote p {
+				color: var(--muted);
+			}
+
+			.stat-value {
+				font-size: clamp(30px, 4vw, 52px);
+				line-height: 1;
+				font-weight: 700;
+				margin-bottom: 10px;
+			}
+
+			.accent-text {
+				color: var(--accent);
+			}
+
+			.purple-text {
+				color: #b89cff;
+			}
+
+			.green-text {
+				color: #6ee7a8;
+			}
+
+			.danger-text {
+				color: #ff9bb2;
+			}
+
+			.big-quote {
+				font-size: clamp(28px, 4vw, 44px);
+				line-height: 1.15;
+				max-width: 18ch;
+			}
+
+			.micro {
+				font-size: 13px;
+				color: var(--muted);
+			}
+
+			.diagram {
+				display: grid;
+				gap: 14px;
+			}
+
+			.diagram-layer {
+				padding: 18px 20px;
+				border-radius: 18px;
+				border: 1px solid rgba(255, 255, 255, 0.08);
+				background: rgba(255, 255, 255, 0.03);
+			}
+
+			.diagram-layer strong {
+				display: block;
+				margin-bottom: 6px;
+				font-size: 16px;
+			}
+
+			.arrow {
+				text-align: center;
+				font-size: 24px;
+				color: var(--accent);
+			}
+
+			ul.clean {
+				margin: 0;
+				padding-left: 18px;
+				color: var(--muted);
+				display: grid;
+				gap: 12px;
+			}
+
+			.flow {
+				display: grid;
+				gap: 14px;
+			}
+
+			.flow-step {
+				display: grid;
+				grid-template-columns: 72px 1fr;
+				gap: 16px;
+				align-items: start;
+				padding: 16px 18px;
+				border-radius: 18px;
+				background: rgba(255, 255, 255, 0.04);
+				border: 1px solid rgba(255, 255, 255, 0.08);
+			}
+
+			.flow-step .index {
+				width: 48px;
+				height: 48px;
+				border-radius: 14px;
+				display: grid;
+				place-items: center;
+				background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(139, 92, 246, 0.22));
+				color: #fff;
+				font-weight: 700;
+			}
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				overflow: hidden;
+			}
+
+			th,
+			td {
+				padding: 16px 18px;
+				border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+				vertical-align: top;
+			}
+
+			th {
+				text-align: left;
+				color: #f6f7fb;
+				background: rgba(255, 255, 255, 0.04);
+			}
+
+			tr:last-child td {
+				border-bottom: 0;
+			}
+
+			.timeline {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 18px;
+			}
+
+			.timeline-item {
+				position: relative;
+			}
+
+			.timeline-item::before {
+				content: '';
+				position: absolute;
+				inset: 0 auto 0 0;
+				width: 4px;
+				border-radius: 999px;
+				background: linear-gradient(180deg, var(--accent), var(--accent-2));
+			}
+
+			.timeline-item h3,
+			.timeline-item p,
+			.timeline-item ul {
+				margin-left: 12px;
+			}
+
+			.footer-line {
+				width: 100%;
+				height: 4px;
+				border-radius: 999px;
+				background: rgba(255, 255, 255, 0.08);
+				overflow: hidden;
+			}
+
+			.footer-line > span {
+				display: block;
+				height: 100%;
+				width: 0;
+				background: linear-gradient(90deg, var(--accent), var(--accent-2));
+				transition: width 240ms ease;
+			}
+
+			#controls {
+				position: fixed;
+				right: 24px;
+				bottom: 20px;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				z-index: 20;
+			}
+
+			button {
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				background: rgba(10, 16, 30, 0.88);
+				color: var(--text);
+				padding: 12px 14px;
+				border-radius: 14px;
+				cursor: pointer;
+				font: inherit;
+			}
+
+			button:hover {
+				border-color: rgba(245, 158, 11, 0.35);
+			}
+
+			.counter {
+				min-width: 68px;
+				text-align: center;
+				padding: 12px 14px;
+				border-radius: 14px;
+				background: rgba(10, 16, 30, 0.88);
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				font-family: var(--mono);
+			}
+
+			.notes {
+				display: none;
+			}
+
+			@media (max-width: 1100px) {
+				.slide {
+					padding: 42px 28px 92px;
+					overflow-y: auto;
+				}
+
+				.hero-grid,
+				.two-col,
+				.three-col,
+				.four-col,
+				.comparison-grid,
+				.timeline {
+					grid-template-columns: 1fr;
+				}
+
+				html,
+				body {
+					overflow: auto;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="deck">
+			<section class="slide active" data-title="Title" data-time="0:45">
+				<div class="slide-header">
+					<div class="pill-row">
+						<span class="pill accent">ContextVM</span>
+						<span class="pill purple">MCP over Nostr</span>
+					</div>
+					<div class="meta">01 / 13</div>
+				</div>
+				<div class="hero hero-grid">
+					<div>
+						<p class="eyebrow accent-text">Permissionless infrastructure for computation</p>
+						<h1>ContextVM turns MCP into a sovereign network.</h1>
+						<p class="subhead" style="margin-top: 24px">
+							Not another AI tool. A transport layer that keeps MCP intact while removing the
+							hosting assumptions of the old web stack.
+						</p>
+					</div>
+					<div class="diagram-box">
+						<p class="big-quote">
+							No domains. No static IPs. No OAuth gatekeepers.
+							<span class="accent-text">Just keys, relays, and globally reachable services.</span>
+						</p>
+						<div class="pill-stack" style="margin-top: 24px">
+							<span class="pill">builders</span>
+							<span class="pill">protocol hackers</span>
+							<span class="pill">MCP practitioners</span>
+							<span class="pill">freedom tech</span>
+						</div>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">Permissionless infrastructure for MCP</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Stakes" data-time="0:55">
+				<div class="slide-header">
+					<p class="eyebrow">02 — Stakes</p>
+					<div class="meta">Why this matters</div>
+				</div>
+				<div>
+					<h2>AI capabilities are spreading. Infrastructure power is not.</h2>
+					<p class="lede" style="margin-top: 20px">
+						Remote computation is becoming central to how apps, agents, and people work — but
+						deployment still gravitates toward hosted platforms, managed auth, centralized billing,
+						and platform-controlled reachability.
+					</p>
+					<div class="three-col" style="margin-top: 28px">
+						<div class="stat">
+							<div class="stat-value danger-text">Hosted</div>
+							<h3>Operational default</h3>
+							<p>
+								Most remote MCP patterns still assume cloud endpoints, DNS, TLS, and service
+								operators.
+							</p>
+						</div>
+						<div class="stat">
+							<div class="stat-value purple-text">Fragile</div>
+							<h3>Access model</h3>
+							<p>
+								Reachability, identity, and monetization are often mediated by external
+								infrastructure and gatekeepers.
+							</p>
+						</div>
+						<div class="stat">
+							<div class="stat-value green-text">Open?</div>
+							<h3>Unfinished promise</h3>
+							<p>
+								MCP is useful — but the network layer still decides who can deploy, discover, and
+								get paid.
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						The tension is not capability definition. It is transport and control.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Problem" data-time="1:00">
+				<div class="slide-header">
+					<p class="eyebrow">03 — Problem</p>
+					<div class="meta">Traditional remote MCP</div>
+				</div>
+				<div class="comparison-grid">
+					<div>
+						<h2>Remote MCP still inherits the old web stack.</h2>
+						<p class="lede" style="margin-top: 20px">
+							Useful protocol. Familiar deployment story. Same infrastructure bottlenecks: domains,
+							hosting, auth stacks, public endpoints, and centralized payment rails.
+						</p>
+						<div class="quote" style="margin-top: 24px">
+							<p class="big-quote">
+								The protocol can be open while the deployment model stays closed.
+							</p>
+						</div>
+					</div>
+					<div class="card">
+						<h3>Hidden requirements</h3>
+						<ul class="clean">
+							<li>Acquire and operate a public endpoint</li>
+							<li>Manage DNS, TLS, uptime, reverse proxies, and edge routing</li>
+							<li>Integrate OAuth, API keys, sessions, or account systems</li>
+							<li>Rely on external payment or marketplace infrastructure</li>
+							<li>Expose builders to policy, platform, and hosting constraints</li>
+						</ul>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						The old web stack is the permission layer hiding beneath “remote.”
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Thesis" data-time="0:55">
+				<div class="slide-header">
+					<p class="eyebrow">04 — Thesis</p>
+					<div class="meta">Do not replace MCP</div>
+				</div>
+				<div class="hero-grid">
+					<div>
+						<h2>Free MCP by changing its transport assumptions.</h2>
+						<p class="lede" style="margin-top: 20px">
+							ContextVM runs MCP over Nostr. The application model remains MCP. The transport
+							becomes public-key addressed, relay-routed, optionally encrypted, and globally
+							reachable without the normal hosting ceremony.
+						</p>
+					</div>
+					<div class="diagram-box">
+						<div class="pill-row" style="margin-bottom: 16px">
+							<span class="pill accent">Keep MCP semantics</span>
+							<span class="pill purple">Replace transport</span>
+						</div>
+						<div class="flow">
+							<div class="flow-step">
+								<div class="index">A</div>
+								<div>
+									<h3>MCP defines capabilities</h3>
+									<p>
+										Tools, resources, prompts, sampling, and request/response behavior remain
+										familiar.
+									</p>
+								</div>
+							</div>
+							<div class="flow-step">
+								<div class="index">B</div>
+								<div>
+									<h3>ContextVM defines transport</h3>
+									<p>
+										Messages ride through relays as Nostr events, signed by keys instead of tied to
+										endpoints.
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">Core thesis: hosted service model → sovereign network model.</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Architecture" data-time="1:05">
+				<div class="slide-header">
+					<p class="eyebrow">05 — Mechanism</p>
+					<div class="meta">Three-layer architecture</div>
+				</div>
+				<div class="two-col">
+					<div>
+						<h2>Three layers. Clear separation of concerns.</h2>
+						<p class="lede" style="margin-top: 20px">
+							ContextVM is easiest to understand as a transport layer inserted under MCP and above
+							the Nostr relay network.
+						</p>
+					</div>
+					<div class="diagram-box">
+						<div class="diagram">
+							<div class="diagram-layer">
+								<strong>MCP Application Layer</strong>
+								<span class="body-copy"
+									>Tools, resources, prompts, sampling, and client/server behavior.</span
+								>
+							</div>
+							<div class="arrow">↓</div>
+							<div class="diagram-layer">
+								<strong>ContextVM Transport Layer</strong>
+								<span class="body-copy"
+									>Nostr event wrapping, public key identity, signing, verification, encryption,
+									relay coordination.</span
+								>
+							</div>
+							<div class="arrow">↓</div>
+							<div class="diagram-layer">
+								<strong>Nostr Relay Network</strong>
+								<span class="body-copy"
+									>Relay connectivity and message propagation across an open event network.</span
+								>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">Keep the app semantics. Replace the transport substrate.</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Security" data-time="1:00">
+				<div class="slide-header">
+					<p class="eyebrow">06 — Identity &amp; security</p>
+					<div class="meta">Keys instead of accounts</div>
+				</div>
+				<div class="three-col">
+					<div class="card">
+						<h3>Identity</h3>
+						<p>
+							Servers and clients are addressed by public keys, not by domain ownership or account
+							records in a central database.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Integrity</h3>
+						<p>
+							Messages are signed and verifiable. Trust shifts toward cryptographic authorship and
+							relay-observable events.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Privacy</h3>
+						<p>
+							Private interactions can use regular gift wraps via kind
+							<span class="mono">1059</span> and ephemeral gift wraps via kind
+							<span class="mono">21059</span>, making encryption flexible instead of mandatory.
+						</p>
+					</div>
+				</div>
+				<div class="two-col" style="margin-top: 24px">
+					<div class="quote">
+						<p class="big-quote">
+							Reachability is public-key native. Privacy is layered on, not bolted on.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Why this matters</h3>
+						<ul class="clean">
+							<li>Public servers stay easy to discover</li>
+							<li>Private servers remain possible without bespoke account systems</li>
+							<li>The same identity primitive works for humans, apps, and LLM clients</li>
+						</ul>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						Identity, authorization hints, and privacy can share the same cryptographic substrate.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Discovery" data-time="1:10">
+				<div class="slide-header">
+					<p class="eyebrow">07 — Discovery &amp; communication</p>
+					<div class="meta">Event kinds and message flow</div>
+				</div>
+				<div class="two-col">
+					<div class="diagram-box">
+						<h3>Core event roles</h3>
+						<table>
+							<thead>
+								<tr>
+									<th>Kind</th>
+									<th>Purpose</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td><span class="mono">25910</span></td>
+									<td>Primary transport event for MCP messages, typically ephemeral</td>
+								</tr>
+								<tr>
+									<td><span class="mono">11316</span></td>
+									<td>Public server announcements for discovery</td>
+								</tr>
+								<tr>
+									<td><span class="mono">11317–11320</span></td>
+									<td>Capability and server metadata lists</td>
+								</tr>
+								<tr>
+									<td><span class="mono">1059/21059</span></td>
+									<td>Gift wrap envelope for encrypted payloads</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div class="card">
+						<h3>Transport without lifecycle lock-in</h3>
+						<div class="flow">
+							<div class="flow-step">
+								<div class="index">1</div>
+								<div>
+									<h3>JSON-RPC inside Nostr events</h3>
+									<p>
+										MCP messages ride as JSON-RPC payloads inside relay-routed events, so the
+										transport stays machine-readable and schema-aware.
+									</p>
+								</div>
+							</div>
+							<div class="flow-step">
+								<div class="index">2</div>
+								<div>
+									<h3>Stateful or stateless</h3>
+									<p>
+										Initialization can be used when helpful, but it is not required for stateless
+										operation. The protocol does not force one lifecycle model.
+									</p>
+								</div>
+							</div>
+							<div class="flow-step">
+								<div class="index">3</div>
+								<div>
+									<h3>Capabilities stay portable</h3>
+									<p>
+										Tools, resources, prompts, and notifications remain inspectable and composable
+										across clients, UIs, and agents.
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						Discovery, transport, and encrypted exchange compose through event kinds without forcing
+						a heavyweight session lifecycle.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Dual API" data-time="0:50">
+				<div class="slide-header">
+					<p class="eyebrow">08 — Dual API</p>
+					<div class="meta">One service, many consumers</div>
+				</div>
+				<div class="hero-grid">
+					<div>
+						<h2>One service can speak to humans, apps, and LLMs at once.</h2>
+						<p class="lede" style="margin-top: 20px">
+							MCP is fundamentally a JSON-RPC capability layer with structured schemas for tools,
+							resources, prompts, inputs, and outputs. That makes the same service legible to
+							software, renderable into human interfaces, and natively useful to LLMs that already
+							understand MCP.
+						</p>
+					</div>
+					<div class="diagram-box">
+						<div class="diagram">
+							<div class="diagram-layer">
+								<strong>Human user</strong>
+								<span class="body-copy"
+									>Schemas can drive forms, interfaces, and guided UX instead of forcing people into
+									raw protocol messages.</span
+								>
+							</div>
+							<div class="diagram-layer">
+								<strong>Application</strong>
+								<span class="body-copy"
+									>Structured JSON-RPC calls make services easy to integrate into workflows, bots,
+									and product surfaces.</span
+								>
+							</div>
+							<div class="diagram-layer">
+								<strong>LLM / MCP client</strong>
+								<span class="body-copy"
+									>MCP-native agents can discover and call the same capabilities without translation
+									into a second protocol.</span
+								>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						The same schemas can power software integration, human UI, and LLM-native tool use.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Ecosystem" data-time="1:05">
+				<div class="slide-header">
+					<p class="eyebrow">09 — Ecosystem</p>
+					<div class="meta">Incremental adoption paths</div>
+				</div>
+				<div>
+					<h2>SDK, gateway, proxy, CVMI — choose the layer you need.</h2>
+					<div class="four-col" style="margin-top: 28px">
+						<div class="card">
+							<h3>TypeScript SDK</h3>
+							<p>
+								Build native ContextVM clients and servers with transports, signers, relay handlers,
+								and payment integrations.
+							</p>
+						</div>
+						<div class="card">
+							<h3>Gateway</h3>
+							<p>
+								Expose an existing MCP server to the ContextVM network without rewriting its
+								application semantics.
+							</p>
+						</div>
+						<div class="card">
+							<h3>Proxy</h3>
+							<p>
+								Connect standard MCP clients to remote ContextVM services by translating transport
+								expectations.
+							</p>
+						</div>
+						<div class="card">
+							<h3>CVMI</h3>
+							<p>
+								Use the CLI as the Swiss Army knife for serving, using, testing, and exploring the
+								ecosystem.
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						Adoption does not require all-or-nothing migration. ContextVM meets builders where they
+						are.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Use cases" data-time="1:00">
+				<div class="slide-header">
+					<p class="eyebrow">10 — Use cases</p>
+					<div class="meta">What becomes practical</div>
+				</div>
+				<div class="three-col">
+					<div class="timeline-item">
+						<p class="pill accent" style="display: inline-flex; margin-bottom: 12px">public</p>
+						<h3>Open utility servers</h3>
+						<p>
+							Publish capabilities to the network and let any compatible client discover and use
+							them.
+						</p>
+					</div>
+					<div class="timeline-item">
+						<p class="pill purple" style="display: inline-flex; margin-bottom: 12px">private</p>
+						<h3>Encrypted personal services</h3>
+						<p>
+							Run private agents, assistants, or device services addressed by keys and shielded by
+							gift wrapping.
+						</p>
+					</div>
+					<div class="timeline-item">
+						<p class="pill green" style="display: inline-flex; margin-bottom: 12px">local-first</p>
+						<h3>Garage deployment</h3>
+						<p>
+							Ship services from home labs, laptops, or community infrastructure without first
+							becoming a cloud operator.
+						</p>
+					</div>
+				</div>
+				<div class="two-col" style="margin-top: 24px">
+					<div class="card">
+						<h3>Community-owned infra</h3>
+						<p>
+							Co-ops, collectives, and small teams can expose capabilities globally without
+							outsourcing the trust boundary to platform intermediaries.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Monetized services</h3>
+						<p>
+							With CEP-8, services can advertise pricing and negotiate settlement through PMIs,
+							keeping payment rails extensible instead of hard-wired to a single network.
+						</p>
+					</div>
+				</div>
+				<div class="three-col" style="margin-top: 24px">
+					<div class="card">
+						<h3>Trust and reputation engines</h3>
+						<p>
+							Projects like Relatr and Wotrlay show how relay-visible computation can shape
+							reputation, moderation, and trust-aware routing.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Sovereign personal software</h3>
+						<p>
+							Blovm, Nutoff, and KeePass-CVM point to a world where storage, wallets, and secrets
+							management remain user-controlled but globally reachable.
+						</p>
+					</div>
+					<div class="card">
+						<h3>Composable public services</h3>
+						<p>
+							Geo servers, analytics tools, media metadata services, and experimental AI apps become
+							reusable network primitives instead of siloed products.
+						</p>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						ContextVM lowers the infrastructure threshold for globally reachable computation.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Comparison" data-time="1:10">
+				<div class="slide-header">
+					<p class="eyebrow">11 — Comparison / proof</p>
+					<div class="meta">Traditional remote MCP vs ContextVM</div>
+				</div>
+				<div class="diagram-box">
+					<table>
+						<thead>
+							<tr>
+								<th>Dimension</th>
+								<th>Traditional remote MCP</th>
+								<th>ContextVM</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>Addressing</td>
+								<td>Domain, URL, public endpoint</td>
+								<td>Public keys plus relay reachability</td>
+							</tr>
+							<tr>
+								<td>Deployment assumptions</td>
+								<td>Cloud or managed hosting, edge config, TLS, uptime stack</td>
+								<td>Any node that can sign, relay, and speak the protocol</td>
+							</tr>
+							<tr>
+								<td>Identity model</td>
+								<td>Accounts, API keys, OAuth, custom auth</td>
+								<td>Cryptographic identity with optional encrypted payloads</td>
+							</tr>
+							<tr>
+								<td>Discovery</td>
+								<td>Directories, docs, manual endpoint sharing</td>
+								<td>Relay-published announcements and capability events</td>
+							</tr>
+							<tr>
+								<td>Payments</td>
+								<td>Usually separate, platform-specific, externally mediated</td>
+								<td>
+									PMI-based and payment-rail agnostic, with pricing and settlement negotiated at the
+									protocol layer
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						ContextVM is not just “MCP elsewhere.” It changes who gets to participate on practical
+						terms.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Tradeoffs" data-time="1:00">
+				<div class="slide-header">
+					<p class="eyebrow">12 — Tradeoffs &amp; maturity</p>
+					<div class="meta">Credibility over hype</div>
+				</div>
+				<div class="timeline">
+					<div class="timeline-item">
+						<h3>Running protocol, still expanding</h3>
+						<p>
+							ContextVM is already powering services in production. The spec is still being refined
+							because the network is alive, not because the model is unproven.
+						</p>
+					</div>
+					<div class="timeline-item">
+						<h3>Relay-native advantage</h3>
+						<p>
+							By building on Nostr, ContextVM inherits an existing open communication fabric instead
+							of waiting for a new network to be invented from scratch.
+						</p>
+					</div>
+					<div class="timeline-item">
+						<h3>Ecosystem headroom</h3>
+						<p>
+							Payments, discovery, encryption, client generation, UI generation, and new capability
+							patterns still have room to grow — which is exactly why this layer matters now.
+						</p>
+					</div>
+				</div>
+				<div class="quote" style="margin-top: 24px">
+					<p class="big-quote">
+						This is not a speculative idea. It is working infrastructure with room to become a much
+						larger ecosystem.
+					</p>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">
+						The opportunity is not whether ContextVM works. It is how much open computation can be
+						built on top of it.
+					</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+
+			<section class="slide" data-title="Closing" data-time="0:45">
+				<div class="slide-header">
+					<p class="eyebrow">13 — Closing</p>
+					<div class="meta">Memorable ending</div>
+				</div>
+				<div class="hero-grid">
+					<div>
+						<h2>
+							Computation should be publishable like speech — not deployable only with permission.
+						</h2>
+						<p class="subhead" style="margin-top: 24px">
+							ContextVM makes MCP portable, sovereign, and network-native by anchoring it in keys,
+							relays, and open protocols.
+						</p>
+					</div>
+					<div class="diagram-box">
+						<div class="pill-row" style="margin-bottom: 18px">
+							<span class="pill accent">no gates</span>
+							<span class="pill purple">no permission slips</span>
+							<span class="pill green">globally reachable computation</span>
+						</div>
+						<p class="big-quote">
+							ContextVM is the transport layer that lets open capability systems live on open
+							network infrastructure.
+						</p>
+					</div>
+				</div>
+				<div class="slide-footer">
+					<div class="micro">ContextVM — permissionless infrastructure for MCP.</div>
+					<div class="footer-line"><span></span></div>
+				</div>
+			</section>
+		</main>
+
+		<div id="controls">
+			<button id="prev" type="button">← Prev</button>
+			<div class="counter" id="counter">1 / 13</div>
+			<button id="next" type="button">Next →</button>
+		</div>
+
+		<script>
+			const slides = Array.from(document.querySelectorAll('.slide'));
+			const counter = document.getElementById('counter');
+			const prev = document.getElementById('prev');
+			const next = document.getElementById('next');
+			let current = 0;
+			let touchStartX = 0;
+			let touchEndX = 0;
+
+			function renderSlides(index) {
+				current = (index + slides.length) % slides.length;
+
+				slides.forEach((slide, i) => {
+					slide.classList.toggle('active', i === current);
+					const progress = slide.querySelector('.footer-line > span');
+					if (progress) {
+						progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+					}
+				});
+
+				counter.textContent = `${current + 1} / ${slides.length}`;
+				document.title = `ContextVM Deck — ${slides[current].dataset.title}`;
+			}
+
+			function nextSlide() {
+				renderSlides(current + 1);
+			}
+
+			function prevSlide() {
+				renderSlides(current - 1);
+			}
+
+			prev.addEventListener('click', prevSlide);
+			next.addEventListener('click', nextSlide);
+
+			document.addEventListener('keydown', (event) => {
+				if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+					event.preventDefault();
+					nextSlide();
+				}
+
+				if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+					event.preventDefault();
+					prevSlide();
+				}
+
+				if (event.key === 'Home') {
+					event.preventDefault();
+					renderSlides(0);
+				}
+
+				if (event.key === 'End') {
+					event.preventDefault();
+					renderSlides(slides.length - 1);
+				}
+			});
+
+			document.addEventListener(
+				'touchstart',
+				(event) => {
+					touchStartX = event.changedTouches[0].screenX;
+				},
+				{ passive: true }
+			);
+
+			document.addEventListener(
+				'touchend',
+				(event) => {
+					touchEndX = event.changedTouches[0].screenX;
+					const delta = touchEndX - touchStartX;
+
+					if (Math.abs(delta) < 40) return;
+					if (delta < 0) nextSlide();
+					else prevSlide();
+				},
+				{ passive: true }
+			);
+
+			renderSlides(0);
+		</script>
+	</body>
+</html>

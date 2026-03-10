@@ -92,10 +92,9 @@
 			<p
 				class="mx-auto mb-6 max-w-2xl px-4 text-base leading-relaxed text-muted-foreground sm:mb-8 sm:px-0 sm:text-lg"
 			>
-				A protocol built on MCP that enables servers and clients to communicate over the Nostr
-				network —an open communication network built on cryptographic, censorship-resistant, and
-				permissionless foundations. No domains, no OAuth, no port forwarding—just keys, relays, and
-				fun.
+				A transport layer for MCP over the Nostr network—an open communication network built on
+				cryptographic, censorship-resistant, and permissionless foundations. No domains, no OAuth,
+				no port forwarding—just keys, relays, and optional payments.
 			</p>
 
 			<p class="mx-auto mb-6 max-w-2xl px-4 text-lg font-semibold text-foreground sm:mb-8 sm:px-0">
@@ -610,8 +609,8 @@
 								<p class="text-sm text-muted-foreground">
 									Use the official MCP SDK to build a server, or pick any existing MCP server. If
 									you're using TypeScript, our SDK provides native Nostr transports that plug
-									directly into MCP servers. For existing servers, use the Gateway CLI to expose
-									them—just define your private key and relays.
+									directly into MCP servers. For existing servers, use CVMI or the Gateway to expose
+									them over Nostr.
 								</p>
 							</div>
 						</div>
@@ -626,11 +625,20 @@
 								</h3>
 								<p class="text-sm text-muted-foreground">
 									If your client is in TypeScript, use our SDK to build a client with Nostr
-									transport. Want to use your server with AI models? Use the Proxy CLI to expose it
-									as a regular MCP server in any MCP host application.
+									transport. Want to use remote ContextVM servers from a standard MCP host? Use CVMI
+									or the Proxy pattern to bridge Nostr transport to regular MCP workflows.
 								</p>
 							</div>
 						</div>
+					</div>
+
+					<div class="mt-8 rounded-lg border bg-card p-6 text-left shadow-sm">
+						<h3 class="mb-3 text-lg font-semibold">Start with CVMI</h3>
+						<p class="text-sm text-muted-foreground sm:text-base">
+							CVMI is the practical entry point into the ecosystem. Use it to install ContextVM
+							skills, expose MCP servers to Nostr with <code>cvmi serve</code>, and connect to
+							remote ContextVM servers from standard MCP clients with <code>cvmi use</code>.
+						</p>
 					</div>
 
 					<div class="mt-10 text-center">
@@ -672,6 +680,20 @@
 							Documentation
 						</div>
 						<div class="text-xs text-muted-foreground">Full protocol docs</div>
+					</a>
+
+					<a
+						href="https://github.com/contextvm/cvmi"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="group rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground hover:shadow-lg sm:p-6"
+					>
+						<div
+							class="text-base font-medium transition-colors group-hover:text-primary sm:text-lg"
+						>
+							CVMI
+						</div>
+						<div class="text-xs text-muted-foreground">CLI for skills, serve, and use</div>
 					</a>
 
 					<a

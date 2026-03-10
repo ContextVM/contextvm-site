@@ -85,16 +85,17 @@
 			answer: `<p>Deploying a service is simple:</p>
 			<h3>Deploying an existing MCP server:</h3>
 			<ol>
-				<li>Run the <strong>ContextVM Gateway</strong> alongside your existing MCP server</li>
-				<li>Provide your private key, a list of Nostr relays, and the command to start your server</li>
+				<li>Run <strong>CVMI</strong> alongside your existing MCP server using <code>cvmi serve</code></li>
+				<li>Provide your private key, relay configuration, and the command to start your server</li>
 				<li>Choose whether to publish a public announcement</li>
 			</ol>
 			<p>Example:</p>
-			<pre><code>gateway-cli --private-key "your-key" --relays "wss://relay.nostr.org,wss://nos.lol" --server "python my-server.py" --public  # omit this flag for private servers</code></pre>
+			<pre><code>npx cvmi serve -- npx -y @modelcontextprotocol/server-filesystem /tmp</code></pre>
+			<p>You can also configure <code>cvmi serve</code> with a config file or environment variables for keys, relays, remote MCP URLs, and visibility.</p>
 			<h3>Creating a MCP server with Nostr Transport:</h3>
 			<ol>
-				<li>Write the functionallity of your server, you can still using the MCP sdk</li>
-				<li>Instead of using one of the transports of the MCP sdk use the <code>NostrServerTransport</code> from the <code>@ContextVM/sdk</code></li>
+				<li>Write the functionality of your server using the MCP SDK</li>
+				<li>Instead of using one of the default MCP transports, use <code>NostrServerTransport</code> from <code>@contextvm/sdk</code></li>
 				<li>Run it</li>
 			</ol>
 			<p>Your service is instantly accessible—no public IP, DNS, or firewall configuration needed.</p>`
@@ -194,7 +195,8 @@
 		},
 		{
 			question: 'Is communication secure?',
-			answer: `<p>Yes. All client-server communication is <strong>end-to-end encrypted</strong> using Nostr's NIP-44 encryption standard. Messages are encrypted to the recipient's public key, so <strong>only the intended party can decrypt them</strong>.</p>
+			answer: `<p>Yes. ContextVM communication is always <strong>signed</strong>, and it supports <strong>end-to-end encryption</strong> using Nostr's NIP-44 encryption standard when encryption is enabled by the client and server.</p>
+			<p>When encrypted, messages are encrypted to the recipient's public key, so <strong>only the intended party can decrypt them</strong>.</p>
 			<p>Even if a relay is compromised, attackers cannot:</p>
 			<ul>
 				<li>Read message content</li>
@@ -202,6 +204,16 @@
 				<li>Modify messages without detection</li>
 			</ul>
 			<p>This ensures confidentiality, integrity, and non-repudiation across untrusted networks.</p>`
+		},
+		{
+			question: 'What is CVMI?',
+			answer: `<p><strong>CVMI</strong> (ContextVM Interface) is the CLI tool for working with the ContextVM ecosystem.</p>
+			<ul>
+				<li><strong><code>cvmi add</code></strong>: install ContextVM skills and guidance</li>
+				<li><strong><code>cvmi serve</code></strong>: expose an MCP server to the Nostr network</li>
+				<li><strong><code>cvmi use</code></strong>: connect to a remote ContextVM server from a standard MCP client workflow</li>
+			</ul>
+			<p>It is the most practical way to get started today if you want to explore the protocol without building everything from scratch.</p>`
 		},
 		{
 			question: 'How are payments handled?',
@@ -339,14 +351,15 @@
 			question: 'How can I get started?',
 			answer: `<ol>
 				<li><strong>Learn</strong>: Explore the full documentation at <a href="https://docs.contextvm.org" target="_blank" rel="noopener noreferrer">docs.contextvm.org</a></li>
-				<li><strong>Deploy a Server</strong>:
-					<pre><code>curl -fsSL https://raw.githubusercontent.com/contextvm/gateway-cli/main/install.sh | bash
-gateway-cli --private-key "your-key" --relays "wss://relay.nostr.org" --server python my-mcp-server.py</code></pre>
-					<p>(Omit <code>--public</code> for private servers)</p>
+				<li><strong>Install skills</strong>:
+					<pre><code>npx cvmi add
+npx cvmi add --skill overview</code></pre>
 				</li>
-				<li><strong>Connect a Client</strong>:
-					<pre><code>curl -fsSL https://raw.githubusercontent.com/contextvm/proxy-cli/main/install.sh | bash
-proxy-cli --private-key "your-key" --relays "wss://relay.nostr.org" --server-pubkey "npub1..."</code></pre>
+				<li><strong>Deploy a server</strong>:
+					<pre><code>npx cvmi serve -- npx -y @modelcontextprotocol/server-filesystem /tmp</code></pre>
+				</li>
+				<li><strong>Connect a client</strong>:
+					<pre><code>npx cvmi use npub1...</code></pre>
 				</li>
 				<li><strong>Build</strong>: Use the TypeScript SDK for custom integrations: <a href="https://github.com/contextvm/ts-sdk" target="_blank" rel="noopener noreferrer">github.com/contextvm/ts-sdk</a></li>
 				<li><strong>Engage</strong>: Follow us on Nostr or join community channels to contribute and stay updated.</li>
