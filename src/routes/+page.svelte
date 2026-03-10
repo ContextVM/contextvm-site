@@ -651,6 +651,15 @@
 						>
 							Read the docs for detailed instructions
 						</Button>
+						<Button
+							variant="outline"
+							href="https://github.com/contextvm/cvmi"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="transition-transform duration-200 hover:scale-105"
+						>
+							Get CVMI cli
+						</Button>
 					</div>
 				</div>
 			</div>
