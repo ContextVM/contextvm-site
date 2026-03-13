@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import { useServerAnnouncements } from '$lib/queries/serverQueries';
@@ -31,7 +31,8 @@
 	const faqsHref = $derived<`/faqs`>('/faqs');
 	const aboutHref = $derived<`/about`>('/about');
 	const blogHref = $derived<`/blog`>('/blog');
-	const assetBase = import.meta.env.BASE_URL;
+	const logoBlackSrc = asset('/logo-black.svg');
+	const logoWhiteSrc = asset('/logo-white.svg');
 </script>
 
 <Seo
@@ -75,12 +76,12 @@
 
 		<div class="animate-fade-in-up z-10 mx-auto max-w-4xl px-4 text-center sm:px-0">
 			<img
-				src={`${assetBase}logo-black.svg`}
+				src={logoBlackSrc}
 				alt="ContextVM Logo"
 				class="mx-auto mb-6 h-24 w-auto sm:mb-8 sm:h-32 dark:hidden"
 			/>
 			<img
-				src={`${assetBase}logo-white.svg`}
+				src={logoWhiteSrc}
 				alt="ContextVM Logo"
 				class="mx-auto mb-6 hidden h-24 w-auto sm:mb-8 sm:h-32 dark:block"
 			/>

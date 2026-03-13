@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
 	import Github from '@lucide/svelte/icons/github';
 	import Mail from '@lucide/svelte/icons/mail';
 
@@ -8,7 +8,8 @@
 	const slidesHref = $derived<`/slides`>('/slides');
 	const aboutHref = $derived<`/about`>('/about');
 	const faqsHref = $derived<`/faqs`>('/faqs');
-	const assetBase = import.meta.env.BASE_URL;
+	const logoBlackSrc = asset('/logo-black.svg');
+	const logoWhiteSrc = asset('/logo-white.svg');
 </script>
 
 <footer class="border-t bg-muted/30">
@@ -17,16 +18,8 @@
 			<!-- Brand Section -->
 			<div class="space-y-4">
 				<div class="flex items-center space-x-2">
-					<img
-						src={`${assetBase}logo-black.svg`}
-						alt="ContextVM Logo"
-						class="h-8 w-auto dark:hidden"
-					/>
-					<img
-						src={`${assetBase}logo-white.svg`}
-						alt="ContextVM Logo"
-						class="hidden h-8 w-auto dark:block"
-					/>
+					<img src={logoBlackSrc} alt="ContextVM Logo" class="h-8 w-auto dark:hidden" />
+					<img src={logoWhiteSrc} alt="ContextVM Logo" class="hidden h-8 w-auto dark:block" />
 					<span class="text-lg font-bold">ContextVM</span>
 				</div>
 				<p class="text-sm text-muted-foreground">

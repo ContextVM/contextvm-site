@@ -1,11 +1,16 @@
 <script lang="ts">
-	const assetBase = import.meta.env.BASE_URL;
+	import { asset } from '$app/paths';
+
+	const logoBlackSrc = asset('/logo-black.svg');
+	const favicon32Src = asset('/favicon-32x32.png');
+	const favicon16Src = asset('/favicon-16x16.png');
+	const appleTouchIconSrc = asset('/apple-touch-icon-180x180.png');
 
 	let {
 		title = 'ContextVM',
 		description = 'Discover and connect with Model Context Protocol (MCP) servers on Nostr.',
 		url = 'https://contextvm.com',
-		image = `${assetBase}logo-black.svg`,
+		image = logoBlackSrc,
 		type = 'website' as 'website' | 'article',
 		siteName = 'ContextVM',
 		locale = 'en_US'
@@ -41,8 +46,8 @@
 	<meta name="robots" content="index, follow" />
 
 	<!-- Favicon references -->
-	<link rel="icon" href={`${assetBase}favicon-32x32.png`} sizes="32x32" />
-	<link rel="icon" href={`${assetBase}favicon-16x16.png`} sizes="16x16" />
-	<link rel="apple-touch-icon" href={`${assetBase}apple-touch-icon-180x180.png`} />
+	<link rel="icon" href={favicon32Src} sizes="32x32" />
+	<link rel="icon" href={favicon16Src} sizes="16x16" />
+	<link rel="apple-touch-icon" href={appleTouchIconSrc} />
 	<link rel="canonical" href={url} />
 </svelte:head>

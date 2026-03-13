@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
 	import Github from '@lucide/svelte/icons/github';
 	import Menu from '@lucide/svelte/icons/menu';
 	import ThemeToggle from './theme-toggle.svelte';
@@ -15,7 +15,8 @@
 	const slidesHref = $derived<`/slides`>('/slides');
 	const aboutHref = $derived<`/about`>('/about');
 	const faqsHref = $derived<`/faqs`>('/faqs');
-	const assetBase = import.meta.env.BASE_URL;
+	const logoBlackSrc = asset('/logo-black.svg');
+	const logoWhiteSrc = asset('/logo-white.svg');
 </script>
 
 <header
@@ -28,12 +29,12 @@
 			class="flex items-center space-x-2 transition-transform duration-200 hover:scale-105"
 		>
 			<img
-				src={`${assetBase}logo-black.svg`}
+				src={logoBlackSrc}
 				alt="ContextVM Logo"
 				class="h-6 min-h-[24px] w-auto max-w-[120px] transition-opacity duration-200 hover:opacity-90 sm:h-8 dark:hidden"
 			/>
 			<img
-				src={`${assetBase}logo-white.svg`}
+				src={logoWhiteSrc}
 				alt="ContextVM Logo"
 				class="hidden h-6 min-h-[24px] w-auto max-w-[120px] transition-opacity duration-200 hover:opacity-90 sm:h-8 dark:block"
 			/>

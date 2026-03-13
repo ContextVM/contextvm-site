@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { CONTEXTVM_PUBKEY } from '$lib/constants';
 	import { eventStore } from '$lib/services/eventStore';
@@ -57,12 +57,12 @@
 		});
 	});
 
-	const assetBase = import.meta.env.BASE_URL;
+	const logoBlackSrc = asset('/logo-black.svg');
 
 	// Dynamic SEO data for individual blog posts
 	let seoTitle = $state('Loading...');
 	let seoDescription = $state('Loading article...');
-	let seoImage = $state(`${assetBase}logo-black.svg`);
+	let seoImage = $state(logoBlackSrc);
 	let seoUrl = $state(`https://contextvm.com/blog/${page.params.id}`);
 	let seoType = $state('article' as 'website' | 'article');
 
@@ -75,7 +75,7 @@
 
 			seoTitle = articleTitle;
 			seoDescription = contentPreview;
-			seoImage = articleImage || `${assetBase}logo-black.svg`;
+			seoImage = articleImage || logoBlackSrc;
 			seoUrl = `https://contextvm.com/blog/${page.params.id}`;
 			seoType = 'article';
 		}
