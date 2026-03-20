@@ -3,11 +3,7 @@ import { RelayPool } from 'applesauce-relay';
 // Create a single relay pool instance for the entire application
 export const relayPool = new RelayPool();
 
-export const defaultRelays = [
-	'wss://relay.contextvm.org',
-	'wss://relay2.contextvm.org',
-	'wss://cvm.otherstuff.ai'
-];
+export const defaultRelays = ['wss://relay.contextvm.org', 'wss://relay2.contextvm.org'];
 
 export const commonRelays = [
 	'wss://relay.damus.io',
