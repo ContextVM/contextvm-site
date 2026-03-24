@@ -1,5 +1,5 @@
 import { activeAccount } from '$lib/services/accountManager.svelte';
-import { ApplesauceRelayPool, NostrClientTransport } from '@contextvm/sdk';
+import { NostrClientTransport } from '@contextvm/sdk';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
 	type ListPromptsResult,
@@ -12,13 +12,11 @@ import {
 	ProgressNotificationSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { SvelteMap } from 'svelte/reactivity';
-import { relayStore, relayActions } from '../stores/relay-store.svelte';
-import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
-import { browser } from '$app/environment';
 import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
 import { withClientPayments, PMI_BITCOIN_LIGHTNING_BOLT11 } from '@contextvm/sdk';
 import { UiOnlyPaymentHandler } from '$lib/services/payments/ui-payment-handler';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { decodeServerIdentifier } from '$lib/utils';
 
 export interface McpConnectionState {
 	connected: boolean;
@@ -33,13 +31,13 @@ export interface McpProgressNotification {
 	message?: string;
 	timestamp: number;
 }
-// Relay pool is now per-client to avoid subscription conflicts
+
 export class McpClientService {
 	public clients = new SvelteMap<string, Client>();
 	private clientTransports = new SvelteMap<string, NostrClientTransport>();
 	private connectionStates = new SvelteMap<string, McpConnectionState>();
 	private progressNotifications = new SvelteMap<string, McpProgressNotification[]>();
-	private clientRelayPools = new SvelteMap<string, ApplesauceRelayPool>();
+	private serverIdentifiers = new SvelteMap<string, string>();
 	private static readonly clientConfig = {
 		name: 'ContextVM Web Client',
 		version: '1.0.0'
@@ -51,51 +49,25 @@ export class McpClientService {
 	};
 	private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
-	// Create a new relay pool for a specific client
-	private createRelayPool(): ApplesauceRelayPool {
-		if (!browser) {
-			throw new Error('Relay pool can only be created on client side');
-		}
-		return new ApplesauceRelayPool(relayStore.selectedRelays);
+	constructor() {}
+
+	private getServerKey(serverIdentifier: string): string {
+		return decodeServerIdentifier(serverIdentifier)?.pubkey ?? serverIdentifier;
 	}
 
-	// Get or create a relay pool for a specific client
-	private getRelayPool(serverPubkey: string): ApplesauceRelayPool {
-		let relayPool = this.clientRelayPools.get(serverPubkey);
-		if (!relayPool) {
-			relayPool = this.createRelayPool();
-			this.clientRelayPools.set(serverPubkey, relayPool);
-		}
-		return relayPool;
+	public setServerIdentifier(serverIdentifier: string): string {
+		const serverKey = this.getServerKey(serverIdentifier);
+		this.serverIdentifiers.set(serverKey, serverIdentifier);
+		return serverKey;
 	}
 
-	// Update relay pool for a specific client
-	private updateRelayPoolForClient(serverPubkey: string): void {
-		if (!browser) return;
-
-		// Create new relay pool for this client
-		const newRelayPool = this.createRelayPool();
-		this.clientRelayPools.set(serverPubkey, newRelayPool);
-	}
-
-	constructor() {
-		// Register callback for relay changes
-		if (browser) {
-			relayActions.onRelayChange(() => {
-				// Update relay pools for all connected clients
-				for (const serverPubkey of this.clients.keys()) {
-					this.updateRelayPoolForClient(serverPubkey);
-				}
-
-				if (this.clients.size > 0) {
-					dialogState.dialogId = DIALOG_IDS.RELAY_CHANGE;
-				}
-			});
-		}
+	private getPreferredServerIdentifier(serverIdentifier: string): string {
+		const serverKey = this.getServerKey(serverIdentifier);
+		return this.serverIdentifiers.get(serverKey) ?? serverIdentifier;
 	}
 
 	// Helper method to create a new transport for a client
-	private createTransport(serverPubkey: string): Transport {
+	private createTransport(serverIdentifier: string): Transport {
 		// Check if user is logged in
 		const currentAccount = activeAccount.getValue();
 		if (!currentAccount) {
@@ -107,12 +79,14 @@ export class McpClientService {
 			throw new Error('Failed to get signer from account');
 		}
 
+		const serverKey = this.setServerIdentifier(serverIdentifier);
+		const preferredIdentifier = this.getPreferredServerIdentifier(serverIdentifier);
+
 		const baseTransport = new NostrClientTransport({
 			signer,
-			relayHandler: this.getRelayPool(serverPubkey),
-			serverPubkey
+			serverPubkey: preferredIdentifier
 		});
-		this.clientTransports.set(serverPubkey, baseTransport);
+		this.clientTransports.set(serverKey, baseTransport);
 
 		// UI-only payments integration using the SDK middleware.
 		// - advertises PMIs via `pmi` tags
@@ -120,7 +94,7 @@ export class McpClientService {
 		// - does not attempt to pay
 		const uiHandler = new UiOnlyPaymentHandler({
 			pmi: PMI_BITCOIN_LIGHTNING_BOLT11,
-			serverPubkey
+			serverPubkey: serverKey
 		});
 		return withClientPayments(baseTransport, { handlers: [uiHandler] });
 	}
@@ -131,27 +105,37 @@ export class McpClientService {
 	 * NOTE: `client.transport` may be wrapped (payments middleware), so callers should not
 	 * depend on `client.transport.getServerInitializeEvent()`.
 	 */
-	public getServerInitializeEvent(serverPubkey: string) {
-		return this.clientTransports.get(serverPubkey)?.getServerInitializeEvent();
+	public getServerInitializeEvent(serverIdentifier: string) {
+		return this.clientTransports
+			.get(this.getServerKey(serverIdentifier))
+			?.getServerInitializeEvent();
 	}
 
-	public getServerToolsListEvent(serverPubkey: string) {
-		return this.clientTransports.get(serverPubkey)?.getServerToolsListEvent();
+	public getServerToolsListEvent(serverIdentifier: string) {
+		return this.clientTransports
+			.get(this.getServerKey(serverIdentifier))
+			?.getServerToolsListEvent();
 	}
 
-	public getServerResourcesListEvent(serverPubkey: string) {
-		return this.clientTransports.get(serverPubkey)?.getServerResourcesListEvent();
+	public getServerResourcesListEvent(serverIdentifier: string) {
+		return this.clientTransports
+			.get(this.getServerKey(serverIdentifier))
+			?.getServerResourcesListEvent();
 	}
 
-	public getServerResourceTemplatesListEvent(serverPubkey: string) {
-		return this.clientTransports.get(serverPubkey)?.getServerResourceTemplatesListEvent();
+	public getServerResourceTemplatesListEvent(serverIdentifier: string) {
+		return this.clientTransports
+			.get(this.getServerKey(serverIdentifier))
+			?.getServerResourceTemplatesListEvent();
 	}
 
-	public getServerPromptsListEvent(serverPubkey: string) {
-		return this.clientTransports.get(serverPubkey)?.getServerPromptsListEvent();
+	public getServerPromptsListEvent(serverIdentifier: string) {
+		return this.clientTransports
+			.get(this.getServerKey(serverIdentifier))
+			?.getServerPromptsListEvent();
 	}
 
-	// Reconnect all existing clients with the new relay pool
+	// Reconnect all existing clients using their preferred server identifier.
 	public async reconnectAllClients(): Promise<void> {
 		for (const [serverPubkey, client] of this.clients) {
 			try {
@@ -162,16 +146,12 @@ export class McpClientService {
 					error: null
 				});
 
-				// Close existing client
 				await client.close();
 
-				// Create new transport with updated relay pool for this client
-				const transport = this.createTransport(serverPubkey);
+				const transport = this.createTransport(this.getPreferredServerIdentifier(serverPubkey));
 
-				// Connect with new transport
 				await client.connect(transport);
 
-				// Set connected state
 				this.connectionStates.set(serverPubkey, {
 					connected: true,
 					loading: false,
@@ -190,43 +170,37 @@ export class McpClientService {
 	}
 
 	// Get or create a client for a specific server
-	async getClient(serverPubkey: string): Promise<Client | null> {
+	async getClient(serverIdentifier: string): Promise<Client | null> {
+		const serverKey = this.setServerIdentifier(serverIdentifier);
 		// Check if we already have a client for this server
-		const existingClient = this.clients.get(serverPubkey);
+		const existingClient = this.clients.get(serverKey);
 		if (existingClient) {
 			return existingClient;
 		}
 
 		try {
-			// Set loading state
-			this.connectionStates.set(serverPubkey, {
+			this.connectionStates.set(serverKey, {
 				connected: false,
 				loading: true,
 				error: null
 			});
 
-			const transport = this.createTransport(serverPubkey);
+			const transport = this.createTransport(serverIdentifier);
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
 
-			// Note: CEP-8 `payment_required` is captured by the payments middleware handler.
-			// We intentionally keep this UI-only iteration minimal and do not register a generic
-			// NotificationSchema handler here.
+			// CEP-8 `payment_required` is captured by the payments middleware handler.
 			client.setNotificationHandler(ProgressNotificationSchema, async (req) => {
-				// Store progress notification
 				if (req.params?.progressToken) {
 					const notification: McpProgressNotification = {
 						progressToken: req.params.progressToken as string,
-						serverPubkey: serverPubkey,
+						serverPubkey: serverKey,
 						progress: req.params.progress || 0,
 						message: req.params.message,
 						timestamp: Date.now()
 					};
 
-					// Get existing notifications for this server
-					const existingNotifications = this.progressNotifications.get(serverPubkey) || [];
-
-					// Update or add the notification
+					const existingNotifications = this.progressNotifications.get(serverKey) || [];
 					const existingIndex = existingNotifications.findIndex(
 						(n) => n.progressToken === notification.progressToken
 					);
@@ -236,15 +210,12 @@ export class McpClientService {
 					} else {
 						existingNotifications.push(notification);
 					}
-					// Store updated notifications
-					// TODO: this is not being updated or reactive
-					this.progressNotifications.set(serverPubkey, existingNotifications);
+					this.progressNotifications.set(serverKey, existingNotifications);
 				}
 			});
-			this.clients.set(serverPubkey, client);
+			this.clients.set(serverKey, client);
 
-			// Set connected state
-			this.connectionStates.set(serverPubkey, {
+			this.connectionStates.set(serverKey, {
 				connected: true,
 				loading: false,
 				error: null
@@ -253,7 +224,7 @@ export class McpClientService {
 			return client;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Failed to connect to server';
-			this.connectionStates.set(serverPubkey, {
+			this.connectionStates.set(serverKey, {
 				connected: false,
 				loading: false,
 				error: errorMessage
@@ -263,26 +234,30 @@ export class McpClientService {
 	}
 
 	// Disconnect from a server
-	async disconnect(serverPubkey: string): Promise<void> {
-		const client = this.clients.get(serverPubkey);
+	async disconnect(serverIdentifier: string): Promise<void> {
+		const serverKey = this.getServerKey(serverIdentifier);
+		const client = this.clients.get(serverKey);
 		if (client) {
 			await client.close();
-			this.clients.delete(serverPubkey);
-			this.clientTransports.delete(serverPubkey);
-			paymentNotificationsService.clearServer(serverPubkey);
-			// Reset to default state
-			this.connectionStates.set(serverPubkey, { ...McpClientService.defaultConnectionState });
+			this.clients.delete(serverKey);
+			this.clientTransports.delete(serverKey);
+			this.serverIdentifiers.delete(serverKey);
+			paymentNotificationsService.clearServer(serverKey);
+			this.connectionStates.set(serverKey, { ...McpClientService.defaultConnectionState });
 		}
 	}
 
 	// Get connection state for a server
-	getConnectionState(serverPubkey: string): McpConnectionState {
-		return this.connectionStates.get(serverPubkey) ?? McpClientService.defaultConnectionState;
+	getConnectionState(serverIdentifier: string): McpConnectionState {
+		return (
+			this.connectionStates.get(this.getServerKey(serverIdentifier)) ??
+			McpClientService.defaultConnectionState
+		);
 	}
 
 	// Get progress notifications for a server
-	getProgressNotifications(serverPubkey: string): McpProgressNotification[] {
-		return this.progressNotifications.get(serverPubkey) || [];
+	getProgressNotifications(serverIdentifier: string): McpProgressNotification[] {
+		return this.progressNotifications.get(this.getServerKey(serverIdentifier)) || [];
 	}
 
 	// Get all progress notifications across all servers
@@ -295,26 +270,27 @@ export class McpClientService {
 	}
 
 	// Clear progress notifications for a server
-	clearProgressNotifications(serverPubkey: string): void {
-		this.progressNotifications.delete(serverPubkey);
+	clearProgressNotifications(serverIdentifier: string): void {
+		this.progressNotifications.delete(this.getServerKey(serverIdentifier));
 	}
 
 	// Clear a specific progress notification
-	clearProgressNotification(serverPubkey: string, progressToken: string): void {
-		const notifications = this.progressNotifications.get(serverPubkey);
+	clearProgressNotification(serverIdentifier: string, progressToken: string): void {
+		const serverKey = this.getServerKey(serverIdentifier);
+		const notifications = this.progressNotifications.get(serverKey);
 		if (notifications) {
 			const filteredNotifications = notifications.filter((n) => n.progressToken !== progressToken);
 			if (filteredNotifications.length > 0) {
-				this.progressNotifications.set(serverPubkey, filteredNotifications);
+				this.progressNotifications.set(serverKey, filteredNotifications);
 			} else {
-				this.progressNotifications.delete(serverPubkey);
+				this.progressNotifications.delete(serverKey);
 			}
 		}
 	}
 
 	// List tools for a server
-	async listTools(serverPubkey: string): Promise<ListToolsResult> {
-		const client = await this.getClient(serverPubkey);
+	async listTools(serverIdentifier: string): Promise<ListToolsResult> {
+		const client = await this.getClient(serverIdentifier);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
@@ -322,8 +298,8 @@ export class McpClientService {
 	}
 
 	// List resources for a server
-	async listResources(serverPubkey: string): Promise<ListResourcesResult> {
-		const client = await this.getClient(serverPubkey);
+	async listResources(serverIdentifier: string): Promise<ListResourcesResult> {
+		const client = await this.getClient(serverIdentifier);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
@@ -333,8 +309,8 @@ export class McpClientService {
 	}
 
 	// List resources for a server
-	async listResourcesTemplates(serverPubkey: string): Promise<ListResourceTemplatesResult> {
-		const client = await this.getClient(serverPubkey);
+	async listResourcesTemplates(serverIdentifier: string): Promise<ListResourceTemplatesResult> {
+		const client = await this.getClient(serverIdentifier);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
@@ -344,8 +320,8 @@ export class McpClientService {
 	}
 
 	// List prompts for a server
-	async listPrompts(serverPubkey: string): Promise<ListPromptsResult> {
-		const client = await this.getClient(serverPubkey);
+	async listPrompts(serverIdentifier: string): Promise<ListPromptsResult> {
+		const client = await this.getClient(serverIdentifier);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
@@ -354,11 +330,11 @@ export class McpClientService {
 
 	// Call a tool on a server
 	async callTool(
-		serverPubkey: string,
+		serverIdentifier: string,
 		toolName: string,
 		arguments_: Record<string, unknown>
 	): Promise<CallToolResult> {
-		const client = await this.getClient(serverPubkey);
+		const client = await this.getClient(serverIdentifier);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
@@ -376,8 +352,8 @@ export class McpClientService {
 	}
 
 	// Read a resource from a server
-	async readResource(serverPubkey: string, uri: string): Promise<ReadResourceResult> {
-		const client = await this.getClient(serverPubkey);
+	async readResource(serverIdentifier: string, uri: string): Promise<ReadResourceResult> {
+		const client = await this.getClient(serverIdentifier);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
@@ -390,11 +366,11 @@ export class McpClientService {
 
 	// Get a prompt from a server
 	async getPrompt(
-		serverPubkey: string,
+		serverIdentifier: string,
 		promptName: string,
 		arguments_: Record<string, string> = {}
 	): Promise<GetPromptResult> {
-		const client = await this.getClient(serverPubkey);
+		const client = await this.getClient(serverIdentifier);
 		if (!client) {
 			throw new Error('Not connected to server');
 		}
@@ -405,22 +381,21 @@ export class McpClientService {
 		return result as GetPromptResult;
 	}
 
-	// Clean up all relay pools and clients
+	// Clean up all clients and cached identifier state.
 	public async destroy(): Promise<void> {
-		// Close all clients
 		for (const [serverPubkey, client] of this.clients) {
 			try {
 				await client.close();
 			} catch (error) {
 				console.error(`Error closing client for ${serverPubkey}:`, error);
 			}
-
-			// Clear all data
-			this.clients.clear();
-			this.connectionStates.clear();
-			this.progressNotifications.clear();
-			this.clientRelayPools.clear();
 		}
+
+		this.clients.clear();
+		this.clientTransports.clear();
+		this.connectionStates.clear();
+		this.progressNotifications.clear();
+		this.serverIdentifiers.clear();
 	}
 }
 

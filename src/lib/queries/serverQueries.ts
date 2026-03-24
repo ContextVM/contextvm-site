@@ -28,27 +28,28 @@ interface ParsedRelayList {
 	hasPublishedRelayList: boolean;
 }
 
-export function useServerAnnouncement(pubkey: string) {
+export function useServerAnnouncement(pubkey: string, relayHints: string[] = []) {
 	return createQuery<ServerQueryResult | null>({
 		queryKey: serverKeys.announcement(pubkey),
 		queryFn: async () => {
 			let server: ServerAnnouncement | null = null;
-			const event = await lastValueFrom(createServerAnnouncementByPubkeyLoader(pubkey));
+			const event = await lastValueFrom(
+				createServerAnnouncementByPubkeyLoader(pubkey, getLookupRelays(relayHints))
+			);
 			server = parseServerInitializeMsg(event);
 			return { server, isPublic: true };
 		}
 	});
 }
 
-export function useServerIdentity(pubkey: string) {
+export function useServerIdentity(pubkey: string, explicitRelayHints: string[] = []) {
 	return createQuery<ServerIdentity>({
 		queryKey: serverKeys.identity(pubkey),
 		queryFn: async () => {
-			const relayListEvent = await fetchServerRelayListEvent(pubkey);
+			const relayListEvent = await fetchServerRelayListEvent(pubkey, explicitRelayHints);
 			const publishedRelayList = parseServerRelayList(relayListEvent);
-			const announcementEvent = await fetchServerAnnouncementEvent(pubkey);
+			const announcementEvent = await fetchServerAnnouncementEvent(pubkey, explicitRelayHints);
 			const announcementRelays = getEventSeenRelays(announcementEvent);
-			const connectionRelays = getConnectionRelayHints(pubkey);
 			const selectedRelays = relayStore.selectedRelays;
 
 			const relayHints =
@@ -56,8 +57,8 @@ export function useServerIdentity(pubkey: string) {
 					? publishedRelayList.relays
 					: announcementRelays.length > 0
 						? announcementRelays
-						: connectionRelays.length > 0
-							? connectionRelays
+						: explicitRelayHints.length > 0
+							? explicitRelayHints
 							: selectedRelays;
 
 			const relaySource: ServerIdentity['relaySource'] =
@@ -65,8 +66,8 @@ export function useServerIdentity(pubkey: string) {
 					? 'kind10002'
 					: announcementRelays.length > 0
 						? 'announcement'
-						: connectionRelays.length > 0
-							? 'connection'
+						: explicitRelayHints.length > 0
+							? 'nprofile'
 							: 'selected';
 
 			return {
@@ -79,24 +80,24 @@ export function useServerIdentity(pubkey: string) {
 	});
 }
 
-export function useServerTools(pubkey: string, isPublic: boolean) {
+export function useServerTools(pubkey: string, isPublic: boolean, relayHints: string[] = []) {
 	return createQuery<Tool[] | null>({
 		queryKey: serverKeys.capabilities.tools(pubkey),
 		queryFn: async () => {
 			if (isPublic) {
-				return await fetchToolsFromAnnouncements(pubkey);
+				return await fetchToolsFromAnnouncements(pubkey, relayHints);
 			}
 			return await fetchToolsFromMCP(pubkey);
 		}
 	});
 }
 
-export function useServerResources(pubkey: string, isPublic: boolean) {
+export function useServerResources(pubkey: string, isPublic: boolean, relayHints: string[] = []) {
 	return createQuery<Resource[] | null>({
 		queryKey: serverKeys.capabilities.resources(pubkey),
 		queryFn: async () => {
 			if (isPublic) {
-				return await fetchResourcesFromAnnouncements(pubkey);
+				return await fetchResourcesFromAnnouncements(pubkey, relayHints);
 			}
 
 			return await fetchResourcesFromMCP(pubkey);
@@ -104,32 +105,41 @@ export function useServerResources(pubkey: string, isPublic: boolean) {
 	});
 }
 
-export function useServerResourceTemplates(pubkey: string, isPublic: boolean) {
+export function useServerResourceTemplates(
+	pubkey: string,
+	isPublic: boolean,
+	relayHints: string[] = []
+) {
 	return createQuery<ResourceTemplate[] | null>({
 		queryKey: serverKeys.capabilities.resourceTemplates(pubkey),
 		queryFn: async () => {
 			if (isPublic) {
-				return await fetchResourceTemplatesFromAnnouncements(pubkey);
+				return await fetchResourceTemplatesFromAnnouncements(pubkey, relayHints);
 			}
 			return await fetchResourceTemplatesFromMCP(pubkey);
 		}
 	});
 }
 
-export function useServerPrompts(pubkey: string, isPublic: boolean) {
+export function useServerPrompts(pubkey: string, isPublic: boolean, relayHints: string[] = []) {
 	return createQuery<Prompt[] | null>({
 		queryKey: serverKeys.capabilities.prompts(pubkey),
 		queryFn: async () => {
 			if (isPublic) {
-				return await fetchPromptsFromAnnouncements(pubkey);
+				return await fetchPromptsFromAnnouncements(pubkey, relayHints);
 			}
 			return await fetchPromptsFromMCP(pubkey);
 		}
 	});
 }
 
-async function fetchToolsFromAnnouncements(pubkey: string): Promise<Tool[] | null> {
-	const event = await lastValueFrom(createToolsAnnouncementByPubkeyLoader(pubkey));
+async function fetchToolsFromAnnouncements(
+	pubkey: string,
+	relayHints: string[] = []
+): Promise<Tool[] | null> {
+	const event = await lastValueFrom(
+		createToolsAnnouncementByPubkeyLoader(pubkey, getLookupRelays(relayHints))
+	);
 	if (!event) return null;
 	try {
 		const content = JSON.parse(event.content);
@@ -150,8 +160,13 @@ async function fetchToolsFromMCP(pubkey: string): Promise<Tool[]> {
 	}
 }
 
-async function fetchResourcesFromAnnouncements(pubkey: string): Promise<Resource[] | null> {
-	const event = await lastValueFrom(createResourcesAnnouncementByPubkeyLoader(pubkey));
+async function fetchResourcesFromAnnouncements(
+	pubkey: string,
+	relayHints: string[] = []
+): Promise<Resource[] | null> {
+	const event = await lastValueFrom(
+		createResourcesAnnouncementByPubkeyLoader(pubkey, getLookupRelays(relayHints))
+	);
 	if (!event) return null;
 	try {
 		const content = JSON.parse(event.content);
@@ -173,9 +188,12 @@ async function fetchResourcesFromMCP(pubkey: string): Promise<Resource[]> {
 }
 
 async function fetchResourceTemplatesFromAnnouncements(
-	pubkey: string
+	pubkey: string,
+	relayHints: string[] = []
 ): Promise<ResourceTemplate[] | null> {
-	const event = await lastValueFrom(createResourcesTemplatesAnnouncementByPubkeyLoader(pubkey));
+	const event = await lastValueFrom(
+		createResourcesTemplatesAnnouncementByPubkeyLoader(pubkey, getLookupRelays(relayHints))
+	);
 	if (!event) return null;
 	try {
 		const content = JSON.parse(event.content);
@@ -196,8 +214,13 @@ async function fetchResourceTemplatesFromMCP(pubkey: string): Promise<ResourceTe
 	}
 }
 
-async function fetchPromptsFromAnnouncements(pubkey: string): Promise<Prompt[] | null> {
-	const event = await lastValueFrom(createPromptsAnnouncementByPubkeyLoader(pubkey));
+async function fetchPromptsFromAnnouncements(
+	pubkey: string,
+	relayHints: string[] = []
+): Promise<Prompt[] | null> {
+	const event = await lastValueFrom(
+		createPromptsAnnouncementByPubkeyLoader(pubkey, getLookupRelays(relayHints))
+	);
 	if (!event) return null;
 	try {
 		const content = JSON.parse(event.content);
@@ -227,20 +250,34 @@ export function useServerAnnouncements() {
 	});
 }
 
-async function fetchServerAnnouncementEvent(pubkey: string): Promise<NostrEvent | null> {
+async function fetchServerAnnouncementEvent(
+	pubkey: string,
+	relayHints: string[] = []
+): Promise<NostrEvent | null> {
 	try {
-		return await lastValueFrom(createServerAnnouncementByPubkeyLoader(pubkey));
+		return await lastValueFrom(
+			createServerAnnouncementByPubkeyLoader(pubkey, getLookupRelays(relayHints))
+		);
 	} catch (_error) {
 		return null;
 	}
 }
 
-async function fetchServerRelayListEvent(pubkey: string): Promise<NostrEvent | null> {
+async function fetchServerRelayListEvent(
+	pubkey: string,
+	relayHints: string[] = []
+): Promise<NostrEvent | null> {
 	try {
-		return await lastValueFrom(createServerRelayListByPubkeyLoader(pubkey));
+		return await lastValueFrom(
+			createServerRelayListByPubkeyLoader(pubkey, getLookupRelays(relayHints))
+		);
 	} catch (_error) {
 		return null;
 	}
+}
+
+function getLookupRelays(relayHints: string[] = []): string[] {
+	return mergeRelaySets(relayHints, relayStore.selectedRelays);
 }
 
 function parseServerRelayList(event: NostrEvent | null): ParsedRelayList {
@@ -267,14 +304,4 @@ function parseServerRelayList(event: NostrEvent | null): ParsedRelayList {
 
 function getEventSeenRelays(event: NostrEvent | null | undefined): string[] {
 	return event ? mergeRelaySets(getSeenRelays(event)) : [];
-}
-
-function getConnectionRelayHints(pubkey: string): string[] {
-	return mergeRelaySets(
-		getEventSeenRelays(mcpClientService.getServerInitializeEvent(pubkey)),
-		getEventSeenRelays(mcpClientService.getServerToolsListEvent(pubkey)),
-		getEventSeenRelays(mcpClientService.getServerResourcesListEvent(pubkey)),
-		getEventSeenRelays(mcpClientService.getServerResourceTemplatesListEvent(pubkey)),
-		getEventSeenRelays(mcpClientService.getServerPromptsListEvent(pubkey))
-	);
 }

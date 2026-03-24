@@ -2,7 +2,12 @@
 	import { asset, resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { parseServerInitializeMsg } from '$lib/models/serverAnnouncements';
-	import { getAvailableCapabilities, pubkeyToHexColor, copyToClipboard } from '$lib/utils';
+	import {
+		getAvailableCapabilities,
+		pubkeyToHexColor,
+		copyToClipboard,
+		decodeServerIdentifier
+	} from '$lib/utils';
 	import { goto } from '$app/navigation';
 	import { Collapsible } from 'bits-ui';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
@@ -35,7 +40,11 @@
 	import Seo from '$lib/components/SEO.svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 
-	const pubkey = page.params.pubkey ?? '';
+	const requestedIdentifier = page.params.pubkey ?? '';
+	const decodedIdentifier = $derived(decodeServerIdentifier(requestedIdentifier));
+	const pubkey = $derived(decodedIdentifier?.pubkey ?? requestedIdentifier);
+	const connectionIdentifier = $derived(decodedIdentifier?.original ?? requestedIdentifier);
+	const relayHints = $derived(decodedIdentifier?.relayHints ?? []);
 
 	const serversHref = $derived<`/servers`>('/servers');
 	const homeHref = $derived<`/`>('/');
@@ -45,11 +54,11 @@
 	let seoTitle = $state('Loading server...');
 	let seoDescription = $state('Loading server information...');
 	let seoImage = $state(logoBlackSrc);
-	let seoUrl = $state(`https://contextvm.com/s/${pubkey}`);
+	let seoUrl = $state(`https://contextvm.com/s/${requestedIdentifier}`);
 	let seoType = $state('website' as 'website' | 'article');
 
-	const serverQuery = useServerAnnouncement(pubkey);
-	const serverIdentityQuery = useServerIdentity(pubkey);
+	const serverQuery = $derived(useServerAnnouncement(pubkey, relayHints));
+	const serverIdentityQuery = $derived(useServerIdentity(pubkey, relayHints));
 
 	// Get available capabilities when server data is loaded
 	let availableCapabilities = $derived(
@@ -68,7 +77,7 @@
 			seoDescription =
 				serverAbout.length > 160 ? serverAbout.substring(0, 160) + '...' : serverAbout;
 			seoImage = serverPicture;
-			seoUrl = `https://contextvm.com/s/${pubkey}`;
+			seoUrl = `https://contextvm.com/s/${requestedIdentifier}`;
 			seoType = 'website';
 		}
 	});
@@ -77,32 +86,38 @@
 	let toolsQuery = $derived(
 		$serverQuery.isFetched && availableCapabilities.includes('tools')
 			? $serverQuery.data?.isPublic
-				? useServerTools(pubkey, true)
-				: useServerTools(pubkey, false)
+				? useServerTools(pubkey, true, relayHints)
+				: useServerTools(pubkey, false, relayHints)
 			: undefined
 	);
 
 	let resourcesQuery = $derived(
 		$serverQuery.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
-				? useServerResources(pubkey, true)
-				: useServerResources(pubkey, false)
+				? useServerResources(pubkey, true, relayHints)
+				: useServerResources(pubkey, false, relayHints)
 			: undefined
 	);
 	let resourceTemplatesQuery = $derived(
 		$serverQuery.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
-				? useServerResourceTemplates(pubkey, true)
-				: useServerResourceTemplates(pubkey, false)
+				? useServerResourceTemplates(pubkey, true, relayHints)
+				: useServerResourceTemplates(pubkey, false, relayHints)
 			: undefined
 	);
 	let promptsQuery = $derived(
 		$serverQuery.isFetched && availableCapabilities.includes('prompts')
 			? $serverQuery.data?.isPublic
-				? useServerPrompts(pubkey, true)
-				: useServerPrompts(pubkey, false)
+				? useServerPrompts(pubkey, true, relayHints)
+				: useServerPrompts(pubkey, false, relayHints)
 			: undefined
 	);
+
+	$effect(() => {
+		if (connectionIdentifier) {
+			mcpClientService.setServerIdentifier(connectionIdentifier);
+		}
+	});
 
 	// Connection state
 	const connectionState = $derived<McpConnectionState>(mcpClientService.getConnectionState(pubkey));
@@ -123,7 +138,7 @@
 		try {
 			// For public servers, just get the client
 			if ($serverQuery.data?.isPublic) {
-				await mcpClientService.getClient(pubkey);
+				await mcpClientService.getClient(connectionIdentifier);
 				// Refetch all queries after connection, but only if they exist
 				$serverQuery.refetch();
 				if ($toolsQuery) $toolsQuery.refetch();
@@ -132,10 +147,10 @@
 				if ($promptsQuery) $promptsQuery.refetch();
 				return;
 			} else {
-				const client = await mcpClientService.getClient(pubkey);
+				const client = await mcpClientService.getClient(connectionIdentifier);
 				if (!client) return null;
 
-				const initializeEvent = mcpClientService.getServerInitializeEvent(pubkey);
+				const initializeEvent = mcpClientService.getServerInitializeEvent(connectionIdentifier);
 				if (!initializeEvent) return null;
 				const server = parseServerInitializeMsg(initializeEvent);
 				queryClient.setQueryData(serverKeys.announcement(pubkey), { server, isPublic: false });
@@ -150,7 +165,7 @@
 		if (!$serverQuery.data?.server) return;
 
 		try {
-			await mcpClientService.disconnect(pubkey);
+			await mcpClientService.disconnect(connectionIdentifier);
 		} catch (err) {
 			console.error('Disconnection error:', err);
 		}
@@ -313,11 +328,7 @@
 						<Tabs.Content value="tools" class="mt-4 flex flex-col gap-2">
 							{#if serverData.tools}
 								{#each serverData.tools as tool (tool.name)}
-									<ToolCallForm
-										{tool}
-										serverPubkey={$serverQuery.data.server.pubkey}
-										{connectionState}
-									/>
+									<ToolCallForm {tool} serverPubkey={connectionIdentifier} {connectionState} />
 								{/each}
 							{:else}
 								<Card.Root>
@@ -369,7 +380,7 @@
 									{#each serverData.resources as resource (resource.uri)}
 										<ResourceReadForm
 											{resource}
-											serverPubkey={$serverQuery.data.server.pubkey}
+											serverPubkey={connectionIdentifier}
 											{connectionState}
 										/>
 									{/each}
@@ -392,7 +403,7 @@
 									{#each serverData.resourceTemplates as resourceTemplate (resourceTemplate.uriTemplate)}
 										<ResourceTemplateReadForm
 											{resourceTemplate}
-											serverPubkey={$serverQuery.data.server.pubkey}
+											serverPubkey={connectionIdentifier}
 											{connectionState}
 										/>
 									{/each}
@@ -456,11 +467,7 @@
 						<Tabs.Content value="prompts" class="mt-4 flex flex-col gap-2">
 							{#if serverData.prompts}
 								{#each serverData.prompts as prompt (prompt.name)}
-									<PromptGetForm
-										{prompt}
-										{connectionState}
-										serverPubkey={$serverQuery.data.server.pubkey}
-									/>
+									<PromptGetForm {prompt} {connectionState} serverPubkey={connectionIdentifier} />
 								{/each}
 							{:else}
 								<Card.Root>

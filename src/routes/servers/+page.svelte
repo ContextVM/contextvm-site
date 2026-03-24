@@ -1,13 +1,13 @@
 <script lang="ts">
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
-	import { useServerAnnouncements } from '$lib/queries/serverQueries';
+	import { useServerAnnouncement, useServerAnnouncements } from '$lib/queries/serverQueries';
 	import { eventStore } from '$lib/services/eventStore';
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 	import Seo from '$lib/components/SEO.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
-	import { isHexKey } from 'applesauce-core/helpers';
+	import { decodeServerIdentifier, encodeServerIdentity } from '$lib/utils';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 
@@ -22,15 +22,33 @@
 		}
 
 		const term = searchTerm.toLowerCase().trim();
+		const decodedIdentifier = decodeServerIdentifier(searchTerm);
+		const normalizedPubkey = decodedIdentifier?.pubkey;
 		return (
-			$serverAnnouncements?.filter(
-				(server) =>
+			$serverAnnouncements?.filter((server) => {
+				const identity = encodeServerIdentity(server.pubkey, []);
+
+				return (
 					server.name.toLowerCase().includes(term) ||
 					server.about?.toLowerCase().includes(term) ||
 					server.website?.toLowerCase().includes(term) ||
-					server.pubkey.includes(term)
-			) ?? []
+					server.pubkey.includes(term) ||
+					identity.npub.toLowerCase().includes(term) ||
+					(normalizedPubkey !== undefined && server.pubkey === normalizedPubkey)
+				);
+			}) ?? []
 		);
+	});
+
+	const decodedSearchIdentifier = $derived(decodeServerIdentifier(searchTerm));
+	const searchServerQuery = $derived(
+		decodedSearchIdentifier
+			? useServerAnnouncement(decodedSearchIdentifier.pubkey, decodedSearchIdentifier.relayHints)
+			: null
+	);
+	const serverLookupHref = $derived.by(() => {
+		const identifier = decodedSearchIdentifier;
+		return identifier ? `/s/${identifier.original}` : null;
 	});
 </script>
 
@@ -56,7 +74,7 @@
 				<Input
 					bind:value={searchTerm}
 					type="text"
-					placeholder="🔎 Search servers by name, about, website, or pubkey..."
+					placeholder="🔎 Search servers by name, about, website, hex pubkey, npub, or nprofile..."
 					class="w-full max-w-md"
 				/>
 			</div>
@@ -75,20 +93,38 @@
 				<div class="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each filteredServerAnnouncements as server (server.id)}
 						<div class="w-full max-w-sm">
-							<ServerCard {server} />
+							<ServerCard
+								{server}
+								serverIdentifier={decodedSearchIdentifier?.pubkey === server.pubkey
+									? decodedSearchIdentifier.original
+									: undefined}
+							/>
 						</div>
 					{/each}
 				</div>
 			{:else if searchTerm}
-				{@const isValidPubkey = isHexKey(searchTerm)}
+				{@const decodedIdentifier = decodedSearchIdentifier}
+				{@const resolvedServer = $searchServerQuery?.data?.server}
 				{#if filteredServerAnnouncements?.length === 0}
 					<div class="mt-12 text-center">
-						<p class="mb-4 text-muted-foreground">No servers found matching "{searchTerm}"</p>
-						{#if isValidPubkey}
-							<p class="mb-4 text-muted-foreground">
-								This seems to be a valid pubkey. Go to the server page to connect.
+						{#if resolvedServer}
+							<p class="mb-6 text-muted-foreground">
+								Resolved a server from this identifier using its relay hints.
 							</p>
-							<Button class="px-6" href="/s/{searchTerm}">Go</Button>
+							<div class="mx-auto w-full max-w-sm">
+								<ServerCard
+									server={resolvedServer}
+									serverIdentifier={decodedIdentifier?.original}
+								/>
+							</div>
+						{:else}
+							<p class="mb-4 text-muted-foreground">No servers found matching "{searchTerm}"</p>
+						{/if}
+						{#if decodedIdentifier && serverLookupHref && !resolvedServer}
+							<p class="mb-4 text-muted-foreground">
+								This looks like a valid server identifier. Go to the server page to connect.
+							</p>
+							<Button class="px-6" href={serverLookupHref}>Go</Button>
 						{/if}
 					</div>
 				{:else}

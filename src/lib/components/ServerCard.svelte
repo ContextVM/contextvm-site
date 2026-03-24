@@ -3,10 +3,16 @@
 	import { formatUnixTimestamp, pubkeyToHexColor, truncateString } from '$lib/utils';
 	import type { ServerAnnouncement } from '$lib/models/serverAnnouncements';
 
-	let { server }: { server: ServerAnnouncement } = $props();
+	let {
+		server,
+		serverIdentifier
+	}: {
+		server: ServerAnnouncement;
+		serverIdentifier?: string;
+	} = $props();
 
 	const date = $derived(formatUnixTimestamp(server.created_at, true));
-	const serverHref = $derived<`/s/${string}`>(`/s/${server.pubkey}`);
+	const serverHref = $derived<`/s/${string}`>(`/s/${serverIdentifier ?? server.pubkey}`);
 </script>
 
 <a

@@ -6,7 +6,6 @@
 	import { setThemeContext } from '@sjsf/shadcn4-theme';
 	import * as components from '@sjsf/shadcn4-theme/new-york';
 	import RelayWidget from '$lib/components/RelayWidget.svelte';
-	import RelayChangeDialog from '$lib/components/dialogs/RelayChangeDialog.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { QueryClientProvider } from '@tanstack/svelte-query';
 	import { queryClient } from '$lib/query-client';
@@ -29,7 +28,4 @@
 		{@render children()}
 	</div>
 	<Footer />
-
-	<!-- Global dialog for relay change notifications -->
-	<RelayChangeDialog />
 </QueryClientProvider>

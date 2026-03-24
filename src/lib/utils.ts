@@ -3,7 +3,8 @@ import { twMerge } from 'tailwind-merge';
 import type { InitializeResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ServerAnnouncement } from './models/serverAnnouncements';
 import { toast } from 'svelte-sonner';
-import { npubEncode, nprofileEncode, type ProfilePointer } from 'nostr-tools/nip19';
+import { decode, npubEncode, nprofileEncode, type ProfilePointer } from 'nostr-tools/nip19';
+import { isHexKey } from 'applesauce-core/helpers';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -121,7 +122,7 @@ export interface ServerIdentity {
 	npub: string;
 	nprofile: string;
 	relayHints: string[];
-	relaySource: 'kind10002' | 'announcement' | 'connection' | 'selected';
+	relaySource: 'kind10002' | 'announcement' | 'nprofile' | 'selected';
 	hasPublishedRelayList: boolean;
 }
 
@@ -139,4 +140,42 @@ export function encodeServerIdentity(pubkey: string, relayHints: string[]): Serv
 		relaySource: 'selected',
 		hasPublishedRelayList: false
 	};
+}
+
+export interface DecodedServerIdentifier {
+	original: string;
+	pubkey: string;
+	relayHints: string[];
+	format: 'hex' | 'npub' | 'nprofile';
+}
+
+export function decodeServerIdentifier(identifier: string): DecodedServerIdentifier | null {
+	const value = identifier.trim();
+
+	if (!value) return null;
+
+	if (isHexKey(value)) {
+		return { original: value, pubkey: value, relayHints: [], format: 'hex' };
+	}
+
+	try {
+		const decoded = decode(value);
+
+		if (decoded.type === 'npub' && typeof decoded.data === 'string') {
+			return { original: value, pubkey: decoded.data, relayHints: [], format: 'npub' };
+		}
+
+		if (decoded.type === 'nprofile') {
+			return {
+				original: value,
+				pubkey: decoded.data.pubkey,
+				relayHints: decoded.data.relays ?? [],
+				format: 'nprofile'
+			};
+		}
+	} catch (_error) {
+		return null;
+	}
+
+	return null;
 }

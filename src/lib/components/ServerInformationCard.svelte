@@ -111,8 +111,8 @@
 												? 'published relay list'
 												: identity.relaySource === 'announcement'
 													? 'announcement discovery'
-													: identity.relaySource === 'connection'
-														? 'connection events'
+													: identity.relaySource === 'nprofile'
+														? 'nprofile bootstrap hints'
 														: 'selected relays'}
 										</p>
 									{/if}
