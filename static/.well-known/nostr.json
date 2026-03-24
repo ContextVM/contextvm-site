@@ -2,10 +2,12 @@
   "names": {
     "_": "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8",
     "relatr": "750682303c9f0ddad75941b49edc9d46e3ed306b9ee3335338a21a3e404c5fa3",
+    "ots": "e1c1c32729cbd542c9b9ce7ee6e421c434e07835228020c4f57140782f02496a",
     "gzuuus": "40b9c85fffeafc1cadf8c30a4e5c88660ff6e4971a0dc723d5ab674b5e61b451"
   },
   "relays": {
-    "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8": ["wss://relay.nostr.net", "wss://relay.damus.io", "wss://nos.lol"],
-    "750682303c9f0ddad75941b49edc9d46e3ed306b9ee3335338a21a3e404c5fa3": ["wss://relay.nostr.net", "wss://relay.damus.io", "wss://nos.lol"]
+    "6b3780ef2972e73d370b84a3e51e7aa9ae34bf412938dcfbd9c5f63b221416c8": ["wss://relay.contextvm.org", "wss://relay2.contextvm.org"],
+    "750682303c9f0ddad75941b49edc9d46e3ed306b9ee3335338a21a3e404c5fa3": ["wss://relay.contextvm.org", "wss://relay2.contextvm.org"],
+    "e1c1c32729cbd542c9b9ce7ee6e421c434e07835228020c4f57140782f02496a": ["wss://relay.contextvm.org", "wss://relay2.contextvm.org"]
   }
 }
