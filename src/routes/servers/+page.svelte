@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { createQuery } from '@tanstack/svelte-query';
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import { useServerAnnouncement, useServerAnnouncements } from '$lib/queries/serverQueries';
@@ -7,7 +9,11 @@
 	import Seo from '$lib/components/SEO.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
-	import { decodeServerIdentifier, encodeServerIdentity } from '$lib/utils';
+	import {
+		decodeServerIdentifier,
+		encodeServerIdentity,
+		resolveServerIdentifier
+	} from '$lib/utils';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 
@@ -15,6 +21,15 @@
 
 	let loading = $state($serverAnnouncementsQuery.isFetching);
 	let searchTerm = $state('');
+	const resolvedSearchIdentifierQuery = $derived.by(() => {
+		const trimmedSearchTerm = searchTerm.trim();
+
+		return createQuery({
+			queryKey: ['server-search-identifier', trimmedSearchTerm, page.url.hostname],
+			queryFn: () => resolveServerIdentifier(trimmedSearchTerm, page.url.hostname),
+			enabled: trimmedSearchTerm.length > 0
+		});
+	});
 
 	const filteredServerAnnouncements = $derived.by(() => {
 		if (!searchTerm.trim()) {
@@ -40,7 +55,9 @@
 		);
 	});
 
-	const decodedSearchIdentifier = $derived(decodeServerIdentifier(searchTerm));
+	const decodedSearchIdentifier = $derived(
+		$resolvedSearchIdentifierQuery.data ?? decodeServerIdentifier(searchTerm)
+	);
 	const searchServerQuery = $derived(
 		decodedSearchIdentifier
 			? useServerAnnouncement(decodedSearchIdentifier.pubkey, decodedSearchIdentifier.relayHints)
@@ -74,7 +91,7 @@
 				<Input
 					bind:value={searchTerm}
 					type="text"
-					placeholder="🔎 Search servers by name, about, website, hex pubkey, npub, or nprofile..."
+					placeholder="🔎 Search servers by name, about, website, hex pubkey, npub, nprofile, or NIP-05..."
 					class="w-full max-w-md"
 				/>
 			</div>
@@ -107,7 +124,9 @@
 				{@const resolvedServer = $searchServerQuery?.data?.server}
 				{#if filteredServerAnnouncements?.length === 0}
 					<div class="mt-12 text-center">
-						{#if resolvedServer}
+						{#if $resolvedSearchIdentifierQuery.isLoading}
+							<p class="mb-6 text-muted-foreground">Resolving server identifier...</p>
+						{:else if resolvedServer}
 							<p class="mb-6 text-muted-foreground">
 								Resolved a server from this identifier using its relay hints.
 							</p>

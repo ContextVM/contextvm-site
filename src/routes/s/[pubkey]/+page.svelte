@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { asset, resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { createQuery } from '@tanstack/svelte-query';
 	import { parseServerInitializeMsg } from '$lib/models/serverAnnouncements';
 	import {
 		getAvailableCapabilities,
 		pubkeyToHexColor,
 		copyToClipboard,
-		decodeServerIdentifier
+		resolveServerIdentifier
 	} from '$lib/utils';
 	import { goto } from '$app/navigation';
 	import { Collapsible } from 'bits-ui';
@@ -41,10 +42,16 @@
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
-	const decodedIdentifier = $derived(decodeServerIdentifier(requestedIdentifier));
-	const pubkey = $derived(decodedIdentifier?.pubkey ?? requestedIdentifier);
-	const connectionIdentifier = $derived(decodedIdentifier?.original ?? requestedIdentifier);
-	const relayHints = $derived(decodedIdentifier?.relayHints ?? []);
+	const resolvedIdentifierQuery = createQuery({
+		queryKey: ['server-identifier', requestedIdentifier, page.url.hostname],
+		queryFn: () => resolveServerIdentifier(requestedIdentifier, page.url.hostname)
+	});
+	const resolvedIdentifier = $derived($resolvedIdentifierQuery.data ?? null);
+	const pubkey = $derived(resolvedIdentifier?.pubkey ?? requestedIdentifier);
+	const connectionIdentifier = $derived(
+		resolvedIdentifier?.format === 'nprofile' ? resolvedIdentifier.original : pubkey
+	);
+	const relayHints = $derived(resolvedIdentifier?.relayHints ?? []);
 
 	const serversHref = $derived<`/servers`>('/servers');
 	const homeHref = $derived<`/`>('/');
@@ -57,17 +64,21 @@
 	let seoUrl = $state(`https://contextvm.com/s/${requestedIdentifier}`);
 	let seoType = $state('website' as 'website' | 'article');
 
-	const serverQuery = $derived(useServerAnnouncement(pubkey, relayHints));
-	const serverIdentityQuery = $derived(useServerIdentity(pubkey, relayHints));
+	const serverQuery = $derived(
+		resolvedIdentifier ? useServerAnnouncement(pubkey, relayHints) : undefined
+	);
+	const serverIdentityQuery = $derived(
+		resolvedIdentifier ? useServerIdentity(pubkey, relayHints) : undefined
+	);
 
 	// Get available capabilities when server data is loaded
 	let availableCapabilities = $derived(
-		$serverQuery.data?.server ? getAvailableCapabilities($serverQuery.data.server) : []
+		$serverQuery?.data?.server ? getAvailableCapabilities($serverQuery.data.server) : []
 	);
 
 	// Update SEO data when server loads
 	$effect(() => {
-		if ($serverQuery.data?.server) {
+		if ($serverQuery?.data?.server) {
 			const server = $serverQuery.data.server;
 			const serverName = server.name || 'Unnamed Server';
 			const serverAbout = server.about || 'No description available for this server.';
@@ -84,7 +95,7 @@
 
 	// Only load queries for capabilities that are actually available
 	let toolsQuery = $derived(
-		$serverQuery.isFetched && availableCapabilities.includes('tools')
+		$serverQuery?.isFetched && availableCapabilities.includes('tools')
 			? $serverQuery.data?.isPublic
 				? useServerTools(pubkey, true, relayHints)
 				: useServerTools(pubkey, false, relayHints)
@@ -92,21 +103,21 @@
 	);
 
 	let resourcesQuery = $derived(
-		$serverQuery.isFetched && availableCapabilities.includes('resources')
+		$serverQuery?.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
 				? useServerResources(pubkey, true, relayHints)
 				: useServerResources(pubkey, false, relayHints)
 			: undefined
 	);
 	let resourceTemplatesQuery = $derived(
-		$serverQuery.isFetched && availableCapabilities.includes('resources')
+		$serverQuery?.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
 				? useServerResourceTemplates(pubkey, true, relayHints)
 				: useServerResourceTemplates(pubkey, false, relayHints)
 			: undefined
 	);
 	let promptsQuery = $derived(
-		$serverQuery.isFetched && availableCapabilities.includes('prompts')
+		$serverQuery?.isFetched && availableCapabilities.includes('prompts')
 			? $serverQuery.data?.isPublic
 				? useServerPrompts(pubkey, true, relayHints)
 				: useServerPrompts(pubkey, false, relayHints)
@@ -134,7 +145,7 @@
 
 	// Connect to server (public or private)
 	async function connectToServer() {
-		if (!pubkey) return;
+		if (!resolvedIdentifier || !pubkey || !$serverQuery) return;
 		try {
 			// For public servers, just get the client
 			if ($serverQuery.data?.isPublic) {
@@ -162,7 +173,7 @@
 
 	// Disconnect from server
 	async function disconnectFromServer() {
-		if (!$serverQuery.data?.server) return;
+		if (!$serverQuery?.data?.server) return;
 
 		try {
 			await mcpClientService.disconnect(connectionIdentifier);
@@ -174,7 +185,24 @@
 
 <Seo title={seoTitle} description={seoDescription} image={seoImage} url={seoUrl} type={seoType} />
 
-{#if $serverQuery.data?.server}
+{#if $resolvedIdentifierQuery.isLoading}
+	<div class="container mx-auto flex min-h-[50vh] max-w-6xl items-center justify-center px-4 py-12">
+		<div class="flex items-center gap-3 text-muted-foreground">
+			<LoadingSpinner />
+			<span>Resolving server identifier...</span>
+		</div>
+	</div>
+{:else if $resolvedIdentifierQuery.isError || !resolvedIdentifier}
+	<div
+		class="container mx-auto flex min-h-[50vh] max-w-3xl items-center justify-center px-4 py-12 text-center"
+	>
+		<div>
+			<h1 class="mb-4 text-2xl font-bold">Unable to resolve this server identifier</h1>
+			<p class="mb-6 text-muted-foreground">{requestedIdentifier}</p>
+			<Button variant="outline" onclick={() => goto(resolve(serversHref))}>Back to servers</Button>
+		</div>
+	</div>
+{:else if $serverQuery?.data?.server}
 	<article class="container mx-auto max-w-6xl px-4 py-6 sm:py-8 md:py-12">
 		<!-- Back to servers link -->
 		<button
@@ -525,7 +553,7 @@
 					<Tabs.Content value="info" class="mt-4">
 						<ServerInformationCard
 							server={$serverQuery.data.server}
-							identity={$serverIdentityQuery.data}
+							identity={$serverIdentityQuery?.data}
 						/>
 					</Tabs.Content>
 
@@ -539,7 +567,7 @@
 	</article>
 {:else}
 	<div class="container mx-auto px-4 py-16 text-center">
-		{#if $serverQuery.isLoading}
+		{#if $serverQuery?.isLoading}
 			<LoadingSpinner />
 			<h1 class="mt-6 mb-4 text-2xl font-bold">Searching...</h1>
 			<p class="mb-6 text-muted-foreground">Looking for: {pubkey}</p>

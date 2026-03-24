@@ -4,6 +4,7 @@ import type { InitializeResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ServerAnnouncement } from './models/serverAnnouncements';
 import { toast } from 'svelte-sonner';
 import { decode, npubEncode, nprofileEncode, type ProfilePointer } from 'nostr-tools/nip19';
+import { isNip05, queryProfile, type Nip05 } from 'nostr-tools/nip05';
 import { isHexKey } from 'applesauce-core/helpers';
 
 export function cn(...inputs: ClassValue[]) {
@@ -146,7 +147,9 @@ export interface DecodedServerIdentifier {
 	original: string;
 	pubkey: string;
 	relayHints: string[];
-	format: 'hex' | 'npub' | 'nprofile';
+	format: 'hex' | 'npub' | 'nprofile' | 'nip05' | 'shortname';
+	nip05?: string;
+	domain?: string;
 }
 
 export function decodeServerIdentifier(identifier: string): DecodedServerIdentifier | null {
@@ -178,4 +181,53 @@ export function decodeServerIdentifier(identifier: string): DecodedServerIdentif
 	}
 
 	return null;
+}
+
+function toShortnameNip05(identifier: string, defaultDomain?: string | null): Nip05 | null {
+	const value = identifier.trim();
+	const domain = defaultDomain?.trim().toLowerCase();
+
+	if (!value || !domain || value.includes('@')) {
+		return null;
+	}
+
+	const candidate = `${value}@${domain}`;
+
+	return isNip05(candidate) ? candidate : null;
+}
+
+export async function resolveServerIdentifier(
+	identifier: string,
+	defaultDomain?: string | null
+): Promise<DecodedServerIdentifier | null> {
+	const decoded = decodeServerIdentifier(identifier);
+
+	if (decoded) {
+		return decoded;
+	}
+
+	const value = identifier.trim();
+	const nip05 = isNip05(value) ? value : toShortnameNip05(value, defaultDomain);
+
+	if (!nip05) {
+		return null;
+	}
+
+	const pointer = await queryProfile(nip05);
+	const pubkey = pointer?.pubkey;
+
+	if (!pubkey || !isHexKey(pubkey) || pubkey !== pubkey.toLowerCase()) {
+		throw new Error(`No valid public key found for ${nip05}`);
+	}
+
+	const [, name = '_', domain = ''] = nip05.match(/^(?:([^@]+)@)?([^@]+)$/) ?? [];
+
+	return {
+		original: value,
+		pubkey,
+		relayHints: pointer?.relays ?? [],
+		format: isNip05(value) ? 'nip05' : 'shortname',
+		nip05: `${name}@${domain}`,
+		domain
+	};
 }
