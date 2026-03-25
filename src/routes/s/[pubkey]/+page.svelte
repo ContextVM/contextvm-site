@@ -48,8 +48,10 @@
 	});
 	const resolvedIdentifier = $derived($resolvedIdentifierQuery.data ?? null);
 	const pubkey = $derived(resolvedIdentifier?.pubkey ?? requestedIdentifier);
-	const connectionIdentifier = $derived(
-		resolvedIdentifier?.format === 'nprofile' ? resolvedIdentifier.original : pubkey
+	const connectionIdentifier = $derived.by(() =>
+		resolvedIdentifier?.format === 'nprofile'
+			? resolvedIdentifier.original
+			: ($serverIdentityQuery?.data?.nprofile ?? pubkey)
 	);
 	const relayHints = $derived(resolvedIdentifier?.relayHints ?? []);
 
@@ -559,7 +561,10 @@
 
 					<!-- Connection Tab -->
 					<Tabs.Content value="connection" class="mt-4">
-						<ServerConnectionCard server={$serverQuery.data.server} />
+						<ServerConnectionCard
+							server={$serverQuery.data.server}
+							serverIdentifier={connectionIdentifier}
+						/>
 					</Tabs.Content>
 				</Tabs.Root>
 			</div>

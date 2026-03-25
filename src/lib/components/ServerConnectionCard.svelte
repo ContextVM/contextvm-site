@@ -6,17 +6,23 @@
 	import { copyToClipboard } from '$lib/utils';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 
-	let { server }: { server: ServerAnnouncement } = $props();
+	let {
+		server,
+		serverIdentifier = server.pubkey
+	}: {
+		server: ServerAnnouncement;
+		serverIdentifier?: string;
+	} = $props();
 
 	// Raw command text
-	const rawCommand = $derived(`proxy-cli --server-pubkey ${server.pubkey}`);
+	const rawCommand = $derived(`proxy-cli --server-pubkey ${serverIdentifier}`);
 
 	// Config JSON text
 	const configJson = $derived(`{
 	"mcpServers": {
 		"${slugify(server.name) || 'contextvm-server'}": {
 		"command": "proxy-cli",
-		"args": ["--server-pubkey", "${server.pubkey}"]
+		"args": ["--server-pubkey", "${serverIdentifier}"]
 		}
 	}
 }`);
