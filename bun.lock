@@ -5,10 +5,10 @@
     "": {
       "name": "contextvm-site",
       "dependencies": {
-        "@contextvm/sdk": "^0.7.5",
-        "@sjsf/ajv8-validator": "^3.3.1",
-        "@sjsf/form": "^3.3.1",
-        "@sjsf/shadcn4-theme": "^3.3.1",
+        "@contextvm/sdk": "^0.7.7",
+        "@sjsf/ajv8-validator": "^3.3.2",
+        "@sjsf/form": "^3.3.2",
+        "@sjsf/shadcn4-theme": "^3.3.2",
         "@tanstack/svelte-query": "^5.90.2",
         "ajv": "^8.18.0",
         "applesauce-accounts": "^5.2.0",
@@ -97,7 +97,7 @@
 
     "@changesets/write": ["@changesets/write@0.4.0", "", { "dependencies": { "@changesets/types": "^6.1.0", "fs-extra": "^7.0.1", "human-id": "^4.1.1", "prettier": "^2.7.1" } }, "sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q=="],
 
-    "@contextvm/sdk": ["@contextvm/sdk@0.7.7", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.26.0", "applesauce-relay": "^5.1.0", "nostr-tools": "~2.18.2", "pino": "^10.3.1", "rxjs": "^7.8.2", "ws": "^8.18.3", "zod": "^4.3.5" }, "peerDependencies": { "typescript": "^5.9.2" } }, "sha512-pUjWVn9Kuxt879drYJdcpC5koyPmHtBuSPojNsLCuMSY6uW5A6Clx5ROppTdMEVJoyvnfdiUTWtXHGqqMQKKdA=="],
+    "@contextvm/sdk": ["@contextvm/sdk@0.7.8", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.26.0", "applesauce-relay": "^5.1.0", "nostr-tools": "~2.18.2", "pino": "^10.3.1", "rxjs": "^7.8.2", "ws": "^8.18.3", "zod": "^4.3.5" }, "peerDependencies": { "typescript": "^5.9.2" } }, "sha512-PnZmZI4oRqLsBPyvkhO/26CuAbbP1lngzM2Vrb3btsuOuMUvBFri10OHrjGDGkHkD0nAr++ok9Sm96xh4ClBng=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.2", "", { "os": "aix", "cpu": "ppc64" }, "sha512-GZMB+a0mOMZs4MpDbj8RJp4cw+w1WV5NYD6xzgvzUJ5Ek2jerwfO2eADyI6ExDSUED+1X8aMbegahsJi+8mgpw=="],
 

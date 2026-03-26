@@ -168,7 +168,6 @@ export class McpClientService {
 		const baseTransport = new NostrClientTransport({
 			signer,
 			serverPubkey: preferredIdentifier,
-			discoveryRelayUrls: relayStore.selectedRelays,
 			fallbackOperationalRelayUrls: relayStore.selectedRelays
 		});
 		this.clientTransports.set(serverKey, baseTransport);
