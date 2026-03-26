@@ -1,11 +1,7 @@
 <script lang="ts">
 	import { createForm, BasicForm, type Schema } from '@sjsf/form';
 	import { formDefaults } from '$lib/form-defaults';
-	import {
-		mcpClientService,
-		type McpConnectionState,
-		type McpProgressNotification
-	} from '$lib/services/mcpClient.svelte';
+	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import { copyToClipboard } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
@@ -20,34 +16,37 @@
 	import {
 		findCapTagForTool,
 		formatCapTagPrice,
-		parseCapTagsFromEvent
+		parseCapTagsFromEvent,
+		parseCapTagsFromTags
 	} from '$lib/services/payments/cep8-tags';
+	import type { Event } from 'nostr-tools';
 	let {
 		tool,
 		connectionState,
-		serverPubkey
+		serverPubkey,
+		announcementTags = []
 	}: {
 		tool: Tool;
 		connectionState: McpConnectionState;
 		serverPubkey: string;
+		announcementTags?: Event['tags'];
 	} = $props();
 	// TODO: improve the display of notifications
 	// Form state
 	let formResult = $state<CallToolResult | null>(null);
 	let formError = $state<string | null>(null);
 	let showResult = $state(false);
-	let progressNotifications = $derived.by(() =>
-		mcpClientService.getProgressNotifications(serverPubkey)
-	);
 	let paymentState = $derived.by(() =>
 		paymentNotificationsService.getLatestForServer(serverPubkey)
 	);
 	let paymentOpen = $state(true);
 
-	const initializeEvent = $derived(mcpClientService.getServerToolsListEvent(serverPubkey));
-	const capTags = $derived(parseCapTagsFromEvent(initializeEvent));
+	const toolsListEvent = $derived(mcpClientService.getServerToolsListEvent(serverPubkey));
+	const capTags = $derived.by(() => {
+		const runtimeCapTags = parseCapTagsFromEvent(toolsListEvent);
+		return runtimeCapTags.length > 0 ? runtimeCapTags : parseCapTagsFromTags(announcementTags);
+	});
 	const toolCap = $derived(findCapTagForTool(capTags, tool.name));
-
 	$effect(() => {
 		// Auto-collapse when we have a final result.
 		if (showResult && formResult) paymentOpen = false;
@@ -155,7 +154,7 @@
 							{#each formResult.content as content, i (i + '-' + content.type)}
 								<div class="relative rounded-md bg-muted p-3">
 									{#if content.type === 'text'}
-										<div class="pr-8 text-sm">
+										<div class="overflow-x-auto pr-8 text-sm break-words whitespace-pre-wrap">
 											{content.text}
 										</div>
 									{:else if content.type === 'image'}
@@ -170,7 +169,8 @@
 									{:else}
 										<div class="text-sm">
 											<p class="mb-1 font-medium">Content Type: {content.type}</p>
-											<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+											<pre
+												class="overflow-x-auto pr-8 text-xs break-all whitespace-pre-wrap">{JSON.stringify(
 													content,
 													null,
 													2
@@ -203,8 +203,8 @@
 						<div class="space-y-2">
 							<span class="text-sm">Structured Content</span>
 							<div class="relative rounded-md bg-muted p-3">
-								<div class="pr-8 text-sm">
-									<pre class="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(
+								<div class="overflow-x-auto pr-8 text-sm">
+									<pre class="break-all whitespace-pre-wrap">{JSON.stringify(
 											formResult.structuredContent,
 											null,
 											2
@@ -251,7 +251,8 @@
 										<CopyIcon class="h-4 w-4" />
 									</button>
 								</div>
-								<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+								<pre
+									class="overflow-x-auto pr-8 text-xs break-all whitespace-pre-wrap">{JSON.stringify(
 										formResult,
 										null,
 										2
@@ -277,29 +278,6 @@
 				<Alert.Root variant="destructive">
 					<Alert.Title>Please log in to call capabilities</Alert.Title>
 				</Alert.Root>
-			{/if}
-			{#if progressNotifications.length > 0}
-				Notifications length: {progressNotifications.length}
-				<div class="space-y-2">
-					<h4 class="text-sm font-medium text-muted-foreground">Progress</h4>
-					{#each progressNotifications as notification (notification.timestamp)}
-						<div class="rounded-md bg-muted p-3">
-							<div class="mb-2 flex items-center justify-between">
-								{#if notification.message}
-									<span class="text-xs text-muted-foreground">
-										{notification.message}
-									</span>
-								{/if}
-							</div>
-							<div class="h-2 w-full rounded-full bg-background">
-								<div
-									class="h-2 rounded-full bg-primary transition-all duration-300"
-									style="width: {notification.progress}%"
-								></div>
-							</div>
-						</div>
-					{/each}
-				</div>
 			{/if}
 		</div>
 	</Collapsible.Content>

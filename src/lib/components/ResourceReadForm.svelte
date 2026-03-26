@@ -16,17 +16,21 @@
 	import {
 		findCapTagForResource,
 		formatCapTagPrice,
-		parseCapTagsFromEvent
+		parseCapTagsFromEvent,
+		parseCapTagsFromTags
 	} from '$lib/services/payments/cep8-tags';
+	import type { Event } from 'nostr-tools';
 
 	let {
 		resource,
 		serverPubkey,
-		connectionState
+		connectionState,
+		announcementTags = []
 	}: {
 		resource: Resource;
 		serverPubkey: string;
 		connectionState: McpConnectionState;
+		announcementTags?: Event['tags'];
 	} = $props();
 
 	// Form state
@@ -40,8 +44,11 @@
 	let loading = $state(false);
 	let paymentState = $derived(paymentNotificationsService.getLatestForServer(serverPubkey));
 	let paymentOpen = $state(true);
-	const initializeEvent = $derived(mcpClientService.getServerResourcesListEvent(serverPubkey));
-	const capTags = $derived(parseCapTagsFromEvent(initializeEvent));
+	const resourcesListEvent = $derived(mcpClientService.getServerResourcesListEvent(serverPubkey));
+	const capTags = $derived.by(() => {
+		const runtimeCapTags = parseCapTagsFromEvent(resourcesListEvent);
+		return runtimeCapTags.length > 0 ? runtimeCapTags : parseCapTagsFromTags(announcementTags);
+	});
 	const resourceCap = $derived(findCapTagForResource(capTags, resource.uri));
 
 	$effect(() => {
@@ -165,8 +172,8 @@
 									</div>
 
 									{#if 'text' in content}
-										<div class="pr-8 text-sm">
-											<pre class="overflow-x-auto text-xs">{content.text}</pre>
+										<div class="overflow-x-auto pr-8 text-sm">
+											<pre class="text-xs break-all whitespace-pre-wrap">{content.text}</pre>
 										</div>
 									{:else if 'blob' in content && content.mimeType?.startsWith('image/')}
 										<div class="text-sm">
@@ -235,7 +242,8 @@
 										<CopyIcon class="h-4 w-4" />
 									</button>
 								</div>
-								<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+								<pre
+									class="overflow-x-auto pr-8 text-xs break-all whitespace-pre-wrap">{JSON.stringify(
 										formResult,
 										null,
 										2

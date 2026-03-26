@@ -1,5 +1,9 @@
 import { activeAccount } from '$lib/services/accountManager.svelte';
 import { NostrClientTransport } from '@contextvm/sdk';
+import {
+	PAYMENT_ACCEPTED_METHOD,
+	PAYMENT_REJECTED_METHOD
+} from '@contextvm/sdk/payments/constants';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
 	type ListPromptsResult,
@@ -16,7 +20,33 @@ import { paymentNotificationsService } from '$lib/services/payments/payment-noti
 import { withClientPayments, PMI_BITCOIN_LIGHTNING_BOLT11 } from '@contextvm/sdk';
 import { UiOnlyPaymentHandler } from '$lib/services/payments/ui-payment-handler';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { relayStore } from '$lib/stores/relay-store.svelte';
 import { decodeServerIdentifier } from '$lib/utils';
+import type { PaymentAcceptedNotification, PaymentRejectedNotification } from '@contextvm/sdk';
+import { z } from 'zod';
+
+const PaymentAcceptedNotificationSchema = z.object({
+	jsonrpc: z.literal('2.0').optional(),
+	method: z.literal(PAYMENT_ACCEPTED_METHOD),
+	params: z.record(z.string(), z.unknown()).optional()
+});
+
+const PaymentRejectedNotificationSchema = z.object({
+	jsonrpc: z.literal('2.0').optional(),
+	method: z.literal(PAYMENT_REJECTED_METHOD),
+	params: z.record(z.string(), z.unknown()).optional()
+});
+
+function getRequestEventIdFromNotification(notification: {
+	params?: Record<string, unknown>;
+}): string | undefined {
+	const meta = notification.params?.['_meta'];
+	if (typeof meta !== 'object' || meta === null || !('requestEventId' in meta)) {
+		return undefined;
+	}
+
+	return typeof meta.requestEventId === 'string' ? meta.requestEventId : undefined;
+}
 
 export interface McpConnectionState {
 	connected: boolean;
@@ -66,6 +96,59 @@ export class McpClientService {
 		return this.serverIdentifiers.get(serverKey) ?? serverIdentifier;
 	}
 
+	private async getConnectedClientOrThrow(serverIdentifier: string): Promise<Client> {
+		const client = await this.getClient(serverIdentifier);
+		if (!client) {
+			throw new Error('Not connected to server');
+		}
+
+		return client;
+	}
+
+	private setConnectionState(serverIdentifier: string, state: McpConnectionState): void {
+		this.connectionStates.set(this.getServerKey(serverIdentifier), state);
+	}
+
+	private registerPaymentNotificationHandlers(client: Client, serverIdentifier: string): void {
+		client.setNotificationHandler(PaymentAcceptedNotificationSchema, async (notification) => {
+			const requestEventId = getRequestEventIdFromNotification(notification);
+			if (!requestEventId) return;
+
+			paymentNotificationsService.set({
+				serverPubkey: serverIdentifier,
+				requestEventId,
+				status: 'payment_accepted',
+				notification: {
+					type: 'payment_accepted',
+					...(notification as PaymentAcceptedNotification)
+				},
+				timestamp: Date.now()
+			});
+		});
+
+		client.setNotificationHandler(PaymentRejectedNotificationSchema, async (notification) => {
+			const requestEventId = getRequestEventIdFromNotification(notification);
+			if (!requestEventId) return;
+
+			paymentNotificationsService.set({
+				serverPubkey: serverIdentifier,
+				requestEventId,
+				status: 'payment_rejected',
+				notification: {
+					type: 'payment_rejected',
+					...(notification as PaymentRejectedNotification)
+				},
+				timestamp: Date.now()
+			});
+		});
+	}
+
+	private clearServerState(serverIdentifier: string): void {
+		const preferredIdentifier = this.getPreferredServerIdentifier(serverIdentifier);
+		paymentNotificationsService.clearServer(preferredIdentifier);
+		paymentNotificationsService.clearServer(this.getServerKey(serverIdentifier));
+	}
+
 	// Helper method to create a new transport for a client
 	private createTransport(serverIdentifier: string): Transport {
 		// Check if user is logged in
@@ -84,7 +167,9 @@ export class McpClientService {
 
 		const baseTransport = new NostrClientTransport({
 			signer,
-			serverPubkey: preferredIdentifier
+			serverPubkey: preferredIdentifier,
+			discoveryRelayUrls: relayStore.selectedRelays,
+			fallbackOperationalRelayUrls: relayStore.selectedRelays
 		});
 		this.clientTransports.set(serverKey, baseTransport);
 
@@ -94,7 +179,7 @@ export class McpClientService {
 		// - does not attempt to pay
 		const uiHandler = new UiOnlyPaymentHandler({
 			pmi: PMI_BITCOIN_LIGHTNING_BOLT11,
-			serverPubkey: serverKey
+			serverPubkey: preferredIdentifier
 		});
 		return withClientPayments(baseTransport, { handlers: [uiHandler] });
 	}
@@ -139,8 +224,7 @@ export class McpClientService {
 	public async reconnectAllClients(): Promise<void> {
 		for (const [serverPubkey, client] of this.clients) {
 			try {
-				// Set loading state
-				this.connectionStates.set(serverPubkey, {
+				this.setConnectionState(serverPubkey, {
 					connected: false,
 					loading: true,
 					error: null
@@ -152,7 +236,7 @@ export class McpClientService {
 
 				await client.connect(transport);
 
-				this.connectionStates.set(serverPubkey, {
+				this.setConnectionState(serverPubkey, {
 					connected: true,
 					loading: false,
 					error: null
@@ -160,7 +244,7 @@ export class McpClientService {
 			} catch (error) {
 				const errorMessage =
 					error instanceof Error ? error.message : 'Failed to reconnect to server';
-				this.connectionStates.set(serverPubkey, {
+				this.setConnectionState(serverPubkey, {
 					connected: false,
 					loading: false,
 					error: errorMessage
@@ -179,7 +263,7 @@ export class McpClientService {
 		}
 
 		try {
-			this.connectionStates.set(serverKey, {
+			this.setConnectionState(serverKey, {
 				connected: false,
 				loading: true,
 				error: null
@@ -190,6 +274,8 @@ export class McpClientService {
 			await client.connect(transport);
 
 			// CEP-8 `payment_required` is captured by the payments middleware handler.
+			this.registerPaymentNotificationHandlers(client, serverIdentifier);
+
 			client.setNotificationHandler(ProgressNotificationSchema, async (req) => {
 				if (req.params?.progressToken) {
 					const notification: McpProgressNotification = {
@@ -215,7 +301,7 @@ export class McpClientService {
 			});
 			this.clients.set(serverKey, client);
 
-			this.connectionStates.set(serverKey, {
+			this.setConnectionState(serverKey, {
 				connected: true,
 				loading: false,
 				error: null
@@ -224,7 +310,7 @@ export class McpClientService {
 			return client;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Failed to connect to server';
-			this.connectionStates.set(serverKey, {
+			this.setConnectionState(serverKey, {
 				connected: false,
 				loading: false,
 				error: errorMessage
@@ -241,9 +327,9 @@ export class McpClientService {
 			await client.close();
 			this.clients.delete(serverKey);
 			this.clientTransports.delete(serverKey);
+			this.clearServerState(serverIdentifier);
 			this.serverIdentifiers.delete(serverKey);
-			paymentNotificationsService.clearServer(serverKey);
-			this.connectionStates.set(serverKey, { ...McpClientService.defaultConnectionState });
+			this.setConnectionState(serverKey, { ...McpClientService.defaultConnectionState });
 		}
 	}
 
@@ -290,19 +376,13 @@ export class McpClientService {
 
 	// List tools for a server
 	async listTools(serverIdentifier: string): Promise<ListToolsResult> {
-		const client = await this.getClient(serverIdentifier);
-		if (!client) {
-			throw new Error('Not connected to server');
-		}
+		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 		return client.listTools(undefined, { timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS });
 	}
 
 	// List resources for a server
 	async listResources(serverIdentifier: string): Promise<ListResourcesResult> {
-		const client = await this.getClient(serverIdentifier);
-		if (!client) {
-			throw new Error('Not connected to server');
-		}
+		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 		return client.listResources(undefined, {
 			timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS
 		});
@@ -310,10 +390,7 @@ export class McpClientService {
 
 	// List resources for a server
 	async listResourcesTemplates(serverIdentifier: string): Promise<ListResourceTemplatesResult> {
-		const client = await this.getClient(serverIdentifier);
-		if (!client) {
-			throw new Error('Not connected to server');
-		}
+		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 		return client.listResourceTemplates(undefined, {
 			timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS
 		});
@@ -321,10 +398,7 @@ export class McpClientService {
 
 	// List prompts for a server
 	async listPrompts(serverIdentifier: string): Promise<ListPromptsResult> {
-		const client = await this.getClient(serverIdentifier);
-		if (!client) {
-			throw new Error('Not connected to server');
-		}
+		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 		return client.listPrompts(undefined, { timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS });
 	}
 
@@ -334,10 +408,7 @@ export class McpClientService {
 		toolName: string,
 		arguments_: Record<string, unknown>
 	): Promise<CallToolResult> {
-		const client = await this.getClient(serverIdentifier);
-		if (!client) {
-			throw new Error('Not connected to server');
-		}
+		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 
 		const result = await client.callTool(
 			{
@@ -353,10 +424,7 @@ export class McpClientService {
 
 	// Read a resource from a server
 	async readResource(serverIdentifier: string, uri: string): Promise<ReadResourceResult> {
-		const client = await this.getClient(serverIdentifier);
-		if (!client) {
-			throw new Error('Not connected to server');
-		}
+		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 		const result = await client.readResource(
 			{ uri },
 			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS }
@@ -370,10 +438,7 @@ export class McpClientService {
 		promptName: string,
 		arguments_: Record<string, string> = {}
 	): Promise<GetPromptResult> {
-		const client = await this.getClient(serverIdentifier);
-		if (!client) {
-			throw new Error('Not connected to server');
-		}
+		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 		const result = await client.getPrompt(
 			{ name: promptName, arguments: arguments_ },
 			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS }

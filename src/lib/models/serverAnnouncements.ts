@@ -11,6 +11,7 @@ export interface ServerAnnouncement {
 	id: string;
 	pubkey: string;
 	created_at: number;
+	tags: Event['tags'];
 	name: string;
 	website?: string;
 	picture?: string;
@@ -49,6 +50,7 @@ export function parseServerInitializeMsg(event: Event): ServerAnnouncement | nul
 			id: event.id,
 			pubkey: event.pubkey,
 			created_at: event.created_at,
+			tags: event.tags,
 			name,
 			website,
 			picture,

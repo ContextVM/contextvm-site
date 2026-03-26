@@ -39,9 +39,13 @@ export function parsePmiTagsFromEvent(event: Event | undefined | null): string[]
 
 export function parseCapTagsFromEvent(event: Event | undefined | null): CapTag[] {
 	if (!event) return [];
-	console.log('parseCapTagsFromEvent', event);
+	return parseCapTagsFromTags(event.tags);
+}
+
+export function parseCapTagsFromTags(tags: Event['tags'] | undefined | null): CapTag[] {
+	if (!tags) return [];
 	// CEP-8 cap tag format: ['cap', capabilityIdentifier, price, currencyUnit]
-	return event.tags
+	return tags
 		.filter((t): t is [string, ...string[]] => t[0] === 'cap' && t.length >= 4)
 		.map((t) => ['cap', String(t[1] ?? ''), String(t[2] ?? ''), String(t[3] ?? '')] as CapTag);
 }

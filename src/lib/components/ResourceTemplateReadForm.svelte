@@ -137,7 +137,9 @@
 									</div>
 
 									{#if 'text' in content}
-										<div class="pr-8 text-sm whitespace-pre-wrap">{content.text}</div>
+										<div class="overflow-x-auto pr-8 text-sm break-all whitespace-pre-wrap">
+											{content.text}
+										</div>
 									{:else if 'blob' in content}
 										<div class="text-sm text-muted-foreground">
 											<p>Binary content</p>
@@ -197,7 +199,8 @@
 										<CopyIcon class="h-4 w-4" />
 									</button>
 								</div>
-								<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+								<pre
+									class="overflow-x-auto pr-8 text-xs break-all whitespace-pre-wrap">{JSON.stringify(
 										formResult,
 										null,
 										2

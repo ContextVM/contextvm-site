@@ -34,8 +34,10 @@ export class UiOnlyPaymentHandler implements PaymentHandler {
 			params: {
 				amount: req.amount,
 				pay_req: req.pay_req,
-				pmi: this.pmi,
-				description: req.description
+				pmi: req.pmi,
+				description: req.description,
+				ttl: req.ttl,
+				_meta: req._meta
 			}
 		};
 

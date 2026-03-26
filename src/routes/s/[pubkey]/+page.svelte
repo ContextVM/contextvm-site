@@ -142,6 +142,7 @@
 		resourceTemplates: $resourceTemplatesQuery?.data || null,
 		prompts: $promptsQuery?.data || null
 	});
+	const announcementTags = $derived($serverQuery?.data?.server?.tags ?? []);
 
 	let activeTab = $state('about');
 
@@ -152,6 +153,20 @@
 			// For public servers, just get the client
 			if ($serverQuery.data?.isPublic) {
 				await mcpClientService.getClient(connectionIdentifier);
+
+				if (availableCapabilities.includes('tools')) {
+					await mcpClientService.listTools(connectionIdentifier);
+				}
+				if (availableCapabilities.includes('resources')) {
+					await Promise.all([
+						mcpClientService.listResources(connectionIdentifier),
+						mcpClientService.listResourcesTemplates(connectionIdentifier)
+					]);
+				}
+				if (availableCapabilities.includes('prompts')) {
+					await mcpClientService.listPrompts(connectionIdentifier);
+				}
+
 				// Refetch all queries after connection, but only if they exist
 				$serverQuery.refetch();
 				if ($toolsQuery) $toolsQuery.refetch();
@@ -358,7 +373,12 @@
 						<Tabs.Content value="tools" class="mt-4 flex flex-col gap-2">
 							{#if serverData.tools}
 								{#each serverData.tools as tool (tool.name)}
-									<ToolCallForm {tool} serverPubkey={connectionIdentifier} {connectionState} />
+									<ToolCallForm
+										{tool}
+										serverPubkey={connectionIdentifier}
+										{connectionState}
+										{announcementTags}
+									/>
 								{/each}
 							{:else}
 								<Card.Root>
@@ -412,6 +432,7 @@
 											{resource}
 											serverPubkey={connectionIdentifier}
 											{connectionState}
+											{announcementTags}
 										/>
 									{/each}
 								{/if}
@@ -497,7 +518,12 @@
 						<Tabs.Content value="prompts" class="mt-4 flex flex-col gap-2">
 							{#if serverData.prompts}
 								{#each serverData.prompts as prompt (prompt.name)}
-									<PromptGetForm {prompt} {connectionState} serverPubkey={connectionIdentifier} />
+									<PromptGetForm
+										{prompt}
+										{connectionState}
+										serverPubkey={connectionIdentifier}
+										{announcementTags}
+									/>
 								{/each}
 							{:else}
 								<Card.Root>

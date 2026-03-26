@@ -43,6 +43,11 @@ export class PaymentNotificationsService {
 	}
 
 	clearServer(serverPubkey: string): void {
+		for (const [requestEventId, state] of this.byRequestEventId) {
+			if (state.serverPubkey === serverPubkey) {
+				this.byRequestEventId.delete(requestEventId);
+			}
+		}
 		this.latestByServer.delete(serverPubkey);
 	}
 }

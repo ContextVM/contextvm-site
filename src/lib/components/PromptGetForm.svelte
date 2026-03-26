@@ -23,17 +23,21 @@
 	import {
 		findCapTagForPrompt,
 		formatCapTagPrice,
-		parseCapTagsFromEvent
+		parseCapTagsFromEvent,
+		parseCapTagsFromTags
 	} from '$lib/services/payments/cep8-tags';
+	import type { Event } from 'nostr-tools';
 
 	let {
 		prompt,
 		connectionState,
-		serverPubkey
+		serverPubkey,
+		announcementTags = []
 	}: {
 		prompt: Prompt;
 		connectionState: McpConnectionState;
 		serverPubkey: string;
+		announcementTags?: Event['tags'];
 	} = $props();
 
 	// Form state
@@ -47,8 +51,11 @@
 	let loading = $state(false);
 	let paymentState = $derived(paymentNotificationsService.getLatestForServer(serverPubkey));
 	let paymentOpen = $state(true);
-	const initializeEvent = $derived(mcpClientService.getServerPromptsListEvent(serverPubkey));
-	const capTags = $derived(parseCapTagsFromEvent(initializeEvent));
+	const promptsListEvent = $derived(mcpClientService.getServerPromptsListEvent(serverPubkey));
+	const capTags = $derived.by(() => {
+		const runtimeCapTags = parseCapTagsFromEvent(promptsListEvent);
+		return runtimeCapTags.length > 0 ? runtimeCapTags : parseCapTagsFromTags(announcementTags);
+	});
 	const promptCap = $derived(findCapTagForPrompt(capTags, prompt.name));
 
 	$effect(() => {
@@ -174,7 +181,7 @@
 					{#if formResult.description}
 						<div class="rounded-md bg-muted p-3">
 							<h4 class="mb-2 text-sm font-medium">Description</h4>
-							<p class="text-sm">{formResult.description}</p>
+							<p class="text-sm break-words whitespace-pre-wrap">{formResult.description}</p>
 						</div>
 					{/if}
 
@@ -193,7 +200,7 @@
 									</div>
 
 									{#if message.content?.type === 'text'}
-										<div class="pr-8 text-sm">
+										<div class="overflow-x-auto pr-8 text-sm break-words whitespace-pre-wrap">
 											{message.content.text}
 										</div>
 									{:else if message.content?.type === 'image'}
@@ -229,7 +236,8 @@
 										</div>
 									{:else}
 										<div class="text-sm">
-											<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+											<pre
+												class="overflow-x-auto pr-8 text-xs break-all whitespace-pre-wrap">{JSON.stringify(
 													message.content,
 													null,
 													2
@@ -295,7 +303,8 @@
 										<CopyIcon class="h-4 w-4" />
 									</button>
 								</div>
-								<pre class="overflow-x-auto pr-8 text-xs">{JSON.stringify(
+								<pre
+									class="overflow-x-auto pr-8 text-xs break-all whitespace-pre-wrap">{JSON.stringify(
 										formResult,
 										null,
 										2
