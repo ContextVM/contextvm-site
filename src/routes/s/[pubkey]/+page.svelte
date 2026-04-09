@@ -250,9 +250,9 @@
 			<!-- Left column (2/3 width) -->
 			<div class="lg:col-span-2">
 				<!-- Server name and website -->
-				<div class="mb-6 flex items-center justify-between">
+				<div class="mb-6 flex flex-col gap-6">
 					<div>
-						<h2 class="text-2xl leading-none font-bold sm:text-3xl md:text-4xl">
+						<h2 class="mb-1 text-2xl leading-none font-bold sm:text-3xl md:text-4xl">
 							{$serverQuery.data.server.name}
 						</h2>
 						{#if $serverQuery.data.server.website}
@@ -266,31 +266,49 @@
 							</a>
 						{/if}
 					</div>
-					<div class="flex items-center space-x-2">
+					<div class="w-full">
 						{#if connectionState.connected}
-							<span
-								class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
-							>
-								Connected
-							</span>
-							<Button
-								variant="outline"
-								onclick={disconnectFromServer}
-								disabled={connectionState.loading}
-							>
-								Disconnect
-							</Button>
-						{:else}
-							{#if !$activeAccount}
-								<Alert.Root
-									class="cursor-pointer transition-colors hover:bg-muted/50"
+							<div class="flex flex-col items-center gap-3">
+								<div
+									class="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400"
+								>
+									<span class="h-1.5 w-1.5 rounded-full bg-green-600 dark:bg-green-400"></span>
+									Connected
+								</div>
+								<Button
+									variant="outline"
+									class="w-full"
+									onclick={disconnectFromServer}
+									disabled={connectionState.loading}
+								>
+									Disconnect
+								</Button>
+							</div>
+						{:else if !$activeAccount}
+							<div class="flex w-full gap-4">
+								<Button
+									variant="outline"
+									class="flex-1 gap-2"
 									onclick={() => (dialogState.dialogId = DIALOG_IDS.LOGIN)}
 								>
-									<CircleUserRound />
-									<Alert.Title>Login to connect</Alert.Title>
-								</Alert.Root>
-							{/if}
+									<CircleUserRound class="h-4 w-4" />
+									Login to Connect
+								</Button>
+								<Button
+									class="flex-1"
+									onclick={connectToServer}
+									disabled={connectionState.loading || !$activeAccount}
+								>
+									{#if connectionState.loading}
+										Connecting...
+									{:else}
+										Connect to Server
+									{/if}
+								</Button>
+							</div>
+						{:else}
 							<Button
+								class="w-full"
 								onclick={connectToServer}
 								disabled={connectionState.loading || !$activeAccount}
 							>
@@ -306,8 +324,8 @@
 
 				<!-- Error message -->
 				{#if connectionState.error}
-					<Card.Root class="mb-6 border-destructive">
-						<Card.Content class="pt-6">
+					<Card.Root class="mb-6 border-destructive p-0">
+						<Card.Content class="p-5">
 							<p class="text-sm text-destructive">{connectionState.error}</p>
 						</Card.Content>
 					</Card.Root>
@@ -315,19 +333,19 @@
 
 				<!-- Tabs for server information -->
 				<Tabs.Root bind:value={activeTab}>
-					<Tabs.List class="grid w-full grid-cols-5">
-						<Tabs.Trigger value="about">About</Tabs.Trigger>
+					<Tabs.List class="flex w-full">
+						<Tabs.Trigger value="about" class="capitalize">About</Tabs.Trigger>
 						{#each availableCapabilities as capability (capability)}
 							{#if (capability === 'tools' && serverData.tools?.length) || (capability === 'resources' && (serverData.resources?.length || serverData.resourceTemplates?.length)) || (capability === 'prompts' && serverData.prompts?.length)}
-								<Tabs.Trigger value={capability}>{capability}</Tabs.Trigger>
+								<Tabs.Trigger value={capability} class="capitalize">{capability}</Tabs.Trigger>
 							{/if}
 						{/each}
 					</Tabs.List>
 
 					<!-- About tab -->
 					<Tabs.Content value="about" class="mt-4">
-						<Card.Root>
-							<Card.Content class="pt-6">
+						<Card.Root class="p-0">
+							<Card.Content class="p-5">
 								{#if $serverQuery.data.server.about}
 									<p class="text-sm">{$serverQuery.data.server.about}</p>
 								{:else}
@@ -381,8 +399,8 @@
 									/>
 								{/each}
 							{:else}
-								<Card.Root>
-									<Card.Content class="pt-6">
+								<Card.Root class="p-0">
+									<Card.Content class="p-5">
 										<p class="text-center text-sm text-muted-foreground">
 											Connect to the server to view available tools.
 										</p>
@@ -437,8 +455,8 @@
 									{/each}
 								{/if}
 							{:else}
-								<Card.Root>
-									<Card.Content class="pt-6">
+								<Card.Root class="p-0">
+									<Card.Content class="p-5">
 										<p class="text-center text-sm text-muted-foreground">
 											Connect to the server to view available resources.
 										</p>
@@ -460,8 +478,8 @@
 									{/each}
 								{/if}
 							{:else if $serverQuery.data}
-								<Card.Root>
-									<Card.Content class="pt-6">
+								<Card.Root class="p-0">
+									<Card.Content class="p-5">
 										<p class="text-center text-sm text-muted-foreground">
 											No resource templates available.
 										</p>
@@ -526,8 +544,8 @@
 									/>
 								{/each}
 							{:else}
-								<Card.Root>
-									<Card.Content class="pt-6">
+								<Card.Root class="p-0">
+									<Card.Content class="p-5">
 										<p class="text-center text-sm text-muted-foreground">
 											Connect to the server to view available prompts.
 										</p>
@@ -646,8 +664,8 @@
 			</div>
 		{/if}
 		{#if connectionState.error}
-			<Card.Root class="mx-auto mt-6 max-w-md border-destructive">
-				<Card.Content class="pt-6">
+			<Card.Root class="mx-auto mt-6 max-w-md border-destructive p-0">
+				<Card.Content class="p-5">
 					<p class="text-sm text-destructive">{connectionState.error}</p>
 				</Card.Content>
 			</Card.Root>
