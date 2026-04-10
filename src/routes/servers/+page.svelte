@@ -14,13 +14,17 @@
 		encodeServerIdentity,
 		resolveServerIdentifier
 	} from '$lib/utils';
+	import { Search } from 'lucide-svelte';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 
 	const serverAnnouncementsQuery = useServerAnnouncements();
 
-	let loading = $state($serverAnnouncementsQuery.isFetching);
+	const hasServers = $derived(($serverAnnouncements?.length ?? 0) > 0);
+	const loading = $derived($serverAnnouncementsQuery.isLoading && !hasServers);
 	let searchTerm = $state('');
+	let visibleCount = $state(6);
+
 	const resolvedSearchIdentifierQuery = $derived.by(() => {
 		const trimmedSearchTerm = searchTerm.trim();
 
@@ -55,6 +59,15 @@
 		);
 	});
 
+	const visibleServers = $derived(filteredServerAnnouncements?.slice(0, visibleCount) ?? []);
+	const hasMore = $derived((filteredServerAnnouncements?.length ?? 0) > visibleCount);
+
+	$effect(() => {
+		// Reset pagination when search term changes
+		searchTerm;
+		visibleCount = 6;
+	});
+
 	const decodedSearchIdentifier = $derived(
 		$resolvedSearchIdentifierQuery.data ?? decodeServerIdentifier(searchTerm)
 	);
@@ -87,38 +100,42 @@
 		<!-- Server Announcements Section -->
 		<div class="mx-auto max-w-6xl">
 			<!-- Search Section -->
-			<div class="mb-12 flex flex-col items-center justify-center gap-4">
+			<div class="relative mb-4">
+				<Search
+					class="absolute left-6 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground"
+				/>
 				<Input
 					bind:value={searchTerm}
 					type="text"
-					placeholder="🔎 Search servers by name, about, website, hex pubkey, npub, nprofile, or NIP-05..."
-					class="w-full max-w-md"
+					placeholder="Search Servers..."
+					class="h-[76px] w-full pl-16"
 				/>
 			</div>
 
 			{#if filteredServerAnnouncements?.length > 0}
-				<div class="mb-12 text-center">
-					<h2 class="mb-4 text-3xl font-bold">
-						Available MCP Servers
-						{#if searchTerm}
-							<span class="ml-2 text-lg font-normal text-muted-foreground">
-								({filteredServerAnnouncements.length} results)
-							</span>
-						{/if}
-					</h2>
-				</div>
-				<div class="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
-					{#each filteredServerAnnouncements as server (server.id)}
-						<div class="w-full max-w-sm">
-							<ServerCard
-								{server}
-								serverIdentifier={decodedSearchIdentifier?.pubkey === server.pubkey
-									? decodedSearchIdentifier.original
-									: undefined}
-							/>
-						</div>
+				<!-- Server count label -->
+				<p class="mb-4 text-sm text-muted-foreground">
+					{filteredServerAnnouncements.length} Servers available
+				</p>
+
+				<div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+					{#each visibleServers as server (server.id)}
+						<ServerCard
+							{server}
+							serverIdentifier={decodedSearchIdentifier?.pubkey === server.pubkey
+								? decodedSearchIdentifier.original
+								: undefined}
+						/>
 					{/each}
 				</div>
+
+				{#if hasMore}
+					<div class="mt-6 flex justify-center">
+						<Button variant="outline" onclick={() => (visibleCount += 6)}>
+							Load more servers
+						</Button>
+					</div>
+				{/if}
 			{:else if searchTerm}
 				{@const decodedIdentifier = decodedSearchIdentifier}
 				{@const resolvedServer = $searchServerQuery?.data?.server}
@@ -130,12 +147,10 @@
 							<p class="mb-6 text-muted-foreground">
 								Resolved a server from this identifier using its relay hints.
 							</p>
-							<div class="mx-auto w-full max-w-sm">
-								<ServerCard
-									server={resolvedServer}
-									serverIdentifier={decodedIdentifier?.original}
-								/>
-							</div>
+							<ServerCard
+								server={resolvedServer}
+								serverIdentifier={decodedIdentifier?.original}
+							/>
 						{:else}
 							<p class="mb-4 text-muted-foreground">No servers found matching "{searchTerm}"</p>
 						{/if}
@@ -146,25 +161,15 @@
 							<Button class="px-6" href={serverLookupHref}>Go</Button>
 						{/if}
 					</div>
-				{:else}
-					<div class="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
-						{#each Array(3) as _, i (i)}
-							<div class="w-full max-w-sm">
-								<LoadingCard layout="article" />
-							</div>
-						{/each}
-					</div>
 				{/if}
 			{:else if !$serverAnnouncements?.length && !loading}
 				<div class="mt-12 text-center text-muted-foreground">
 					<p>No MCP servers found. Check back later for server announcements.</p>
 				</div>
 			{:else if loading}
-				<div class="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
-					{#each Array(3) as _, i (i)}
-						<div class="w-full max-w-sm">
-							<LoadingCard layout="article" />
-						</div>
+				<div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+					{#each Array(6) as _, i (i)}
+						<LoadingCard layout="server-row" />
 					{/each}
 				</div>
 			{/if}

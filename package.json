@@ -59,6 +59,7 @@
 		"applesauce-signers": "^5.2.0",
 		"dompurify": "^3.3.3",
 		"lean-qr": "^2.7.1",
+		"lucide-svelte": "^1.0.1",
 		"marked": "^17.0.5",
 		"mode-watcher": "^1.1.0",
 		"nostr-tools": "^2.23.3",
