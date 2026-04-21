@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { asset, resolve } from '$app/paths';
+	import { page } from '$app/stores';
 	import Github from '@lucide/svelte/icons/github';
 	import Menu from '@lucide/svelte/icons/menu';
 	import ThemeToggle from './theme-toggle.svelte';
@@ -17,6 +18,8 @@
 	const faqsHref = $derived<`/faqs`>('/faqs');
 	const logoBlackSrc = asset('/logo-black.svg');
 	const logoWhiteSrc = asset('/logo-white.svg');
+
+	let isMenuOpen = $state(false);
 </script>
 
 <header
@@ -46,25 +49,25 @@
 			<nav class="flex items-center space-x-4 text-sm font-medium sm:space-x-6">
 				<a
 					href={resolve(serversHref)}
-					class="text-foreground/60 transition-colors hover:text-foreground/80"
+					class="transition-colors { $page.url.pathname.startsWith(resolve(serversHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
 				>
 					Servers
 				</a>
 				<a
 					href={resolve(blogHref)}
-					class="text-foreground/60 transition-colors hover:text-foreground/80"
+					class="transition-colors { $page.url.pathname.startsWith(resolve(blogHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
 				>
 					Blog
 				</a>
 				<a
 					href={resolve(aboutHref)}
-					class="text-foreground/60 transition-colors hover:text-foreground/80"
+					class="transition-colors { $page.url.pathname.startsWith(resolve(aboutHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
 				>
 					About
 				</a>
 				<a
 					href={resolve(faqsHref)}
-					class="text-foreground/60 transition-colors hover:text-foreground/80"
+					class="transition-colors { $page.url.pathname.startsWith(resolve(faqsHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
 				>
 					FAQs
 				</a>
@@ -72,13 +75,13 @@
 					href="https://docs.contextvm.org"
 					target="_blank"
 					rel="noopener noreferrer"
-					class="text-foreground/60 transition-colors hover:text-foreground/80"
+					class="text-foreground/60 transition-colors hover:text-primary"
 				>
 					Docs
 				</a>
 				<a
 					href={resolve(slidesHref)}
-					class="text-foreground/60 transition-colors hover:text-foreground/80"
+					class="transition-colors { $page.url.pathname.startsWith(resolve(slidesHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
 				>
 					Slides
 				</a>
@@ -86,7 +89,7 @@
 					href="https://github.com/contextvm"
 					target="_blank"
 					rel="noopener noreferrer"
-					class="text-foreground/60 transition-colors hover:text-foreground/80"
+					class="text-foreground/60 transition-colors hover:text-primary"
 					aria-label="GitHub"
 				>
 					<Github class="h-4 w-4" />
@@ -112,7 +115,7 @@
 		<!-- Mobile Menu Button -->
 		<div class="flex items-center space-x-2 sm:hidden">
 			<ThemeToggle />
-			<Sheet.Root>
+			<Sheet.Root bind:open={isMenuOpen}>
 				<Sheet.Trigger class={buttonVariants({ variant: 'ghost', size: 'icon' })} aria-label="Menu">
 					<Menu class="h-5 w-5" />
 				</Sheet.Trigger>
@@ -121,25 +124,29 @@
 						<nav class="flex flex-col space-y-1">
 							<a
 								href={resolve(serversHref)}
-								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+								onclick={() => (isMenuOpen = false)}
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(serversHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
 							>
 								Servers
 							</a>
 							<a
 								href={resolve(blogHref)}
-								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+								onclick={() => (isMenuOpen = false)}
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(blogHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
 							>
 								Blog
 							</a>
 							<a
 								href={resolve(aboutHref)}
-								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+								onclick={() => (isMenuOpen = false)}
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(aboutHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
 							>
 								About
 							</a>
 							<a
 								href={resolve(faqsHref)}
-								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+								onclick={() => (isMenuOpen = false)}
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(faqsHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
 							>
 								FAQs
 							</a>
@@ -147,13 +154,15 @@
 								href="https://docs.contextvm.org"
 								target="_blank"
 								rel="noopener noreferrer"
+								onclick={() => (isMenuOpen = false)}
 								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
 							>
 								Docs
 							</a>
 							<a
 								href={resolve(slidesHref)}
-								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+								onclick={() => (isMenuOpen = false)}
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(slidesHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
 							>
 								Slides
 							</a>
@@ -161,6 +170,7 @@
 								href="https://github.com/contextvm"
 								target="_blank"
 								rel="noopener noreferrer"
+								onclick={() => (isMenuOpen = false)}
 								class="flex items-center gap-2 rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
 								aria-label="GitHub"
 							>
