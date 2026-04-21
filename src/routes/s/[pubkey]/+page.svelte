@@ -18,6 +18,9 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
+	import { eventStore } from '$lib/services/eventStore';
+	import { createServerNotesLoader } from '$lib/services/loaders.svelte';
+	import { TimelineModel } from 'applesauce-core/models';
 	// NOTE: transport may be wrapped (payments middleware), so we access initialize via service.
 	import ToolCallForm from '$lib/components/ToolCallForm.svelte';
 	import ResourceReadForm from '$lib/components/ResourceReadForm.svelte';
@@ -25,6 +28,8 @@
 	import ResourceTemplateReadForm from '$lib/components/ResourceTemplateReadForm.svelte';
 	import ServerInformationCard from '$lib/components/ServerInformationCard.svelte';
 	import ServerConnectionCard from '$lib/components/ServerConnectionCard.svelte';
+	import ProfileCard from '$lib/components/ProfileCard.svelte';
+	import ServerNoteCard from '$lib/components/ServerNoteCard.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
@@ -40,6 +45,7 @@
 	import { serverKeys } from '$lib/queries/serverQueryKeys';
 	import Seo from '$lib/components/SEO.svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import { createServerNotesFilter } from '$lib/constants';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -73,10 +79,22 @@
 		resolvedIdentifier ? useServerIdentity(pubkey, relayHints) : undefined
 	);
 
+	const notesFilter = $derived(createServerNotesFilter(pubkey));
+	const notes = $derived(eventStore.model(TimelineModel, notesFilter));
+
+	// Trigger notes loader
+	$effect(() => {
+		if (!resolvedIdentifier || !pubkey) return;
+		const sub = createServerNotesLoader(pubkey, relayHints).subscribe();
+		return () => sub.unsubscribe();
+	});
+
 	// Get available capabilities when server data is loaded
 	let availableCapabilities = $derived(
 		$serverQuery?.data?.server ? getAvailableCapabilities($serverQuery.data.server) : []
 	);
+
+	const hasNotes = $derived($notes.length > 0);
 
 	// Update SEO data when server loads
 	$effect(() => {
@@ -335,6 +353,9 @@
 				<Tabs.Root bind:value={activeTab}>
 					<Tabs.List class="flex w-full">
 						<Tabs.Trigger value="about" class="capitalize">About</Tabs.Trigger>
+						{#if hasNotes}
+							<Tabs.Trigger value="notes" class="capitalize">notes</Tabs.Trigger>
+						{/if}
 						{#each availableCapabilities as capability (capability)}
 							{#if (capability === 'tools' && serverData.tools?.length) || (capability === 'resources' && (serverData.resources?.length || serverData.resourceTemplates?.length)) || (capability === 'prompts' && serverData.prompts?.length)}
 								<Tabs.Trigger value={capability} class="capitalize">{capability}</Tabs.Trigger>
@@ -583,11 +604,24 @@
 							{/if}
 						</Tabs.Content>
 					{/if}
+
+					<!-- Notes tab -->
+					{#if hasNotes}
+						<Tabs.Content value="notes" class="mt-4 flex flex-col gap-4">
+							{#each $notes as note (note.id)}
+								<ServerNoteCard {note} />
+							{/each}
+						</Tabs.Content>
+					{/if}
 				</Tabs.Root>
 			</div>
 
 			<!-- Right column (1/3 width) -->
 			<div class="lg:col-span-1">
+				<div class="mb-6">
+					<ProfileCard {pubkey} showLogout={false} showBanner={true} showAbout={true} />
+				</div>
+
 				<!-- Server Information Tabs -->
 				<Tabs.Root value="info" class="mb-6">
 					<Tabs.List class="grid w-full grid-cols-2">
