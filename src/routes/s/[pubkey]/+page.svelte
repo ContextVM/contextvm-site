@@ -18,6 +18,9 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
+	import { eventStore } from '$lib/services/eventStore';
+	import { createServerNotesLoader } from '$lib/services/loaders.svelte';
+	import { TimelineModel } from 'applesauce-core/models';
 	// NOTE: transport may be wrapped (payments middleware), so we access initialize via service.
 	import ToolCallForm from '$lib/components/ToolCallForm.svelte';
 	import ResourceReadForm from '$lib/components/ResourceReadForm.svelte';
@@ -25,6 +28,8 @@
 	import ResourceTemplateReadForm from '$lib/components/ResourceTemplateReadForm.svelte';
 	import ServerInformationCard from '$lib/components/ServerInformationCard.svelte';
 	import ServerConnectionCard from '$lib/components/ServerConnectionCard.svelte';
+	import ProfileCard from '$lib/components/ProfileCard.svelte';
+	import ServerNoteCard from '$lib/components/ServerNoteCard.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
@@ -40,6 +45,8 @@
 	import { serverKeys } from '$lib/queries/serverQueryKeys';
 	import Seo from '$lib/components/SEO.svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import { createServerNotesFilter } from '$lib/constants';
+	import { npubEncode } from 'nostr-tools/nip19';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -48,12 +55,12 @@
 	});
 	const resolvedIdentifier = $derived($resolvedIdentifierQuery.data ?? null);
 	const pubkey = $derived(resolvedIdentifier?.pubkey ?? requestedIdentifier);
+	const bootstrapRelayHints = $derived(resolvedIdentifier?.relayHints ?? []);
 	const connectionIdentifier = $derived.by(() =>
 		resolvedIdentifier?.format === 'nprofile'
 			? resolvedIdentifier.original
 			: ($serverIdentityQuery?.data?.nprofile ?? pubkey)
 	);
-	const relayHints = $derived(resolvedIdentifier?.relayHints ?? []);
 
 	const serversHref = $derived<`/servers`>('/servers');
 	const homeHref = $derived<`/`>('/');
@@ -67,16 +74,35 @@
 	let seoType = $state('website' as 'website' | 'article');
 
 	const serverQuery = $derived(
-		resolvedIdentifier ? useServerAnnouncement(pubkey, relayHints) : undefined
+		resolvedIdentifier ? useServerAnnouncement(pubkey, bootstrapRelayHints) : undefined
 	);
 	const serverIdentityQuery = $derived(
-		resolvedIdentifier ? useServerIdentity(pubkey, relayHints) : undefined
+		resolvedIdentifier ? useServerIdentity(pubkey, bootstrapRelayHints) : undefined
 	);
+	const effectiveRelayHints = $derived(
+		$serverIdentityQuery?.data?.relayHints?.length
+			? $serverIdentityQuery.data.relayHints
+			: bootstrapRelayHints
+	);
+
+	const notesFilter = $derived(createServerNotesFilter(pubkey));
+	const notes = $derived(eventStore.model(TimelineModel, notesFilter));
+	const jumbleProfileUrl = $derived(`https://jumble.social/users/${npubEncode(pubkey)}`);
+
+	// Trigger notes loader
+	$effect(() => {
+		if (!resolvedIdentifier || !pubkey) return;
+
+		const sub = createServerNotesLoader(pubkey, effectiveRelayHints).subscribe();
+		return () => sub.unsubscribe();
+	});
 
 	// Get available capabilities when server data is loaded
 	let availableCapabilities = $derived(
 		$serverQuery?.data?.server ? getAvailableCapabilities($serverQuery.data.server) : []
 	);
+
+	const hasNotes = $derived($notes.length > 0);
 
 	// Update SEO data when server loads
 	$effect(() => {
@@ -99,30 +125,30 @@
 	let toolsQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('tools')
 			? $serverQuery.data?.isPublic
-				? useServerTools(pubkey, true, relayHints)
-				: useServerTools(pubkey, false, relayHints)
+				? useServerTools(pubkey, true, effectiveRelayHints)
+				: useServerTools(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 
 	let resourcesQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
-				? useServerResources(pubkey, true, relayHints)
-				: useServerResources(pubkey, false, relayHints)
+				? useServerResources(pubkey, true, effectiveRelayHints)
+				: useServerResources(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 	let resourceTemplatesQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
-				? useServerResourceTemplates(pubkey, true, relayHints)
-				: useServerResourceTemplates(pubkey, false, relayHints)
+				? useServerResourceTemplates(pubkey, true, effectiveRelayHints)
+				: useServerResourceTemplates(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 	let promptsQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('prompts')
 			? $serverQuery.data?.isPublic
-				? useServerPrompts(pubkey, true, relayHints)
-				: useServerPrompts(pubkey, false, relayHints)
+				? useServerPrompts(pubkey, true, effectiveRelayHints)
+				: useServerPrompts(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 
@@ -588,11 +614,18 @@
 
 			<!-- Right column (1/3 width) -->
 			<div class="lg:col-span-1">
+				<div class="mb-6">
+					<ProfileCard {pubkey} mode="extended" />
+				</div>
+
 				<!-- Server Information Tabs -->
 				<Tabs.Root value="info" class="mb-6">
-					<Tabs.List class="grid w-full grid-cols-2">
+					<Tabs.List class={hasNotes ? 'grid w-full grid-cols-3' : 'grid w-full grid-cols-2'}>
 						<Tabs.Trigger value="info">Information</Tabs.Trigger>
-						<Tabs.Trigger value="connection">Connection</Tabs.Trigger>
+						<Tabs.Trigger value="use">Use</Tabs.Trigger>
+						{#if hasNotes}
+							<Tabs.Trigger value="notes">Notes</Tabs.Trigger>
+						{/if}
 					</Tabs.List>
 
 					<!-- Information Tab -->
@@ -604,12 +637,29 @@
 					</Tabs.Content>
 
 					<!-- Connection Tab -->
-					<Tabs.Content value="connection" class="mt-4">
+					<Tabs.Content value="use" class="mt-4">
 						<ServerConnectionCard
 							server={$serverQuery.data.server}
 							serverIdentifier={connectionIdentifier}
+							identity={$serverIdentityQuery?.data}
 						/>
 					</Tabs.Content>
+
+					{#if hasNotes}
+						<Tabs.Content value="notes" class="mt-4 flex flex-col gap-4">
+							{#each $notes as note (note.id)}
+								<ServerNoteCard {note} />
+							{/each}
+							<a
+								href={jumbleProfileUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+							>
+								Open profile
+							</a>
+						</Tabs.Content>
+					{/if}
 				</Tabs.Root>
 			</div>
 		</div>

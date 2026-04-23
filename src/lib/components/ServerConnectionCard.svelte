@@ -2,27 +2,32 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import type { ServerAnnouncement } from '$lib/models/serverAnnouncements';
-	import { slugify } from '$lib/utils';
+	import { slugify, type ServerIdentity } from '$lib/utils';
 	import { copyToClipboard } from '$lib/utils';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 
 	let {
 		server,
-		serverIdentifier = server.pubkey
+		serverIdentifier = server.pubkey,
+		identity
 	}: {
 		server: ServerAnnouncement;
 		serverIdentifier?: string;
+		identity?: ServerIdentity;
 	} = $props();
 
-	// Raw command text
-	const rawCommand = $derived(`proxy-cli --server-pubkey ${serverIdentifier}`);
+	const preferredIdentifier = $derived(
+		identity?.hasPublishedRelayList ? identity.nprofile : (identity?.npub ?? serverIdentifier)
+	);
+	const identifierLabel = $derived(identity?.hasPublishedRelayList ? 'nprofile' : 'npub');
 
-	// Config JSON text
+	const rawCommand = $derived(`npx cvmi use ${preferredIdentifier}`);
+
 	const configJson = $derived(`{
 	"mcpServers": {
 		"${slugify(server.name) || 'contextvm-server'}": {
-		"command": "proxy-cli",
-		"args": ["--server-pubkey", "${serverIdentifier}"]
+		"command": "npx",
+		"args": ["cvmi", "use", "${preferredIdentifier}"]
 		}
 	}
 }`);
@@ -37,10 +42,14 @@
 			<div>
 				<p class="mb-4 text-sm text-muted-foreground">
 					Connecting to this server allows you to use it through an MCP host like Claude, Goose, or
-					others. For hosts that don't support nostr transport directly, you'll need to install
-					<a href="https://github.com/ContextVM/proxy-cli" target="_blank" class="hover:underline">
-						<strong>proxy-cli</strong>
+					others. For hosts that don't support nostr transport directly, use
+					<a href="https://www.npmjs.com/package/cvmi" target="_blank" class="hover:underline">
+						<strong>cvmi</strong>
 					</a> first.
+				</p>
+				<p class="text-xs text-muted-foreground">
+					These examples prefer the <span class="font-mono">{identifierLabel}</span> identity so relay
+					hints are preserved when a published relay list is available.
 				</p>
 			</div>
 
@@ -63,7 +72,8 @@
 						</div>
 						<pre class="overflow-x-auto pr-10 text-sm"><code>{rawCommand}</code></pre>
 						<p class="mt-2 text-xs text-muted-foreground">
-							This is how to connect to the server using the proxy-cli tool.
+							This command exposes the remote server locally over stdio using
+							<span class="font-mono">cvmi use</span>.
 						</p>
 					</div>
 				</Tabs.Content>
@@ -83,11 +93,11 @@
 						<p class="mt-2 text-xs text-muted-foreground">
 							Add this configuration to your MCP host config file. For more configuration details,
 							visit the <a
-								href="https://github.com/ContextVM/proxy-cli"
+								href="https://github.com/ContextVM/cvmi"
 								target="_blank"
 								class="hover:underline"
 							>
-								proxy-cli GitHub repository
+								cvmi GitHub repository
 							</a>.
 						</p>
 					</div>

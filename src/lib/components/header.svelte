@@ -49,25 +49,33 @@
 			<nav class="flex items-center space-x-4 text-sm font-medium sm:space-x-6">
 				<a
 					href={resolve(serversHref)}
-					class="transition-colors { $page.url.pathname.startsWith(resolve(serversHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
+					class="transition-colors {$page.url.pathname.startsWith(resolve(serversHref))
+						? 'font-semibold text-primary'
+						: 'text-foreground/60 hover:text-primary'}"
 				>
 					Servers
 				</a>
 				<a
 					href={resolve(blogHref)}
-					class="transition-colors { $page.url.pathname.startsWith(resolve(blogHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
+					class="transition-colors {$page.url.pathname.startsWith(resolve(blogHref))
+						? 'font-semibold text-primary'
+						: 'text-foreground/60 hover:text-primary'}"
 				>
 					Blog
 				</a>
 				<a
 					href={resolve(aboutHref)}
-					class="transition-colors { $page.url.pathname.startsWith(resolve(aboutHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
+					class="transition-colors {$page.url.pathname.startsWith(resolve(aboutHref))
+						? 'font-semibold text-primary'
+						: 'text-foreground/60 hover:text-primary'}"
 				>
 					About
 				</a>
 				<a
 					href={resolve(faqsHref)}
-					class="transition-colors { $page.url.pathname.startsWith(resolve(faqsHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
+					class="transition-colors {$page.url.pathname.startsWith(resolve(faqsHref))
+						? 'font-semibold text-primary'
+						: 'text-foreground/60 hover:text-primary'}"
 				>
 					FAQs
 				</a>
@@ -81,7 +89,9 @@
 				</a>
 				<a
 					href={resolve(slidesHref)}
-					class="transition-colors { $page.url.pathname.startsWith(resolve(slidesHref)) ? 'text-primary font-semibold' : 'text-foreground/60 hover:text-primary' }"
+					class="transition-colors {$page.url.pathname.startsWith(resolve(slidesHref))
+						? 'font-semibold text-primary'
+						: 'text-foreground/60 hover:text-primary'}"
 				>
 					Slides
 				</a>
@@ -98,7 +108,7 @@
 			<div class="flex items-center gap-2 sm:gap-4">
 				{#if $activeAccount}
 					<div class="hidden items-center gap-2 sm:flex sm:gap-3">
-						<ProfileCard pubkey={$activeAccount.pubkey} />
+						<ProfileCard pubkey={$activeAccount.pubkey} mode="compact" showLogout={true} />
 					</div>
 				{:else}
 					<div class="hidden sm:block">
@@ -125,28 +135,44 @@
 							<a
 								href={resolve(serversHref)}
 								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(serversHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
+									resolve(serversHref)
+								)
+									? 'bg-primary/10 text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
 							>
 								Servers
 							</a>
 							<a
 								href={resolve(blogHref)}
 								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(blogHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
+									resolve(blogHref)
+								)
+									? 'bg-primary/10 text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
 							>
 								Blog
 							</a>
 							<a
 								href={resolve(aboutHref)}
 								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(aboutHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
+									resolve(aboutHref)
+								)
+									? 'bg-primary/10 text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
 							>
 								About
 							</a>
 							<a
 								href={resolve(faqsHref)}
 								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(faqsHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
+									resolve(faqsHref)
+								)
+									? 'bg-primary/10 text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
 							>
 								FAQs
 							</a>
@@ -162,7 +188,11 @@
 							<a
 								href={resolve(slidesHref)}
 								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors { $page.url.pathname.startsWith(resolve(slidesHref)) ? 'bg-primary/10 text-primary' : 'text-foreground/80 hover:bg-accent hover:text-foreground' }"
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
+									resolve(slidesHref)
+								)
+									? 'bg-primary/10 text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
 							>
 								Slides
 							</a>
@@ -181,7 +211,7 @@
 						<div class="mt-8 border-t pt-6">
 							{#if $activeAccount}
 								<div class="flex flex-col gap-4 px-2">
-									<ProfileCard pubkey={$activeAccount.pubkey} />
+									<ProfileCard pubkey={$activeAccount.pubkey} mode="compact" showLogout={true} />
 								</div>
 							{:else}
 								<div class="px-2">

@@ -1,7 +1,11 @@
-import { createAddressLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
-import { defaultRelays, relayPool } from './relay-pool';
+import {
+	createAddressLoader,
+	createEventLoader,
+	createTimelineLoader
+} from 'applesauce-loaders/loaders';
+import { commonRelays, defaultRelays, relayPool } from './relay-pool';
 import { eventStore } from './eventStore';
-import { articlesFilter, serverAnnouncementsFilter } from '$lib/constants';
+import { articlesFilter, createServerNotesFilter, serverAnnouncementsFilter } from '$lib/constants';
 import { relayStore } from '../stores/relay-store.svelte';
 import {
 	PROMPTS_LIST_KIND,
@@ -11,9 +15,14 @@ import {
 	TOOLS_LIST_KIND
 } from '@contextvm/sdk';
 import { kinds } from 'nostr-tools';
+import { mergeRelaySets } from 'applesauce-core/helpers/relays';
 
 // Create address loader
 export const addressLoader = createAddressLoader(relayPool, { eventStore });
+export const eventLoader = createEventLoader(relayPool, {
+	eventStore,
+	extraRelays: commonRelays
+});
 
 // Function to create a blog articles loader with dynamic relays
 export const createBlogArticlesLoader = (relays: string[] = defaultRelays) => {
@@ -92,5 +101,21 @@ export const createServerRelayListByPubkeyLoader = (pubkey: string, relays?: str
 		pubkey,
 		kind: kinds.RelayList,
 		relays: selectedRelays
+	});
+};
+
+// Function to create a server notes loader (kind:1) by pubkey with dynamic relays
+export const createServerNotesLoader = (pubkey: string, relays?: string[]) => {
+	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const loader = createTimelineLoader(relayPool, selectedRelays, createServerNotesFilter(pubkey), {
+		eventStore
+	});
+	return loader();
+};
+
+export const createNoteEventLoader = (id: string, relays?: string[]) => {
+	return eventLoader({
+		id,
+		relays: relays && relays.length > 0 ? mergeRelaySets(relays, commonRelays) : commonRelays
 	});
 };
