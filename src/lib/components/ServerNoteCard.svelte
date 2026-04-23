@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import ProfileCard from '$lib/components/ProfileCard.svelte';
 	import ServerNoteCard from '$lib/components/ServerNoteCard.svelte';
 	import { createNoteEventLoader } from '$lib/services/loaders.svelte';
@@ -15,7 +14,7 @@
 	const date = $derived(formatUnixTimestamp(note.created_at, true));
 	type Segment =
 		| { type: 'text'; value: string }
-		| { type: 'profile'; value: string; pubkey: string; href: string }
+		| { type: 'profile'; value: string; pubkey: string }
 		| { type: 'event'; value: string; id: string; relays?: string[] }
 		| { type: 'link'; value: string; href: string };
 
@@ -76,15 +75,13 @@
 						segments.push({
 							type: 'profile',
 							value,
-							pubkey: decoded.data,
-							href: resolve(`/s/${identifier}`)
+							pubkey: decoded.data
 						});
 					} else if (decoded.type === 'nprofile') {
 						segments.push({
 							type: 'profile',
 							value,
-							pubkey: decoded.data.pubkey,
-							href: resolve(`/s/${identifier}`)
+							pubkey: decoded.data.pubkey
 						});
 					} else if (decoded.type === 'note') {
 						segments.push({
@@ -174,12 +171,9 @@
 				</div>
 			{/if}
 		{:else if segment.type === 'profile'}
-			<a
-				href={segment.href}
-				class="inline-flex max-w-full align-middle text-primary hover:underline"
-			>
+			<span class="inline align-baseline text-foreground">
 				<ProfileCard pubkey={segment.pubkey} mode="inline" />
-			</a>
+			</span>
 		{:else if segment.type === 'event'}
 			<div class="my-3 min-w-0">
 				{#if embeddedNotes[segment.id]}

@@ -39,9 +39,14 @@
 	const blogHref = $derived<`/blog`>('/blog');
 
 	type ArticleSegment =
-		| { type: 'markdown'; value: string }
-		| { type: 'profile'; value: string; pubkey: string; href: string }
+		| { type: 'html'; value: string }
+		| { type: 'profile'; token: string; pubkey: string }
 		| { type: 'event'; value: string; id: string; relays?: string[] };
+
+	const PROFILE_TOKEN_PREFIX = 'CVM_PROFILE_TOKEN_';
+	const NOSTR_URI_REGEX =
+		/nostr:(?:npub|nprofile|note|nevent)1[023456789acdefghjklmnpqrstuvwxyz]+/gi;
+	const NOSTR_EVENT_URI_REGEX = /nostr:(?:note|nevent)1[023456789acdefghjklmnpqrstuvwxyz]+/gi;
 
 	$effect(() => {
 		const sub = article.subscribe({
@@ -90,39 +95,64 @@
 		}
 	});
 
-	function parseArticleContent(content: string): ArticleSegment[] {
-		const matches = Array.from(
-			content.matchAll(/nostr:(?:npub|nprofile|note|nevent)1[023456789acdefghjklmnpqrstuvwxyz]+/gi)
-		);
+	function escapeRegex(value: string): string {
+		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
+	function parseEmbeddedEvents(content: string): Extract<ArticleSegment, { type: 'event' }>[] {
+		return Array.from(content.matchAll(NOSTR_EVENT_URI_REGEX))
+			.map((match) => {
+				const value = match[0];
+				const identifier = value.slice(6);
+
+				try {
+					const decoded = decode(identifier);
+
+					if (decoded.type === 'note') {
+						return { type: 'event' as const, value, id: decoded.data };
+					}
+
+					if (decoded.type === 'nevent') {
+						return {
+							type: 'event' as const,
+							value,
+							id: decoded.data.id,
+							relays: decoded.data.relays
+						};
+					}
+				} catch {
+					return null;
+				}
+
+				return null;
+			})
+			.filter(
+				(segment): segment is Extract<ArticleSegment, { type: 'event' }> =>
+					segment?.type === 'event'
+			);
+	}
+
+	async function parseArticleContent(content: string): Promise<ArticleSegment[]> {
+		const matches = Array.from(content.matchAll(NOSTR_URI_REGEX));
 		const segments: ArticleSegment[] = [];
-		let lastIndex = 0;
+		const profiles: Array<Extract<ArticleSegment, { type: 'profile' }>> = [];
+		let markdownContent = content;
 
-		for (const match of matches) {
+		for (const [index, match] of matches.entries()) {
 			const value = match[0];
-			const index = match.index ?? 0;
-
-			if (index > lastIndex) {
-				segments.push({ type: 'markdown', value: content.slice(lastIndex, index) });
-			}
+			const identifier = value.slice(6);
 
 			try {
-				const identifier = value.slice(6);
 				const decoded = decode(identifier);
 
-				if (decoded.type === 'npub') {
-					segments.push({
+				if (decoded.type === 'npub' || decoded.type === 'nprofile') {
+					const token = `${PROFILE_TOKEN_PREFIX}${index}__`;
+					profiles.push({
 						type: 'profile',
-						value,
-						pubkey: decoded.data,
-						href: `https://jumble.social/users/${identifier}`
+						token,
+						pubkey: decoded.type === 'npub' ? decoded.data : decoded.data.pubkey
 					});
-				} else if (decoded.type === 'nprofile') {
-					segments.push({
-						type: 'profile',
-						value,
-						pubkey: decoded.data.pubkey,
-						href: `https://jumble.social/users/${identifier}`
-					});
+					markdownContent = markdownContent.replace(value, ` ${token} `);
 				} else if (decoded.type === 'note') {
 					segments.push({ type: 'event', value, id: decoded.data });
 				} else if (decoded.type === 'nevent') {
@@ -132,32 +162,56 @@
 						id: decoded.data.id,
 						relays: decoded.data.relays
 					});
-				} else {
-					segments.push({ type: 'markdown', value });
 				}
 			} catch {
-				segments.push({ type: 'markdown', value });
+				continue;
 			}
-
-			lastIndex = index + value.length;
 		}
 
-		if (lastIndex < content.length) {
-			segments.push({ type: 'markdown', value: content.slice(lastIndex) });
+		const html = await renderMarkdown(markdownContent);
+		const tokens = profiles.map((profile) => escapeRegex(profile.token));
+		if (!tokens.length) {
+			return [{ type: 'html', value: html }, ...segments];
 		}
 
-		return segments.length > 0 ? segments : [{ type: 'markdown', value: content }];
+		const tokenRegex = new RegExp(`(${tokens.join('|')})`, 'g');
+		return [
+			...html
+				.split(tokenRegex)
+				.filter(Boolean)
+				.map(
+					(part) =>
+						profiles.find((profile) => profile.token === part) ?? {
+							type: 'html' as const,
+							value: part
+						}
+				),
+			...segments
+		];
 	}
 
-	const articleSegments = $derived.by(() => parseArticleContent($storedArticle?.content ?? ''));
+	let articleSegments = $state<ArticleSegment[]>([]);
+	const articleEventSegments = $derived.by(() =>
+		parseEmbeddedEvents($storedArticle?.content ?? '')
+	);
 
 	$effect(() => {
-		const eventSegments = articleSegments.filter(
-			(segment): segment is Extract<ArticleSegment, { type: 'event' }> => segment.type === 'event'
-		);
-		if (!eventSegments.length) return;
+		const content = $storedArticle?.content ?? '';
+		let cancelled = false;
 
-		const subscriptions = eventSegments
+		parseArticleContent(content).then((segments) => {
+			if (!cancelled) articleSegments = segments;
+		});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
+		if (!articleEventSegments.length) return;
+
+		const subscriptions = articleEventSegments
 			.filter((segment) => !embeddedNotes[segment.id])
 			.map((segment) =>
 				createNoteEventLoader(segment.id, segment.relays).subscribe((event) => {
@@ -219,23 +273,15 @@
 			class="prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none [&>*:not(:first-child)]:mt-6"
 		>
 			{#each articleSegments as segment, index (index)}
-				{#if segment.type === 'markdown'}
+				{#if segment.type === 'html'}
 					{#if segment.value.trim()}
-						{#await renderMarkdown(segment.value) then html}
-							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-							{@html html}
-						{/await}
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+						{@html segment.value}
 					{/if}
 				{:else if segment.type === 'profile'}
-					<p>
-						<a
-							target="_blank"
-							href={segment.href}
-							class="inline-flex max-w-full align-middle text-primary hover:underline"
-						>
-							<ProfileCard pubkey={segment.pubkey} mode="inline" />
-						</a>
-					</p>
+					<span class="not-prose inline align-baseline text-foreground">
+						<ProfileCard pubkey={segment.pubkey} mode="inline" />
+					</span>
 				{:else if segment.type === 'event'}
 					<div class="not-prose my-6">
 						{#if embeddedNotes[segment.id]}

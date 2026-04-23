@@ -25,6 +25,9 @@
 	const canShowLogout = $derived(mode === 'compact' && showLogout);
 
 	const profile = $derived(eventStore.model(ProfileModel, pubkey));
+	const displayName = $derived(
+		$profile?.name || $profile?.display_name || $profile?.nip05 || pubkey.slice(0, 8)
+	);
 	$effect(() => {
 		if ($profile) return;
 		const sub = addressLoader({
@@ -76,16 +79,14 @@
 			</div>
 		</div>
 	{:else if isInline}
-		<span class="inline-block max-w-full truncate align-middle text-sm font-medium text-foreground">
-			{$profile.name || $profile.display_name || $profile.nip05 || pubkey.slice(0, 8)}
+		<span class="inline align-baseline text-sm font-medium break-words text-foreground">
+			{displayName}
 		</span>
 	{:else}
 		<div class="flex items-center gap-2">
 			{@render pfp(pubkey, $profile.picture)}
 			<div class="min-w-0 flex-1">
-				<span class="block truncate text-sm font-semibold"
-					>{$profile.name || $profile.display_name || 'Unknown'}</span
-				>
+				<span class="block truncate text-sm font-semibold">{displayName}</span>
 				{#if $profile.nip05}
 					<p class="text-xs text-muted-foreground">{$profile.nip05}</p>
 				{/if}
@@ -98,4 +99,8 @@
 			{/if}
 		</div>
 	{/if}
+{:else if isInline}
+	<span class="inline align-baseline text-sm font-medium break-words text-foreground">
+		{displayName}
+	</span>
 {/if}
