@@ -8,18 +8,21 @@
 	import { logout } from '$lib/services/accountManager.svelte';
 	import { pubkeyToHexColor } from '$lib/utils';
 	import { Metadata } from 'nostr-tools/kinds';
+	import { cn } from '$lib/utils';
 
 	let {
 		pubkey,
-		showLogout = true,
-		showBanner = false,
-		showAbout = false
+		mode = 'compact',
+		showLogout = false
 	}: {
 		pubkey: string;
+		mode?: 'compact' | 'extended' | 'inline';
 		showLogout?: boolean;
-		showBanner?: boolean;
-		showAbout?: boolean;
 	} = $props();
+
+	const isExtended = $derived(mode === 'extended');
+	const isInline = $derived(mode === 'inline');
+	const canShowLogout = $derived(mode === 'compact' && showLogout);
 
 	const profile = $derived(eventStore.model(ProfileModel, pubkey));
 	$effect(() => {
@@ -33,55 +36,66 @@
 	});
 </script>
 
-{#snippet pfp(pubkey: string, pfp?: string)}
+{#snippet pfp(pubkey: string, pfp?: string, size: 'compact' | 'extended' = 'compact')}
 	{#if pfp}
-		<img src={pfp} alt="pfp" class="my-4 h-8 w-8 rounded-full object-cover" />
+		<img
+			src={pfp}
+			alt="pfp"
+			class={cn('rounded-full object-cover', size === 'extended' ? 'h-16 w-16' : 'h-8 w-8')}
+		/>
 	{:else}
-		<div class="h-8 w-8 rounded-full" style="background-color: {pubkeyToHexColor(pubkey)}"></div>
+		<div
+			class={cn('rounded-full', size === 'extended' ? 'h-16 w-16' : 'h-8 w-8')}
+			style="background-color: {pubkeyToHexColor(pubkey)}"
+		></div>
 	{/if}
 {/snippet}
+{#if $profile}
+	{#if isExtended}
+		<div class="overflow-hidden rounded-lg border border-border bg-card">
+			{#if $profile?.banner}
+				<img src={$profile.banner} alt="" class="h-32 w-full object-cover" />
+			{/if}
 
-<div class="overflow-hidden rounded-lg border border-border bg-card">
-	{#if showBanner && $profile?.banner}
-		<img src={$profile.banner} alt="" class="h-32 w-full object-cover" />
-	{/if}
-
-	<div class="p-4">
-		{#if $profile}
-			<div class="flex items-center gap-2">
-				{@render pfp(pubkey, $profile.picture)}
-				<div class="min-w-0 flex-1">
-					<span class="block truncate text-lg font-semibold"
-						>{$profile.name || $profile.display_name || 'Unknown'}</span
-					>
-					{#if $profile.nip05}
-						<p class="text-xs text-muted-foreground">{$profile.nip05}</p>
-					{/if}
+			<div class="p-4">
+				<div class="flex items-start gap-3">
+					{@render pfp(pubkey, $profile.picture, 'extended')}
+					<div class="min-w-0 flex-1 pt-1">
+						<span class="block truncate text-lg font-semibold"
+							>{$profile.name || $profile.display_name || 'Unknown'}</span
+						>
+						{#if $profile.nip05}
+							<p class="text-xs text-muted-foreground">{$profile.nip05}</p>
+						{/if}
+					</div>
 				</div>
-				{#if showLogout}
-					<Button variant="ghost" size="icon" onclick={logout} aria-label="Logout">
-						<LogOut class="h-4 w-4" />
-					</Button>
-				{/if}
-			</div>
 
-			{#if showAbout}
 				<p class="mt-4 text-sm whitespace-pre-wrap text-muted-foreground">
 					{$profile.about || 'No profile description available.'}
 				</p>
-			{/if}
-		{:else}
-			<div class="flex items-center gap-2">
-				{@render pfp(pubkey, undefined)}
-				<div class="min-w-0 flex-1">
-					<span class="block truncate text-lg font-semibold">{pubkey.slice(0, 6)}</span>
-				</div>
-				{#if showLogout}
-					<Button variant="ghost" size="icon" onclick={logout} aria-label="Logout">
-						<LogOut class="h-4 w-4" />
-					</Button>
+			</div>
+		</div>
+	{:else if isInline}
+		<span class="inline-block max-w-full truncate align-middle text-sm font-medium text-foreground">
+			{$profile.name || $profile.display_name || $profile.nip05 || pubkey.slice(0, 8)}
+		</span>
+	{:else}
+		<div class="flex items-center gap-2">
+			{@render pfp(pubkey, $profile.picture)}
+			<div class="min-w-0 flex-1">
+				<span class="block truncate text-sm font-semibold"
+					>{$profile.name || $profile.display_name || 'Unknown'}</span
+				>
+				{#if $profile.nip05}
+					<p class="text-xs text-muted-foreground">{$profile.nip05}</p>
 				{/if}
 			</div>
-		{/if}
-	</div>
-</div>
+
+			{#if canShowLogout}
+				<Button variant="ghost" size="icon" onclick={logout} aria-label="Logout">
+					<LogOut class="h-4 w-4" />
+				</Button>
+			{/if}
+		</div>
+	{/if}
+{/if}

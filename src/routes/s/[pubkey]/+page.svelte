@@ -46,6 +46,7 @@
 	import Seo from '$lib/components/SEO.svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import { createServerNotesFilter } from '$lib/constants';
+	import { npubEncode } from 'nostr-tools/nip19';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -54,12 +55,12 @@
 	});
 	const resolvedIdentifier = $derived($resolvedIdentifierQuery.data ?? null);
 	const pubkey = $derived(resolvedIdentifier?.pubkey ?? requestedIdentifier);
+	const bootstrapRelayHints = $derived(resolvedIdentifier?.relayHints ?? []);
 	const connectionIdentifier = $derived.by(() =>
 		resolvedIdentifier?.format === 'nprofile'
 			? resolvedIdentifier.original
 			: ($serverIdentityQuery?.data?.nprofile ?? pubkey)
 	);
-	const relayHints = $derived(resolvedIdentifier?.relayHints ?? []);
 
 	const serversHref = $derived<`/servers`>('/servers');
 	const homeHref = $derived<`/`>('/');
@@ -73,19 +74,26 @@
 	let seoType = $state('website' as 'website' | 'article');
 
 	const serverQuery = $derived(
-		resolvedIdentifier ? useServerAnnouncement(pubkey, relayHints) : undefined
+		resolvedIdentifier ? useServerAnnouncement(pubkey, bootstrapRelayHints) : undefined
 	);
 	const serverIdentityQuery = $derived(
-		resolvedIdentifier ? useServerIdentity(pubkey, relayHints) : undefined
+		resolvedIdentifier ? useServerIdentity(pubkey, bootstrapRelayHints) : undefined
+	);
+	const effectiveRelayHints = $derived(
+		$serverIdentityQuery?.data?.relayHints?.length
+			? $serverIdentityQuery.data.relayHints
+			: bootstrapRelayHints
 	);
 
 	const notesFilter = $derived(createServerNotesFilter(pubkey));
 	const notes = $derived(eventStore.model(TimelineModel, notesFilter));
+	const jumbleProfileUrl = $derived(`https://jumble.social/users/${npubEncode(pubkey)}`);
 
 	// Trigger notes loader
 	$effect(() => {
 		if (!resolvedIdentifier || !pubkey) return;
-		const sub = createServerNotesLoader(pubkey, relayHints).subscribe();
+
+		const sub = createServerNotesLoader(pubkey, effectiveRelayHints).subscribe();
 		return () => sub.unsubscribe();
 	});
 
@@ -117,30 +125,30 @@
 	let toolsQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('tools')
 			? $serverQuery.data?.isPublic
-				? useServerTools(pubkey, true, relayHints)
-				: useServerTools(pubkey, false, relayHints)
+				? useServerTools(pubkey, true, effectiveRelayHints)
+				: useServerTools(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 
 	let resourcesQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
-				? useServerResources(pubkey, true, relayHints)
-				: useServerResources(pubkey, false, relayHints)
+				? useServerResources(pubkey, true, effectiveRelayHints)
+				: useServerResources(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 	let resourceTemplatesQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('resources')
 			? $serverQuery.data?.isPublic
-				? useServerResourceTemplates(pubkey, true, relayHints)
-				: useServerResourceTemplates(pubkey, false, relayHints)
+				? useServerResourceTemplates(pubkey, true, effectiveRelayHints)
+				: useServerResourceTemplates(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 	let promptsQuery = $derived(
 		$serverQuery?.isFetched && availableCapabilities.includes('prompts')
 			? $serverQuery.data?.isPublic
-				? useServerPrompts(pubkey, true, relayHints)
-				: useServerPrompts(pubkey, false, relayHints)
+				? useServerPrompts(pubkey, true, effectiveRelayHints)
+				: useServerPrompts(pubkey, false, effectiveRelayHints)
 			: undefined
 	);
 
@@ -353,9 +361,6 @@
 				<Tabs.Root bind:value={activeTab}>
 					<Tabs.List class="flex w-full">
 						<Tabs.Trigger value="about" class="capitalize">About</Tabs.Trigger>
-						{#if hasNotes}
-							<Tabs.Trigger value="notes" class="capitalize">notes</Tabs.Trigger>
-						{/if}
 						{#each availableCapabilities as capability (capability)}
 							{#if (capability === 'tools' && serverData.tools?.length) || (capability === 'resources' && (serverData.resources?.length || serverData.resourceTemplates?.length)) || (capability === 'prompts' && serverData.prompts?.length)}
 								<Tabs.Trigger value={capability} class="capitalize">{capability}</Tabs.Trigger>
@@ -604,29 +609,23 @@
 							{/if}
 						</Tabs.Content>
 					{/if}
-
-					<!-- Notes tab -->
-					{#if hasNotes}
-						<Tabs.Content value="notes" class="mt-4 flex flex-col gap-4">
-							{#each $notes as note (note.id)}
-								<ServerNoteCard {note} />
-							{/each}
-						</Tabs.Content>
-					{/if}
 				</Tabs.Root>
 			</div>
 
 			<!-- Right column (1/3 width) -->
 			<div class="lg:col-span-1">
 				<div class="mb-6">
-					<ProfileCard {pubkey} showLogout={false} showBanner={true} showAbout={true} />
+					<ProfileCard {pubkey} mode="extended" />
 				</div>
 
 				<!-- Server Information Tabs -->
 				<Tabs.Root value="info" class="mb-6">
-					<Tabs.List class="grid w-full grid-cols-2">
+					<Tabs.List class={hasNotes ? 'grid w-full grid-cols-3' : 'grid w-full grid-cols-2'}>
 						<Tabs.Trigger value="info">Information</Tabs.Trigger>
-						<Tabs.Trigger value="connection">Connection</Tabs.Trigger>
+						<Tabs.Trigger value="use">Use</Tabs.Trigger>
+						{#if hasNotes}
+							<Tabs.Trigger value="notes">Notes</Tabs.Trigger>
+						{/if}
 					</Tabs.List>
 
 					<!-- Information Tab -->
@@ -638,12 +637,29 @@
 					</Tabs.Content>
 
 					<!-- Connection Tab -->
-					<Tabs.Content value="connection" class="mt-4">
+					<Tabs.Content value="use" class="mt-4">
 						<ServerConnectionCard
 							server={$serverQuery.data.server}
 							serverIdentifier={connectionIdentifier}
+							identity={$serverIdentityQuery?.data}
 						/>
 					</Tabs.Content>
+
+					{#if hasNotes}
+						<Tabs.Content value="notes" class="mt-4 flex flex-col gap-4">
+							{#each $notes as note (note.id)}
+								<ServerNoteCard {note} />
+							{/each}
+							<a
+								href={jumbleProfileUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+							>
+								Open profile
+							</a>
+						</Tabs.Content>
+					{/if}
 				</Tabs.Root>
 			</div>
 		</div>

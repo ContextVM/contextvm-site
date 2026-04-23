@@ -108,7 +108,7 @@
 			<div class="flex items-center gap-2 sm:gap-4">
 				{#if $activeAccount}
 					<div class="hidden items-center gap-2 sm:flex sm:gap-3">
-						<ProfileCard pubkey={$activeAccount.pubkey} />
+						<ProfileCard pubkey={$activeAccount.pubkey} mode="compact" showLogout={true} />
 					</div>
 				{:else}
 					<div class="hidden sm:block">
@@ -211,7 +211,7 @@
 						<div class="mt-8 border-t pt-6">
 							{#if $activeAccount}
 								<div class="flex flex-col gap-4 px-2">
-									<ProfileCard pubkey={$activeAccount.pubkey} />
+									<ProfileCard pubkey={$activeAccount.pubkey} mode="compact" showLogout={true} />
 								</div>
 							{:else}
 								<div class="px-2">

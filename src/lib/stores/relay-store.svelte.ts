@@ -3,7 +3,7 @@ import { defaultRelays, devRelay } from '../services/relay-pool';
 
 // Reactive relay store using Svelte 5 $state
 export const relayStore = $state({
-	selectedRelays: !dev ? devRelay : defaultRelays,
+	selectedRelays: dev ? devRelay : defaultRelays,
 	relayChangeCallback: null as ((relays: string[]) => void) | null
 });
 

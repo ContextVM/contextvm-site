@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { asset, resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import ProfileCard from '$lib/components/ProfileCard.svelte';
+	import ServerNoteCard from '$lib/components/ServerNoteCard.svelte';
 	import { CONTEXTVM_PUBKEY } from '$lib/constants';
 	import { eventStore } from '$lib/services/eventStore';
-	import { addressLoader } from '$lib/services/loaders.svelte';
+	import { addressLoader, createNoteEventLoader } from '$lib/services/loaders.svelte';
 	import { ReplaceableModel } from 'applesauce-core/models';
 	import { LongFormArticle } from 'nostr-tools/kinds';
 	import { marked } from 'marked';
-	import type { AddressPointer } from 'nostr-tools/nip19';
+	import { decode, type AddressPointer } from 'nostr-tools/nip19';
 	import DOMPurify from 'dompurify';
 	import { formatUnixTimestamp } from '$lib/utils';
 	import { browser } from '$app/environment';
@@ -17,6 +19,7 @@
 	import { relayStore } from '$lib/stores/relay-store.svelte';
 	import { commonRelays } from '$lib/services/relay-pool';
 	import { getArticleImage, getArticleTitle } from 'applesauce-common/helpers';
+	import type { Event } from 'nostr-tools';
 
 	const pointer: AddressPointer = $derived({
 		kind: LongFormArticle,
@@ -28,11 +31,17 @@
 	});
 
 	let loading = $state(true);
+	let embeddedNotes = $state<Record<string, Event | undefined>>({});
 	const article = $derived(addressLoader(pointer));
 
 	const storedArticle = $derived(eventStore.model(ReplaceableModel, pointer));
 
 	const blogHref = $derived<`/blog`>('/blog');
+
+	type ArticleSegment =
+		| { type: 'markdown'; value: string }
+		| { type: 'profile'; value: string; pubkey: string; href: string }
+		| { type: 'event'; value: string; id: string; relays?: string[] };
 
 	$effect(() => {
 		const sub = article.subscribe({
@@ -80,6 +89,93 @@
 			seoType = 'article';
 		}
 	});
+
+	function parseArticleContent(content: string): ArticleSegment[] {
+		const matches = Array.from(
+			content.matchAll(/nostr:(?:npub|nprofile|note|nevent)1[023456789acdefghjklmnpqrstuvwxyz]+/gi)
+		);
+		const segments: ArticleSegment[] = [];
+		let lastIndex = 0;
+
+		for (const match of matches) {
+			const value = match[0];
+			const index = match.index ?? 0;
+
+			if (index > lastIndex) {
+				segments.push({ type: 'markdown', value: content.slice(lastIndex, index) });
+			}
+
+			try {
+				const identifier = value.slice(6);
+				const decoded = decode(identifier);
+
+				if (decoded.type === 'npub') {
+					segments.push({
+						type: 'profile',
+						value,
+						pubkey: decoded.data,
+						href: `https://jumble.social/users/${identifier}`
+					});
+				} else if (decoded.type === 'nprofile') {
+					segments.push({
+						type: 'profile',
+						value,
+						pubkey: decoded.data.pubkey,
+						href: `https://jumble.social/users/${identifier}`
+					});
+				} else if (decoded.type === 'note') {
+					segments.push({ type: 'event', value, id: decoded.data });
+				} else if (decoded.type === 'nevent') {
+					segments.push({
+						type: 'event',
+						value,
+						id: decoded.data.id,
+						relays: decoded.data.relays
+					});
+				} else {
+					segments.push({ type: 'markdown', value });
+				}
+			} catch {
+				segments.push({ type: 'markdown', value });
+			}
+
+			lastIndex = index + value.length;
+		}
+
+		if (lastIndex < content.length) {
+			segments.push({ type: 'markdown', value: content.slice(lastIndex) });
+		}
+
+		return segments.length > 0 ? segments : [{ type: 'markdown', value: content }];
+	}
+
+	const articleSegments = $derived.by(() => parseArticleContent($storedArticle?.content ?? ''));
+
+	$effect(() => {
+		const eventSegments = articleSegments.filter(
+			(segment): segment is Extract<ArticleSegment, { type: 'event' }> => segment.type === 'event'
+		);
+		if (!eventSegments.length) return;
+
+		const subscriptions = eventSegments
+			.filter((segment) => !embeddedNotes[segment.id])
+			.map((segment) =>
+				createNoteEventLoader(segment.id, segment.relays).subscribe((event) => {
+					embeddedNotes = { ...embeddedNotes, [segment.id]: event };
+				})
+			);
+
+		return () => {
+			for (const subscription of subscriptions) {
+				subscription.unsubscribe();
+			}
+		};
+	});
+
+	async function renderMarkdown(content: string): Promise<string> {
+		const html = await marked.parse(content);
+		return browser ? DOMPurify.sanitize(html) : html;
+	}
 </script>
 
 {#if $storedArticle}
@@ -122,12 +218,38 @@
 		<div
 			class="prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none [&>*:not(:first-child)]:mt-6"
 		>
-			{#await marked.parse($storedArticle.content) then html}
-				{#if browser}
-					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-					{@html DOMPurify.sanitize(html)}
+			{#each articleSegments as segment, index (index)}
+				{#if segment.type === 'markdown'}
+					{#if segment.value.trim()}
+						{#await renderMarkdown(segment.value) then html}
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+							{@html html}
+						{/await}
+					{/if}
+				{:else if segment.type === 'profile'}
+					<p>
+						<a
+							target="_blank"
+							href={segment.href}
+							class="inline-flex max-w-full align-middle text-primary hover:underline"
+						>
+							<ProfileCard pubkey={segment.pubkey} mode="inline" />
+						</a>
+					</p>
+				{:else if segment.type === 'event'}
+					<div class="not-prose my-6">
+						{#if embeddedNotes[segment.id]}
+							<ServerNoteCard note={embeddedNotes[segment.id]!} />
+						{:else}
+							<div
+								class="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+							>
+								Loading embedded note…
+							</div>
+						{/if}
+					</div>
 				{/if}
-			{/await}
+			{/each}
 		</div>
 	</article>
 {:else if loading}

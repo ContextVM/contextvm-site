@@ -1,4 +1,8 @@
-import { createAddressLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
+import {
+	createAddressLoader,
+	createEventLoader,
+	createTimelineLoader
+} from 'applesauce-loaders/loaders';
 import { commonRelays, defaultRelays, relayPool } from './relay-pool';
 import { eventStore } from './eventStore';
 import { articlesFilter, createServerNotesFilter, serverAnnouncementsFilter } from '$lib/constants';
@@ -15,6 +19,10 @@ import { mergeRelaySets } from 'applesauce-core/helpers/relays';
 
 // Create address loader
 export const addressLoader = createAddressLoader(relayPool, { eventStore });
+export const eventLoader = createEventLoader(relayPool, {
+	eventStore,
+	extraRelays: commonRelays
+});
 
 // Function to create a blog articles loader with dynamic relays
 export const createBlogArticlesLoader = (relays: string[] = defaultRelays) => {
@@ -103,4 +111,11 @@ export const createServerNotesLoader = (pubkey: string, relays?: string[]) => {
 		eventStore
 	});
 	return loader();
+};
+
+export const createNoteEventLoader = (id: string, relays?: string[]) => {
+	return eventLoader({
+		id,
+		relays: relays && relays.length > 0 ? mergeRelaySets(relays, commonRelays) : commonRelays
+	});
 };

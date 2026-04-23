@@ -16,6 +16,7 @@ export const serverAnnouncementsFilter: Filter = {
 export function createServerNotesFilter(pubkey: string): Filter {
 	return {
 		authors: [pubkey],
-		kinds: [ShortTextNote]
+		kinds: [ShortTextNote],
+		limit: 5
 	};
 }
