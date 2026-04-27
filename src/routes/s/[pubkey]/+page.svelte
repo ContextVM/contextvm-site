@@ -30,6 +30,7 @@
 	import ServerConnectionCard from '$lib/components/ServerConnectionCard.svelte';
 	import ProfileCard from '$lib/components/ProfileCard.svelte';
 	import ServerNoteCard from '$lib/components/ServerNoteCard.svelte';
+	import ServerReviewsSection from '$lib/components/ServerReviewsSection.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
@@ -381,6 +382,8 @@
 								{/if}
 							</Card.Content>
 						</Card.Root>
+
+						<ServerReviewsSection {pubkey} relayHints={effectiveRelayHints} />
 
 						<!-- Raw server data section -->
 						<Collapsible.Root class="mt-6">

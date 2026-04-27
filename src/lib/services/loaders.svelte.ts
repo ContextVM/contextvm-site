@@ -3,6 +3,7 @@ import {
 	createEventLoader,
 	createTimelineLoader
 } from 'applesauce-loaders/loaders';
+import { COMMENT_KIND } from 'applesauce-common/helpers';
 import { commonRelays, defaultRelays, relayPool } from './relay-pool';
 import { eventStore } from './eventStore';
 import { articlesFilter, createServerNotesFilter, serverAnnouncementsFilter } from '$lib/constants';
@@ -110,6 +111,25 @@ export const createServerNotesLoader = (pubkey: string, relays?: string[]) => {
 	const loader = createTimelineLoader(relayPool, selectedRelays, createServerNotesFilter(pubkey), {
 		eventStore
 	});
+	return loader();
+};
+
+export const createServerReviewsLoader = (pubkey: string, relays?: string[]) => {
+	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const loader = createTimelineLoader(
+		relayPool,
+		selectedRelays,
+		{
+			kinds: [COMMENT_KIND],
+			'#K': [String(SERVER_ANNOUNCEMENT_KIND)],
+			'#A': [`${SERVER_ANNOUNCEMENT_KIND}:${pubkey}:`],
+			limit: 500
+		},
+		{
+			eventStore
+		}
+	);
+
 	return loader();
 };
 
