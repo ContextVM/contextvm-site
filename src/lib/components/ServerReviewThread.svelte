@@ -5,6 +5,8 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { formatUnixTimestamp } from '$lib/utils';
+	import { Collapsible } from 'bits-ui';
+	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import type { Comment } from 'applesauce-common/casts';
 	import { COMMENT_KIND } from 'applesauce-common/helpers';
 	import type { NostrEvent } from 'applesauce-core/helpers/event';
@@ -24,6 +26,7 @@
 	let replies = $state<Comment[]>([]);
 	let parentEvent = $state<NostrEvent | undefined>(undefined);
 	let showReplyForm = $state(false);
+	let repliesOpen = $state(false);
 	let replyContent = $state('');
 	let replyError = $state<string | null>(null);
 	let isSubmittingReply = $state(false);
@@ -54,6 +57,7 @@
 		try {
 			isSubmittingReply = true;
 			replyError = null;
+			repliesOpen = true;
 			await onReply(comment.event, content);
 			replyContent = '';
 			showReplyForm = false;
@@ -61,6 +65,13 @@
 			replyError = error instanceof Error ? error.message : 'Failed to publish reply';
 		} finally {
 			isSubmittingReply = false;
+		}
+	}
+
+	function handleReplyKeydown(event: KeyboardEvent) {
+		if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+			event.preventDefault();
+			void submitReply();
 		}
 	}
 </script>
@@ -115,10 +126,12 @@
 							rows={3}
 							placeholder="Write a reply to this review"
 							disabled={isSubmittingReply}
+							onkeydown={handleReplyKeydown}
 						/>
 						{#if replyError}
 							<p class="text-sm text-destructive">{replyError}</p>
 						{/if}
+						<p class="text-xs text-muted-foreground">Press Ctrl+Enter to post quickly.</p>
 						<div class="flex justify-end">
 							<Button onclick={submitReply} disabled={!replyContent.trim() || isSubmittingReply}>
 								{isSubmittingReply ? 'Posting…' : 'Post reply'}
@@ -131,10 +144,23 @@
 	</Card.Root>
 
 	{#if replies.length}
-		<div class="mt-3 space-y-3">
-			{#each replies as reply (reply.event.id)}
-				<ServerReviewThread comment={reply} {onReply} depth={depth + 1} {canReply} />
-			{/each}
-		</div>
+		<Collapsible.Root bind:open={repliesOpen}>
+			<div class="mt-3">
+				<Collapsible.Trigger
+					class="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+				>
+					<ChevronsUpDownIcon class="h-3.5 w-3.5" />
+					<span>{repliesOpen ? 'Hide replies' : 'Show replies'}</span>
+					<span>({replies.length})</span>
+				</Collapsible.Trigger>
+			</div>
+			<Collapsible.Content>
+				<div class="mt-3 space-y-3">
+					{#each replies as reply (reply.event.id)}
+						<ServerReviewThread comment={reply} {onReply} depth={depth + 1} {canReply} />
+					{/each}
+				</div>
+			</Collapsible.Content>
+		</Collapsible.Root>
 	{/if}
 </div>
