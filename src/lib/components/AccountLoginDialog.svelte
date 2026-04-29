@@ -6,14 +6,23 @@
 	import { manager } from '$lib/services/accountManager.svelte';
 	import { ExtensionSigner, NostrConnectSigner } from 'applesauce-signers/signers';
 	import {
-		SimpleAccount,
+		PrivateKeyAccount,
 		ExtensionAccount,
 		NostrConnectAccount
 	} from 'applesauce-accounts/accounts';
 	import QrCode from '$lib/components/QrCode.svelte';
-	import { generateSecretKey } from 'nostr-tools';
-	import { bytesToHex } from 'nostr-tools/utils';
+	import { generateSecretKey, finalizeEvent } from 'nostr-tools';
+	import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
+	import { nsecEncode } from 'nostr-tools/nip19';
+	import { Metadata } from 'nostr-tools/kinds';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
+	import { relayPool, metadataRelays } from '$lib/services/relay-pool';
+	import { copyToClipboard } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
+	import Eye from '@lucide/svelte/icons/eye';
+	import EyeOff from '@lucide/svelte/icons/eye-off';
+	import Copy from '@lucide/svelte/icons/copy';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 
 	let open = $state(false);
 
@@ -25,6 +34,9 @@
 
 	let selectedTab = $state<'extension' | 'simple' | 'remote'>('extension');
 	let privateKey = $state('');
+	let showPrivateKey = $state(false);
+	let nickname = $state('');
+	let nameExpanded = $state(false);
 	let bunkerUri = $state('');
 	let nostrConnectUri = $state('');
 	let loading = $state(false);
@@ -42,6 +54,7 @@
 
 			manager.addAccount(account);
 			manager.setActive(account);
+			toast.success('Logged in successfully');
 
 			open = false;
 		} catch (err) {
@@ -49,6 +62,13 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function resetSimpleState() {
+		privateKey = '';
+		showPrivateKey = false;
+		nickname = '';
+		nameExpanded = false;
 	}
 
 	async function connectSimple() {
@@ -61,14 +81,28 @@
 			loading = true;
 			error = '';
 
-			const signer = SimpleAccount.fromKey(privateKey.trim());
-			const account = new SimpleAccount(signer.pubkey, signer.signer);
+			const signer = PrivateKeyAccount.fromKey(privateKey.trim());
+			const account = new PrivateKeyAccount(signer.pubkey, signer.signer);
+
+			if (nickname.trim()) {
+				const event = finalizeEvent(
+					{
+						kind: Metadata,
+						created_at: Math.floor(Date.now() / 1000),
+						tags: [],
+						content: JSON.stringify({ name: nickname.trim() })
+					},
+					account.signer.key
+				);
+				relayPool.publish(metadataRelays, event);
+			}
 
 			manager.addAccount(account);
 			manager.setActive(account);
+			toast.success('Logged in successfully');
 
 			open = false;
-			privateKey = '';
+			resetSimpleState();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to connect with private key';
 		} finally {
@@ -79,6 +113,21 @@
 	function generatePrivateKey() {
 		const secretKey = generateSecretKey();
 		privateKey = bytesToHex(secretKey);
+		showPrivateKey = false;
+	}
+
+	function toNsec(key: string): string {
+		if (!key || key.startsWith('nsec')) return key;
+		try {
+			return nsecEncode(hexToBytes(key));
+		} catch {
+			return key;
+		}
+	}
+
+	async function copyPrivateKey() {
+		if (!privateKey) return;
+		await copyToClipboard(toNsec(privateKey));
 	}
 
 	async function generateRemoteSignerUri() {
@@ -110,6 +159,7 @@
 
 			manager.addAccount(account);
 			manager.setActive(account);
+			toast.success('Logged in successfully');
 
 			// Reset state and close dialog
 			resetRemoteSignerState();
@@ -143,6 +193,7 @@
 
 			manager.addAccount(account);
 			manager.setActive(account);
+			toast.success('Logged in successfully');
 
 			// Reset state and close dialog
 			resetRemoteSignerState();
@@ -191,7 +242,13 @@
 	});
 </script>
 
-<Dialog.Root bind:open onOpenChange={() => (dialogState.dialogId = null)}>
+<Dialog.Root
+	bind:open
+	onOpenChange={() => {
+		dialogState.dialogId = null;
+		resetSimpleState();
+	}}
+>
 	<Dialog.Trigger class={buttonVariants({ variant: 'outline' })}>Login</Dialog.Trigger>
 	<Dialog.Content class="sm:max-w-[425px]">
 		<Dialog.Header>
@@ -251,19 +308,74 @@
 				<div class="space-y-4">
 					<div class="space-y-2">
 						<Label for="account-private-key">Private Key</Label>
-						<div class="flex gap-2">
-							<Input
-								id="account-private-key"
-								placeholder="Enter your private key (hex format)"
-								bind:value={privateKey}
-								class="flex-1 font-mono"
-								type="password"
-							/>
-							<Button variant="outline" onclick={generatePrivateKey} type="button">Generate</Button>
-						</div>
+						{#if !privateKey}
+							<div class="flex gap-2">
+								<Input
+									id="account-private-key"
+									placeholder="Enter your private key (hex or nsec)"
+									bind:value={privateKey}
+									class="flex-1 font-mono"
+									type="text"
+								/>
+								<Button variant="outline" onclick={generatePrivateKey} type="button">Generate</Button>
+							</div>
+						{:else}
+							<div class="flex gap-2">
+								<div class="relative flex-1">
+									<Input
+										id="account-private-key"
+										value={showPrivateKey ? toNsec(privateKey) : privateKey}
+										readonly
+										class="pr-10 font-mono"
+										type={showPrivateKey ? 'text' : 'password'}
+									/>
+									<button
+										type="button"
+										onclick={() => (showPrivateKey = !showPrivateKey)}
+										class="absolute inset-y-0 right-2 flex items-center text-muted-foreground transition-colors hover:text-foreground"
+										aria-label={showPrivateKey ? 'Hide private key' : 'Show private key'}
+									>
+										{#if showPrivateKey}
+											<EyeOff class="h-4 w-4" />
+										{:else}
+											<Eye class="h-4 w-4" />
+										{/if}
+									</button>
+								</div>
+								<Button
+									variant="outline"
+									size="icon"
+									onclick={copyPrivateKey}
+									type="button"
+									aria-label="Copy private key"
+								>
+									<Copy class="h-4 w-4" />
+								</Button>
+							</div>
+						{/if}
 						<p class="text-xs text-muted-foreground">
 							Your private key will be stored securely in your browser's local storage.
 						</p>
+					</div>
+
+					<!-- Optional name accordion -->
+					<div class="space-y-2">
+						<button
+							type="button"
+							onclick={() => (nameExpanded = !nameExpanded)}
+							class="flex items-center gap-1 text-sm font-medium"
+						>
+							Set a name
+							<span class="text-muted-foreground">(Optional)</span>
+							<ChevronDown
+								class="ml-1 h-4 w-4 text-muted-foreground transition-transform duration-200 {nameExpanded
+									? 'rotate-180'
+									: ''}"
+							/>
+						</button>
+						{#if nameExpanded}
+							<Input placeholder="Enter your name" bind:value={nickname} />
+						{/if}
 					</div>
 				</div>
 			{/if}

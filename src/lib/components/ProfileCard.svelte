@@ -103,4 +103,16 @@
 	<span class="inline align-baseline text-sm font-medium break-words text-foreground">
 		{displayName}
 	</span>
+{:else if !isExtended}
+	<div class="flex items-center gap-2">
+		{@render pfp(pubkey, undefined)}
+		<div class="min-w-0 flex-1">
+			<span class="block truncate text-sm font-semibold">{displayName}</span>
+		</div>
+		{#if canShowLogout}
+			<Button variant="ghost" size="icon" onclick={logout} aria-label="Logout">
+				<LogOut class="h-4 w-4" />
+			</Button>
+		{/if}
+	</div>
 {/if}
