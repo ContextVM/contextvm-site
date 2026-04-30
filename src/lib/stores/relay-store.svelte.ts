@@ -1,9 +1,10 @@
-import { dev } from '$app/environment';
 import { defaultRelays, devRelay } from '../services/relay-pool';
 
 // Reactive relay store using Svelte 5 $state
 export const relayStore = $state({
-	selectedRelays: dev ? devRelay : defaultRelays,
+	// Default to public relays in all environments.
+	// Localhost relay can still be enabled explicitly via relayActions.useDevRelay().
+	selectedRelays: defaultRelays,
 	relayChangeCallback: null as ((relays: string[]) => void) | null
 });
 

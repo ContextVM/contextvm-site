@@ -26,7 +26,7 @@
 		return $serverAnnouncements?.slice(0, 4) ?? [];
 	});
 
-	const loading = $derived.by(() => $serverAnnouncementsQuery.isFetching);
+	const loading = $derived.by(() => $serverAnnouncementsQuery.isLoading && latestServers.length === 0);
 
 	const faqsHref = $derived<`/faqs`>('/faqs');
 	const aboutHref = $derived<`/about`>('/about');

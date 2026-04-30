@@ -12,7 +12,7 @@ import {
 	createServerAnnouncementsLoader
 } from '$lib/services/loaders.svelte';
 import type { Tool, Resource, ResourceTemplate, Prompt } from '@modelcontextprotocol/sdk/types.js';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, type Subscription } from 'rxjs';
 import type { NostrEvent } from 'nostr-tools';
 import { getSeenRelays, mergeRelaySets } from 'applesauce-core/helpers/relays';
 import { relayStore } from '$lib/stores/relay-store.svelte';
@@ -26,6 +26,37 @@ interface ServerQueryResult {
 interface ParsedRelayList {
 	relays: string[];
 	hasPublishedRelayList: boolean;
+}
+
+let serverAnnouncementsSubscription: Subscription | null = null;
+let serverAnnouncementsReadyPromise: Promise<boolean> | null = null;
+
+function bootstrapServerAnnouncements(): Promise<boolean> {
+	if (serverAnnouncementsReadyPromise) return serverAnnouncementsReadyPromise;
+
+	serverAnnouncementsReadyPromise = new Promise((resolve) => {
+		let settled = false;
+		const settle = (value: boolean) => {
+			if (settled) return;
+			settled = true;
+			resolve(value);
+		};
+
+		// Keep one long-lived stream subscription so the event store can continue
+		// collecting announcements instead of stopping after the first emission.
+		serverAnnouncementsSubscription = createServerAnnouncementsLoader().subscribe({
+			next: () => settle(true),
+			error: (error) => {
+				console.error('Failed to load server announcements stream:', error);
+				settle(false);
+			}
+		});
+
+		// Unblock UI if no events arrive quickly.
+		setTimeout(() => settle(false), 8000);
+	});
+
+	return serverAnnouncementsReadyPromise;
 }
 
 export function useServerAnnouncement(pubkey: string, relayHints: string[] = []) {
@@ -242,10 +273,10 @@ async function fetchPromptsFromMCP(pubkey: string): Promise<Prompt[]> {
 }
 
 export function useServerAnnouncements() {
-	return createQuery<NostrEvent>({
+	return createQuery<boolean>({
 		queryKey: serverKeys.all,
 		queryFn: async () => {
-			return await lastValueFrom(createServerAnnouncementsLoader());
+			return await bootstrapServerAnnouncements();
 		}
 	});
 }
