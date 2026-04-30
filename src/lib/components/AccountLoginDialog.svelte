@@ -3,6 +3,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
+	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { manager } from '$lib/services/accountManager.svelte';
 	import { ExtensionSigner, NostrConnectSigner } from 'applesauce-signers/signers';
 	import {
@@ -15,6 +16,7 @@
 	import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
 	import { nsecEncode } from 'nostr-tools/nip19';
 	import { Metadata } from 'nostr-tools/kinds';
+	import type { ProfileContent } from 'applesauce-core/helpers';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 	import { relayPool, metadataRelays } from '$lib/services/relay-pool';
 	import { copyToClipboard } from '$lib/utils';
@@ -35,8 +37,10 @@
 	let selectedTab = $state<'extension' | 'simple' | 'remote'>('extension');
 	let privateKey = $state('');
 	let showPrivateKey = $state(false);
-	let nickname = $state('');
-	let nameExpanded = $state(false);
+	let username = $state('');
+	let displayName = $state('');
+	let about = $state('');
+	let optionalExpanded = $state(false);
 	let bunkerUri = $state('');
 	let nostrConnectUri = $state('');
 	let loading = $state(false);
@@ -67,8 +71,10 @@
 	function resetSimpleState() {
 		privateKey = '';
 		showPrivateKey = false;
-		nickname = '';
-		nameExpanded = false;
+		username = '';
+		displayName = '';
+		about = '';
+		optionalExpanded = false;
 	}
 
 	async function connectSimple() {
@@ -84,13 +90,18 @@
 			const signer = PrivateKeyAccount.fromKey(privateKey.trim());
 			const account = new PrivateKeyAccount(signer.pubkey, signer.signer);
 
-			if (nickname.trim()) {
+			const content: ProfileContent = {};
+			if (username.trim()) content.name = username.trim();
+			if (displayName.trim()) content.display_name = displayName.trim();
+			if (about.trim()) content.about = about.trim();
+
+			if (Object.keys(content).length > 0) {
 				const event = finalizeEvent(
 					{
 						kind: Metadata,
 						created_at: Math.floor(Date.now() / 1000),
 						tags: [],
-						content: JSON.stringify({ name: nickname.trim() })
+						content: JSON.stringify(content)
 					},
 					account.signer.key
 				);
@@ -317,7 +328,9 @@
 									class="flex-1 font-mono"
 									type="text"
 								/>
-								<Button variant="outline" onclick={generatePrivateKey} type="button">Generate</Button>
+								<Button variant="outline" onclick={generatePrivateKey} type="button"
+									>Generate</Button
+								>
 							</div>
 						{:else}
 							<div class="flex gap-2">
@@ -358,23 +371,39 @@
 						</p>
 					</div>
 
-					<!-- Optional name accordion -->
-					<div class="space-y-2">
+					<!-- Profile Details Optional fields accordion -->
+					<div class="space-y-3">
 						<button
 							type="button"
-							onclick={() => (nameExpanded = !nameExpanded)}
+							onclick={() => (optionalExpanded = !optionalExpanded)}
 							class="flex items-center gap-1 text-sm font-medium"
 						>
-							Set a name
-							<span class="text-muted-foreground">(Optional)</span>
+							Profile Details (Optional)
 							<ChevronDown
-								class="ml-1 h-4 w-4 text-muted-foreground transition-transform duration-200 {nameExpanded
+								class="ml-1 h-4 w-4 text-muted-foreground transition-transform duration-200 {optionalExpanded
 									? 'rotate-180'
 									: ''}"
 							/>
 						</button>
-						{#if nameExpanded}
-							<Input placeholder="Enter your name" bind:value={nickname} />
+						{#if optionalExpanded}
+							<div class="space-y-3">
+								<div class="space-y-2">
+									<Label for="username">Username</Label>
+									<Input id="username" placeholder="Enter your username" bind:value={username} />
+								</div>
+								<div class="space-y-2">
+									<Label for="display-name">Display Name</Label>
+									<Input
+										id="display-name"
+										placeholder="Enter your display name"
+										bind:value={displayName}
+									/>
+								</div>
+								<div class="space-y-2">
+									<Label for="about">About</Label>
+									<Textarea id="about" placeholder="Tell others about you" bind:value={about} />
+								</div>
+							</div>
 						{/if}
 					</div>
 				</div>
