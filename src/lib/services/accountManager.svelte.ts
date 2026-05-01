@@ -3,6 +3,7 @@ import { registerCommonAccountTypes } from 'applesauce-accounts/accounts';
 import { NostrConnectSigner } from 'applesauce-signers/signers';
 import { browser } from '$app/environment';
 import { relayPool } from './relay-pool';
+import { toast } from 'svelte-sonner';
 
 // create an account manager instance
 export const manager = new AccountManager();
@@ -44,4 +45,5 @@ export const logout = () => {
 	// 	localStorage.removeItem('accounts');
 	// }
 	manager.clearActive();
+	toast.success('Logged out successfully');
 };

@@ -89,7 +89,7 @@ export async function copyToClipboard(data: BlobPart, mimeType = 'text/plain') {
 				resolve(navigator.clipboard.writeText(textData));
 			});
 		}
-		toast.success('Copied 👍');
+		toast.success('Copied to clipboard');
 	} catch (e) {
 		toast.error(`Error: ${e}`);
 		console.log(e);
