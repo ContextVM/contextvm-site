@@ -11,6 +11,7 @@
 	import * as Sheet from './ui/sheet/index.js';
 
 	const homeHref = $derived<`/`>('/');
+	const chatHref = $derived<`/chat`>('/chat');
 	const serversHref = $derived<`/servers`>('/servers');
 	const blogHref = $derived<`/blog`>('/blog');
 	const slidesHref = $derived<`/slides`>('/slides');
@@ -47,6 +48,14 @@
 		<div class="hidden items-center space-x-4 sm:flex sm:space-x-6">
 			<!-- Navigation Links -->
 			<nav class="flex items-center space-x-4 text-sm font-medium sm:space-x-6">
+				<a
+					href={resolve(chatHref)}
+					class="transition-colors {$page.url.pathname.startsWith(resolve(chatHref))
+						? 'font-semibold text-primary'
+						: 'text-foreground/60 hover:text-primary'}"
+				>
+					Chat
+				</a>
 				<a
 					href={resolve(serversHref)}
 					class="transition-colors {$page.url.pathname.startsWith(resolve(serversHref))
@@ -132,6 +141,17 @@
 				<Sheet.Content side="right" class="w-[300px] p-6 sm:w-[400px]">
 					<div class="py-4">
 						<nav class="flex flex-col space-y-1">
+							<a
+								href={resolve(chatHref)}
+								onclick={() => (isMenuOpen = false)}
+								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
+									resolve(chatHref)
+								)
+									? 'bg-primary/10 text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
+							>
+								Chat
+							</a>
 							<a
 								href={resolve(serversHref)}
 								onclick={() => (isMenuOpen = false)}
