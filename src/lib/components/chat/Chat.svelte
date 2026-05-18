@@ -1,0 +1,231 @@
+<script lang="ts">
+	import { DEFAULT_OPENROUTER_KEY, type ChatMessage, type LLMConfig } from '$lib/types/chat-types';
+	import { getConversation, updateConversation } from '$lib/services/conversation-store.svelte';
+	import { LLMService } from '$lib/services/llm';
+	import ChatBubble from '$lib/components/chat/ChatBubble.svelte';
+	import ChatInput from '$lib/components/chat/ChatInput.svelte';
+	import AutoModeBanner from '$lib/components/chat/AutoModeBanner.svelte';
+	import { cn } from '$lib/utils.js';
+
+	const starterPrompts = [
+		'Map a clean MCP server workflow',
+		'Compare two tool integration options',
+		'Draft a ContextVM server announcement'
+	];
+
+	let {
+		conversationId,
+		config
+	}: {
+		conversationId?: string | null;
+		config?: LLMConfig | null;
+	} = $props();
+
+	let messages = $state<ChatMessage[]>([]);
+	let isStreaming = $state(false);
+	let errorMessage = $state<string | null>(null);
+	let llmService = $state<LLMService | null>(null);
+	let abortController = $state<AbortController | null>(null);
+	let scrollRef = $state<HTMLDivElement | null>(null);
+	let loadToken = 0;
+
+	const isAutoMode = $derived.by(() => {
+		if (!config) {
+			return false;
+		}
+
+		return config.model === 'auto' && config.baseURL.includes('openrouter.ai');
+	});
+
+	const usingDefaultKey = $derived.by(() => {
+		if (!config) {
+			return false;
+		}
+
+		return config.baseURL.includes('openrouter.ai') && config.apiKey === DEFAULT_OPENROUTER_KEY;
+	});
+
+	$effect(() => {
+		if (!config) {
+			llmService = null;
+			return;
+		}
+
+		if (llmService) {
+			llmService.reconfigure(config);
+			return;
+		}
+
+		llmService = new LLMService(config);
+	});
+
+	$effect(() => {
+		const activeId = conversationId ?? null;
+		loadToken += 1;
+		const token = loadToken;
+
+		if (!activeId) {
+			messages = [];
+			return;
+		}
+
+		(async () => {
+			const conversation = await getConversation(activeId);
+			if (token !== loadToken) {
+				return;
+			}
+
+			messages = conversation?.messages ?? [];
+		})();
+	});
+
+	$effect(() => {
+		void messages.length;
+		void isStreaming;
+		if (!scrollRef) {
+			return;
+		}
+
+		queueMicrotask(() => {
+			scrollRef?.scrollTo({ top: scrollRef.scrollHeight, behavior: 'smooth' });
+		});
+	});
+
+	const handleStop = () => {
+		abortController?.abort();
+	};
+
+	const handleSend = async (content: string) => {
+		if (!conversationId || !llmService || isStreaming) {
+			return;
+		}
+
+		errorMessage = null;
+		const activeId = conversationId;
+		const userMessage: ChatMessage = {
+			id: crypto.randomUUID(),
+			content,
+			role: 'user',
+			timestamp: new Date()
+		};
+
+		const outgoingMessages = [...messages, userMessage];
+		messages = outgoingMessages;
+		await updateConversation(activeId, messages);
+
+		const assistantId = crypto.randomUUID();
+		let assistantContent = '';
+
+		messages = [
+			...messages,
+			{
+				id: assistantId,
+				content: '',
+				role: 'assistant',
+				timestamp: new Date()
+			}
+		];
+
+		isStreaming = true;
+		const controller = new AbortController();
+		abortController = controller;
+
+		try {
+			const result = await llmService.sendMessage(outgoingMessages, {
+				signal: controller.signal,
+				onDelta: (delta) => {
+					assistantContent += delta;
+					const assistantMessage = messages.find((message) => message.id === assistantId);
+					if (assistantMessage) {
+						assistantMessage.content = assistantContent;
+					}
+				}
+			});
+
+			if (result.content && result.content !== assistantContent) {
+				assistantContent = result.content;
+				const assistantMessage = messages.find((message) => message.id === assistantId);
+				if (assistantMessage) {
+					assistantMessage.content = assistantContent;
+				}
+			}
+		} catch (error) {
+			if (controller.signal.aborted) {
+				if (!assistantContent) {
+					messages = messages.filter((message) => message.id !== assistantId);
+				}
+				return;
+			}
+
+			const errorText = error instanceof Error ? error.message : 'Something went wrong.';
+			errorMessage = errorText;
+			messages = messages.map((chatMessage) =>
+				chatMessage.id === assistantId
+					? { ...chatMessage, content: `Error: ${errorText}` }
+					: chatMessage
+			);
+		} finally {
+			isStreaming = false;
+			abortController = null;
+			await updateConversation(activeId, messages);
+		}
+	};
+</script>
+
+<div class="flex h-full flex-col">
+	{#if isAutoMode}
+		<div class="border-b border-border bg-background/80 px-4 py-3">
+			<AutoModeBanner {usingDefaultKey} />
+		</div>
+	{/if}
+	<div class="flex-1 overflow-auto" bind:this={scrollRef}>
+		{#if !conversationId}
+			<div class="flex h-full items-center justify-center px-6">
+				<p class="max-w-sm text-center text-sm text-muted-foreground">
+					Choose a conversation or start a new one to begin chatting.
+				</p>
+			</div>
+		{:else if messages.length === 0}
+			<div
+				class="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-5 px-6 text-center"
+			>
+				<div class="space-y-2">
+					<p class="text-lg font-semibold text-foreground">Ready when you are.</p>
+					<p class="text-sm leading-6 text-muted-foreground">
+						Start with a server idea, tool workflow, or integration question.
+					</p>
+				</div>
+				<div class="grid w-full gap-2 sm:grid-cols-3">
+					{#each starterPrompts as prompt (prompt)}
+						<button
+							type="button"
+							class="rounded-lg border border-border bg-background/70 px-3 py-3 text-left text-sm leading-5 text-foreground shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+							disabled={isStreaming}
+							onclick={() => handleSend(prompt)}
+						>
+							{prompt}
+						</button>
+					{/each}
+				</div>
+			</div>
+		{:else}
+			<div class="mx-auto max-w-4xl space-y-4 px-4 py-6">
+				{#each messages as message (message.id)}
+					<ChatBubble {message} />
+				{/each}
+			</div>
+		{/if}
+	</div>
+	<div class="border-t border-border bg-background/80 px-4 py-4">
+		<div class={cn('mx-auto max-w-4xl space-y-2', errorMessage ? 'pb-2' : '')}>
+			{#if errorMessage}
+				<p
+					class="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+				>
+					{errorMessage}
+				</p>
+			{/if}
+			<ChatInput {isStreaming} disabled={!conversationId} onSend={handleSend} onStop={handleStop} />
+		</div>
+	</div>
+</div>
