@@ -6,7 +6,13 @@ import {
 import { COMMENT_KIND } from 'applesauce-common/helpers';
 import { commonRelays, defaultRelays, relayPool } from './relay-pool';
 import { eventStore } from './eventStore';
-import { articlesFilter, createServerNotesFilter, serverAnnouncementsFilter } from '$lib/constants';
+import {
+	articlesFilter,
+	createServerNotesFilter,
+	serverAnnouncementsFilter,
+	commonSchemasFilter,
+	createSchemaProvidersFilter
+} from '$lib/constants';
 import { relayStore } from '../stores/relay-store.svelte';
 import {
 	PROMPTS_LIST_KIND,
@@ -138,4 +144,25 @@ export const createNoteEventLoader = (id: string, relays?: string[]) => {
 		id,
 		relays: relays && relays.length > 0 ? mergeRelaySets(relays, commonRelays) : commonRelays
 	});
+};
+
+export const createCommonSchemaAnnouncementsLoader = (relays?: string[]) => {
+	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const loader = createTimelineLoader(relayPool, selectedRelays, commonSchemasFilter, {
+		eventStore
+	});
+	return loader();
+};
+
+export const createSchemaProviderLoader = (hash: string, relays?: string[]) => {
+	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const loader = createTimelineLoader(
+		relayPool,
+		selectedRelays,
+		createSchemaProvidersFilter(hash),
+		{
+			eventStore
+		}
+	);
+	return loader();
 };
