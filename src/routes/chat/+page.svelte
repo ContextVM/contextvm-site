@@ -82,7 +82,7 @@
 			</div>
 		</div>
 		<div class="flex-1">
-			<Chat conversationId={activeConversationId} {config} />
+			<Chat bind:conversationId={activeConversationId} {config} />
 		</div>
 	</main>
 </Sidebar.Provider>

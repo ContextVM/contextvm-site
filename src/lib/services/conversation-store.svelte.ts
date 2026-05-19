@@ -109,7 +109,7 @@ function removeConversationFromStore(id: string): void {
 async function saveConversation(conversation: Conversation): Promise<void> {
 	const db = await openDatabase();
 	const transaction = db.transaction(STORE_NAME, 'readwrite');
-	transaction.objectStore(STORE_NAME).put(conversation);
+	transaction.objectStore(STORE_NAME).put($state.snapshot(conversation));
 	await waitForTransaction(transaction);
 }
 

@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { DEFAULT_OPENROUTER_KEY, type ChatMessage, type LLMConfig } from '$lib/types/chat-types';
-	import { getConversation, updateConversation } from '$lib/services/conversation-store.svelte';
+	import {
+		getConversation,
+		updateConversation,
+		createConversation
+	} from '$lib/services/conversation-store.svelte';
 	import { LLMService } from '$lib/services/llm';
 	import ChatBubble from '$lib/components/chat/ChatBubble.svelte';
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
@@ -14,7 +18,7 @@
 	];
 
 	let {
-		conversationId,
+		conversationId = $bindable(null),
 		config
 	}: {
 		conversationId?: string | null;
@@ -100,12 +104,18 @@
 	};
 
 	const handleSend = async (content: string) => {
-		if (!conversationId || !llmService || isStreaming) {
+		if (!content.trim() || !llmService || isStreaming) {
 			return;
 		}
 
+		let activeId = conversationId;
+		if (!activeId) {
+			const newConv = await createConversation();
+			activeId = newConv.id;
+			conversationId = activeId;
+		}
+
 		errorMessage = null;
-		const activeId = conversationId;
 		const token = conversationToken;
 		let persistTimeout: ReturnType<typeof setTimeout> | null = null;
 		const userMessage: ChatMessage = {
@@ -262,7 +272,7 @@
 					{errorMessage}
 				</p>
 			{/if}
-			<ChatInput {isStreaming} disabled={!conversationId} onSend={handleSend} onStop={handleStop} />
+			<ChatInput {isStreaming} onSend={handleSend} onStop={handleStop} />
 		</div>
 	</div>
 </div>
