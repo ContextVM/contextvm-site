@@ -27,7 +27,7 @@
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Header>
-	<Sidebar.Content>
+	<Sidebar.Content class="group-data-[state=collapsed]/sidebar:hidden">
 		<ConversationList bind:activeId />
 	</Sidebar.Content>
 	<Sidebar.Rail />
