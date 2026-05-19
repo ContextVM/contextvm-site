@@ -31,7 +31,7 @@
 	let llmService = $state<LLMService | null>(null);
 	let abortController = $state<AbortController | null>(null);
 	let scrollRef = $state<HTMLDivElement | null>(null);
-	let conversationToken = $state(0);
+	let conversationToken = 0;
 	let isNearBottom = $state(true);
 	let skipLoadId: string | null = null;
 
