@@ -43,10 +43,10 @@
 	url="https://contextvm.com/chat"
 />
 
-<Sidebar.Provider class="min-h-[calc(100vh-3.5rem)]">
+<Sidebar.Provider class="h-[calc(100vh-3.5rem)] overflow-hidden">
 	<ChatSidebar bind:activeId={activeConversationId} />
 	<main
-		class="relative flex min-h-[calc(100vh-3.5rem)] flex-1 flex-col bg-gradient-to-br from-background via-muted/30 to-background"
+		class="relative flex h-full flex-1 flex-col bg-gradient-to-br from-background via-muted/30 to-background overflow-hidden"
 	>
 		<div
 			class="flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur"
@@ -81,7 +81,7 @@
 				<LLMConfig bind:config />
 			</div>
 		</div>
-		<div class="flex-1">
+		<div class="flex-1 min-h-0 overflow-hidden">
 			<Chat bind:conversationId={activeConversationId} {config} />
 		</div>
 	</main>
