@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type { ChatMessage, LLMConfig } from '$lib/types/chat-types';
-import { FreeModelRotator, isRateLimitError } from '$lib/services/auto-mode';
+import { FreeModelRotator, isRetryableError } from '$lib/services/auto-mode';
 
 export interface SendMessageOptions {
 	signal?: AbortSignal;
@@ -116,7 +116,7 @@ export class LLMService {
 			} catch (error) {
 				lastError = error;
 
-				if (!isRateLimitError(error)) {
+				if (!isRetryableError(error)) {
 					throw error;
 				}
 

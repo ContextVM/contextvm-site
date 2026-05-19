@@ -10,13 +10,13 @@ export async function fetchFreeModels(client: OpenAI): Promise<string[]> {
 	return [...new Set(freeModels)];
 }
 
-export function isRateLimitError(error: unknown): boolean {
+export function isRetryableError(error: unknown): boolean {
 	if (!error || typeof error !== 'object') {
 		return false;
 	}
 
 	const status = (error as { status?: number }).status;
-	if (status === 429) {
+	if (status && [408, 429, 500, 502, 503, 504].includes(status)) {
 		return true;
 	}
 
