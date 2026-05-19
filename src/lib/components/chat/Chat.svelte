@@ -28,8 +28,8 @@
 	let messages = $state<ChatMessage[]>([]);
 	let isStreaming = $state(false);
 	let errorMessage = $state<string | null>(null);
-	let llmService = $state<LLMService | null>(null);
-	let abortController = $state<AbortController | null>(null);
+	let llmService: LLMService | null = null;
+	let abortController: AbortController | null = null;
 	let scrollRef = $state<HTMLDivElement | null>(null);
 	let conversationToken = 0;
 	let isNearBottom = $state(true);
