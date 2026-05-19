@@ -78,6 +78,10 @@
 
 			messages = conversation?.messages ?? [];
 		})();
+
+		return () => {
+			abortController?.abort();
+		};
 	});
 
 	$effect(() => {
