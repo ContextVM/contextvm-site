@@ -141,7 +141,13 @@
 		const outgoingMessages = [...messages, userMessage];
 		let workingMessages = outgoingMessages;
 		messages = workingMessages;
-		await updateConversation(activeId, workingMessages);
+
+		try {
+			await updateConversation(activeId, workingMessages);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Failed to save message.';
+			return;
+		}
 
 		const assistantId = crypto.randomUUID();
 		let assistantContent = '';
@@ -239,7 +245,11 @@
 				isStreaming = false;
 				abortController = null;
 			}
-			await updateConversation(activeId, workingMessages);
+			try {
+				await updateConversation(activeId, workingMessages);
+			} catch (error) {
+				// Conversation might have been deleted mid-stream, safe to ignore
+			}
 		}
 	};
 </script>
