@@ -133,7 +133,6 @@ export async function listConversations(): Promise<Conversation[]> {
 		const transaction = db.transaction(STORE_NAME, 'readonly');
 		const store = transaction.objectStore(STORE_NAME);
 		const results = await requestToPromise(store.getAll());
-		await waitForTransaction(transaction);
 
 		const conversations = [...results].sort(
 			(a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt)
@@ -160,7 +159,6 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 	const transaction = db.transaction(STORE_NAME, 'readonly');
 	const store = transaction.objectStore(STORE_NAME);
 	const conversation = await requestToPromise(store.get(id));
-	await waitForTransaction(transaction);
 	return (conversation as Conversation | undefined) ?? null;
 }
 
@@ -192,32 +190,47 @@ export async function updateConversation(
 		throw new Error('IndexedDB is only available in the browser');
 	}
 
-	const db = await openDatabase();
-	const transaction = db.transaction(STORE_NAME, 'readwrite');
-	const store = transaction.objectStore(STORE_NAME);
-	const existing = (await requestToPromise(store.get(id))) as Conversation | undefined;
-	if (!existing) {
-		transaction.abort();
-		throw new Error('Conversation not found');
-	}
+	return new Promise((resolve, reject) => {
+		openDatabase()
+			.then((db) => {
+				const transaction = db.transaction(STORE_NAME, 'readwrite');
+				const store = transaction.objectStore(STORE_NAME);
 
-	const nextTitle =
-		existing.title.trim() === DEFAULT_TITLE || existing.title.trim().length === 0
-			? deriveTitle(messages)
-			: existing.title;
+				const getReq = store.get(id);
+				getReq.onsuccess = () => {
+					const existing = getReq.result as Conversation | undefined;
+					if (!existing) {
+						reject(new Error('Conversation not found'));
+						return;
+					}
 
-	const updated: Conversation = {
-		...existing,
-		title: nextTitle,
-		messages,
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- persisted timestamp, not a live reactive clock
-		updatedAt: new Date()
-	};
+					const nextTitle =
+						existing.title.trim() === DEFAULT_TITLE || existing.title.trim().length === 0
+							? deriveTitle(messages)
+							: existing.title;
 
-	store.put($state.snapshot(updated));
-	await waitForTransaction(transaction);
-	upsertConversationInStore(updated);
-	return updated;
+					const updated: Conversation = {
+						...existing,
+						title: nextTitle,
+						messages,
+						// eslint-disable-next-line svelte/prefer-svelte-reactivity
+						updatedAt: new Date()
+					};
+
+					store.put($state.snapshot(updated));
+
+					transaction.oncomplete = () => {
+						upsertConversationInStore(updated);
+						resolve(updated);
+					};
+				};
+
+				getReq.onerror = () => reject(getReq.error);
+				transaction.onerror = () => reject(transaction.error);
+				transaction.onabort = () => reject(transaction.error);
+			})
+			.catch(reject);
+	});
 }
 
 export async function deleteConversation(id: string): Promise<void> {
@@ -234,24 +247,39 @@ export async function renameConversation(id: string, title: string): Promise<Con
 		throw new Error('IndexedDB is only available in the browser');
 	}
 
-	const db = await openDatabase();
-	const transaction = db.transaction(STORE_NAME, 'readwrite');
-	const store = transaction.objectStore(STORE_NAME);
-	const existing = (await requestToPromise(store.get(id))) as Conversation | undefined;
-	if (!existing) {
-		transaction.abort();
-		throw new Error('Conversation not found');
-	}
+	return new Promise((resolve, reject) => {
+		openDatabase()
+			.then((db) => {
+				const transaction = db.transaction(STORE_NAME, 'readwrite');
+				const store = transaction.objectStore(STORE_NAME);
 
-	const updated: Conversation = {
-		...existing,
-		title: title.trim() || DEFAULT_TITLE,
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- persisted timestamp, not a live reactive clock
-		updatedAt: new Date()
-	};
+				const getReq = store.get(id);
+				getReq.onsuccess = () => {
+					const existing = getReq.result as Conversation | undefined;
+					if (!existing) {
+						reject(new Error('Conversation not found'));
+						return;
+					}
 
-	store.put($state.snapshot(updated));
-	await waitForTransaction(transaction);
-	upsertConversationInStore(updated);
-	return updated;
+					const updated: Conversation = {
+						...existing,
+						title: title.trim() || DEFAULT_TITLE,
+						// eslint-disable-next-line svelte/prefer-svelte-reactivity
+						updatedAt: new Date()
+					};
+
+					store.put($state.snapshot(updated));
+
+					transaction.oncomplete = () => {
+						upsertConversationInStore(updated);
+						resolve(updated);
+					};
+				};
+
+				getReq.onerror = () => reject(getReq.error);
+				transaction.onerror = () => reject(transaction.error);
+				transaction.onabort = () => reject(transaction.error);
+			})
+			.catch(reject);
+	});
 }
