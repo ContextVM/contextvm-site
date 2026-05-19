@@ -19,9 +19,11 @@
 	} from '$lib/types/chat-types';
 
 	const STORAGE_KEY = 'contextvm.chat.config';
+	const sanitizeConfig = (current: LLMConfig) => ({ ...current, apiKey: '' });
 
 	let { config = $bindable({ ...DEFAULT_LLM_CONFIG }) }: { config?: LLMConfig } = $props();
 	let hasLoadedStoredConfig = $state(false);
+	let lastStoredConfig = $state('');
 	const selectedProvider = $derived(
 		PROVIDER_PRESETS.find((preset) => preset.key === config.provider) ?? PROVIDER_PRESETS[0]
 	);
@@ -98,7 +100,8 @@
 
 		try {
 			const stored = JSON.parse(raw) as Partial<LLMConfig>;
-			const nextConfig = { ...DEFAULT_LLM_CONFIG, ...stored };
+			const { apiKey: _ignored, ...storedSafe } = stored;
+			const nextConfig = { ...DEFAULT_LLM_CONFIG, ...storedSafe };
 			if (nextConfig.provider === 'openrouter' && !nextConfig.apiKey) {
 				nextConfig.apiKey = DEFAULT_OPENROUTER_KEY;
 			}
@@ -118,7 +121,13 @@
 			return;
 		}
 
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+		const serialized = JSON.stringify(sanitizeConfig(config));
+		if (serialized === lastStoredConfig) {
+			return;
+		}
+
+		localStorage.setItem(STORAGE_KEY, serialized);
+		lastStoredConfig = serialized;
 	});
 </script>
 
@@ -204,7 +213,7 @@
 				/>
 			</div>
 			<div class="flex items-center justify-between border-t border-border pt-4">
-				<p class="text-xs text-muted-foreground">Settings persist on this device.</p>
+				<p class="text-xs text-muted-foreground">Provider and model persist on this device.</p>
 				<Button variant="outline" size="sm" class="gap-1.5" onclick={resetConfig}>
 					<RotateCcwIcon class="h-3.5 w-3.5" />
 					Reset

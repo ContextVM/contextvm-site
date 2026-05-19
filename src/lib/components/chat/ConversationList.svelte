@@ -1,14 +1,13 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { Conversation } from '$lib/types/chat-types';
 	import {
 		conversationStore,
 		createConversation,
 		deleteConversation,
-		listConversations,
 		renameConversation
 	} from '$lib/services/conversation-store.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import { cn } from '$lib/utils.js';
@@ -24,9 +23,8 @@
 	let editingId = $state<string | null>(null);
 	let editingTitle = $state('');
 
-	onMount(() => {
-		listConversations();
-	});
+	let deleteTarget = $state<Conversation | null>(null);
+	let deleteOpen = $state(false);
 
 	const handleCreate = async () => {
 		const conversation = await createConversation();
@@ -59,15 +57,30 @@
 		editingTitle = '';
 	};
 
-	const handleDelete = async (id: string) => {
-		if (!window.confirm('Delete this conversation?')) {
+	const openDeleteDialog = (conversation: Conversation) => {
+		deleteTarget = conversation;
+		deleteOpen = true;
+	};
+
+	const confirmDelete = async () => {
+		if (!deleteTarget) {
 			return;
 		}
 
-		await deleteConversation(id);
+		const targetId = deleteTarget.id;
+		deleteOpen = false;
+		deleteTarget = null;
+		await deleteConversation(targetId);
 
-		if (activeId === id) {
-			activeId = conversationStore.conversations[0]?.id ?? null;
+		if (activeId === targetId) {
+			const fallback = conversationStore.conversations[0]?.id ?? null;
+			if (fallback) {
+				activeId = fallback;
+				return;
+			}
+
+			const conversation = await createConversation();
+			activeId = conversation.id;
 		}
 	};
 
@@ -181,7 +194,7 @@
 								variant="ghost"
 								size="icon"
 								class="h-7 w-7 text-destructive"
-								onclick={() => handleDelete(conversation.id)}
+								onclick={() => openDeleteDialog(conversation)}
 							>
 								<Trash2Icon class="h-3.5 w-3.5" />
 								<span class="sr-only">Delete conversation</span>
@@ -193,3 +206,27 @@
 		</div>
 	{/if}
 </ScrollArea>
+
+<Dialog.Root
+	bind:open={deleteOpen}
+	onOpenChange={(open) => {
+		deleteOpen = open;
+		if (!open) {
+			deleteTarget = null;
+		}
+	}}
+>
+	<Dialog.Content class="sm:max-w-[420px]">
+		<Dialog.Header>
+			<Dialog.Title>Delete conversation</Dialog.Title>
+			<Dialog.Description>
+				This will permanently remove
+				<strong class="font-semibold"> {deleteTarget?.title ?? 'this conversation'} </strong>.
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="flex gap-2 sm:justify-end">
+			<Button variant="outline" onclick={() => (deleteOpen = false)}>Cancel</Button>
+			<Button variant="destructive" onclick={confirmDelete}>Delete</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

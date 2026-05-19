@@ -6,6 +6,7 @@ import { FreeModelRotator, isRateLimitError } from '$lib/services/auto-mode';
 export interface SendMessageOptions {
 	signal?: AbortSignal;
 	onDelta?: (delta: string) => void;
+	onReset?: () => void;
 }
 
 export interface SendMessageResult {
@@ -32,7 +33,7 @@ export function normalizeBaseURL(baseURL: string): string {
 		return trimmed;
 	}
 
-	return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+	return `${trimmed}/v1`;
 }
 
 function toOpenAiMessages(messages: ChatMessage[]): ChatCompletionMessageParam[] {
@@ -67,8 +68,10 @@ export class LLMService {
 		return this.config;
 	}
 
-	public async fetchModels(): Promise<string[]> {
-		const response = await this.client.models.list();
+	public async fetchModels(signal?: AbortSignal): Promise<string[]> {
+		const response = signal
+			? await this.client.models.list({ signal })
+			: await this.client.models.list();
 		return response.data.map((model) => model.id);
 	}
 
@@ -80,7 +83,7 @@ export class LLMService {
 		messages: ChatMessage[],
 		options: SendMessageOptions = {}
 	): Promise<SendMessageResult> {
-		const { onDelta, signal } = options;
+		const { onDelta, onReset, signal } = options;
 
 		if (!this.autoMode || this.config.model !== 'auto') {
 			if (!this.config.model.trim()) {
@@ -102,6 +105,10 @@ export class LLMService {
 		for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
 			if (!model) {
 				break;
+			}
+
+			if (attempt > 0) {
+				onReset?.();
 			}
 
 			try {

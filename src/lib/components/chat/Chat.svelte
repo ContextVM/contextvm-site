@@ -22,7 +22,7 @@
 		config
 	}: {
 		conversationId?: string | null;
-		config?: LLMConfig | null;
+		config: LLMConfig;
 	} = $props();
 
 	let messages = $state<ChatMessage[]>([]);
@@ -31,30 +31,19 @@
 	let llmService = $state<LLMService | null>(null);
 	let abortController = $state<AbortController | null>(null);
 	let scrollRef = $state<HTMLDivElement | null>(null);
-	let conversationToken = 0;
+	let conversationToken = $state(0);
+	let isNearBottom = $state(true);
+	let skipLoadId: string | null = null;
 
-	const isAutoMode = $derived.by(() => {
-		if (!config) {
-			return false;
-		}
+	const isAutoMode = $derived.by(
+		() => config.model === 'auto' && config.baseURL.includes('openrouter.ai')
+	);
 
-		return config.model === 'auto' && config.baseURL.includes('openrouter.ai');
-	});
-
-	const usingDefaultKey = $derived.by(() => {
-		if (!config) {
-			return false;
-		}
-
-		return config.baseURL.includes('openrouter.ai') && config.apiKey === DEFAULT_OPENROUTER_KEY;
-	});
+	const usingDefaultKey = $derived.by(
+		() => config.baseURL.includes('openrouter.ai') && config.apiKey === DEFAULT_OPENROUTER_KEY
+	);
 
 	$effect(() => {
-		if (!config) {
-			llmService = null;
-			return;
-		}
-
 		if (llmService) {
 			llmService.reconfigure(config);
 			return;
@@ -65,6 +54,10 @@
 
 	$effect(() => {
 		const activeId = conversationId ?? null;
+		if (skipLoadId && activeId === skipLoadId) {
+			skipLoadId = null;
+			return;
+		}
 		conversationToken += 1;
 		const token = conversationToken;
 		abortController?.abort();
@@ -95,9 +88,24 @@
 		}
 
 		queueMicrotask(() => {
-			scrollRef?.scrollTo({ top: scrollRef.scrollHeight, behavior: 'smooth' });
+			if (isNearBottom) {
+				scrollRef?.scrollTo({ top: scrollRef.scrollHeight, behavior: 'smooth' });
+			}
 		});
 	});
+
+	const updateIsNearBottom = () => {
+		if (!scrollRef) {
+			return;
+		}
+
+		const distance = scrollRef.scrollHeight - scrollRef.scrollTop - scrollRef.clientHeight;
+		isNearBottom = distance < 160;
+	};
+
+	const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+		scrollRef?.scrollTo({ top: scrollRef.scrollHeight, behavior });
+	};
 
 	const handleStop = () => {
 		abortController?.abort();
@@ -112,6 +120,7 @@
 		if (!activeId) {
 			const newConv = await createConversation();
 			activeId = newConv.id;
+			skipLoadId = activeId;
 			conversationId = activeId;
 		}
 
@@ -176,6 +185,18 @@
 					);
 					syncMessages();
 					schedulePersist();
+					if (isNearBottom) {
+						scrollToBottom('auto');
+					}
+				},
+				onReset: () => {
+					assistantContent = '';
+					assistantMessage = { ...assistantMessage, content: '' };
+					workingMessages = workingMessages.map((message) =>
+						message.id === assistantId ? assistantMessage : message
+					);
+					syncMessages();
+					schedulePersist();
 				}
 			});
 
@@ -225,7 +246,7 @@
 			<AutoModeBanner {usingDefaultKey} />
 		</div>
 	{/if}
-	<div class="flex-1 overflow-auto" bind:this={scrollRef}>
+	<div class="flex-1 overflow-auto" bind:this={scrollRef} onscroll={updateIsNearBottom}>
 		{#if !conversationId}
 			<div class="flex h-full items-center justify-center px-6">
 				<p class="max-w-sm text-center text-sm text-muted-foreground">

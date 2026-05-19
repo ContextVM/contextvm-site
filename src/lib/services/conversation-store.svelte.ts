@@ -192,8 +192,12 @@ export async function updateConversation(
 		throw new Error('IndexedDB is only available in the browser');
 	}
 
-	const existing = await getConversation(id);
+	const db = await openDatabase();
+	const transaction = db.transaction(STORE_NAME, 'readwrite');
+	const store = transaction.objectStore(STORE_NAME);
+	const existing = (await requestToPromise(store.get(id))) as Conversation | undefined;
 	if (!existing) {
+		transaction.abort();
 		throw new Error('Conversation not found');
 	}
 
@@ -210,7 +214,8 @@ export async function updateConversation(
 		updatedAt: new Date()
 	};
 
-	await saveConversation(updated);
+	store.put($state.snapshot(updated));
+	await waitForTransaction(transaction);
 	upsertConversationInStore(updated);
 	return updated;
 }
@@ -229,8 +234,12 @@ export async function renameConversation(id: string, title: string): Promise<Con
 		throw new Error('IndexedDB is only available in the browser');
 	}
 
-	const existing = await getConversation(id);
+	const db = await openDatabase();
+	const transaction = db.transaction(STORE_NAME, 'readwrite');
+	const store = transaction.objectStore(STORE_NAME);
+	const existing = (await requestToPromise(store.get(id))) as Conversation | undefined;
 	if (!existing) {
+		transaction.abort();
 		throw new Error('Conversation not found');
 	}
 
@@ -241,7 +250,8 @@ export async function renameConversation(id: string, title: string): Promise<Con
 		updatedAt: new Date()
 	};
 
-	await saveConversation(updated);
+	store.put($state.snapshot(updated));
+	await waitForTransaction(transaction);
 	upsertConversationInStore(updated);
 	return updated;
 }

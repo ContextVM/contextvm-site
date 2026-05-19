@@ -27,6 +27,8 @@
 	let status = $state<'idle' | 'loading' | 'error'>('idle');
 	let errorMessage = $state<string | null>(null);
 	let models = $state<string[]>([]);
+	let debounceHandle: ReturnType<typeof setTimeout> | null = null;
+	let activeAbort: AbortController | null = null;
 
 	const showAuto = $derived(provider === 'openrouter');
 	const freeModels = $derived(models.filter((id) => id.endsWith(FREE_MODEL_SUFFIX)));
@@ -41,16 +43,24 @@
 	});
 
 	$effect(() => {
-		if (!baseURL) {
+		if (!baseURL.trim()) {
 			models = [];
 			status = 'idle';
 			errorMessage = null;
+			activeAbort?.abort();
 			return;
 		}
 
 		let cancelled = false;
 		status = 'loading';
 		errorMessage = null;
+
+		if (debounceHandle) {
+			clearTimeout(debounceHandle);
+		}
+		activeAbort?.abort();
+		const controller = new AbortController();
+		activeAbort = controller;
 
 		const service = new LLMService({
 			provider,
@@ -59,35 +69,45 @@
 			model: 'model-list'
 		});
 
-		service
-			.fetchModels()
-			.then((list) => {
-				if (cancelled) {
-					return;
-				}
+		debounceHandle = setTimeout(() => {
+			service
+				.fetchModels(controller.signal)
+				.then((list) => {
+					if (cancelled || controller.signal.aborted) {
+						return;
+					}
 
-				if (!list.length) {
+					if (!list.length) {
+						status = 'error';
+						errorMessage = 'No models returned from the provider.';
+						models = [];
+						return;
+					}
+
+					models = list;
+					status = 'idle';
+				})
+				.catch((error) => {
+					if (cancelled || controller.signal.aborted) {
+						return;
+					}
+
 					status = 'error';
-					errorMessage = 'No models returned from the provider.';
 					models = [];
-					return;
-				}
-
-				models = list;
-				status = 'idle';
-			})
-			.catch((error) => {
-				if (cancelled) {
-					return;
-				}
-
-				status = 'error';
-				models = [];
-				errorMessage = error instanceof Error ? error.message : 'Failed to load models.';
-			});
+					errorMessage = error instanceof Error ? error.message : 'Failed to load models.';
+				});
+		}, 300);
 
 		return () => {
 			cancelled = true;
+			if (debounceHandle) {
+				clearTimeout(debounceHandle);
+				debounceHandle = null;
+			}
+			if (activeAbort === controller) {
+				activeAbort = null;
+			}
+			controller.abort();
 		};
 	});
 
