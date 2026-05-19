@@ -8,7 +8,11 @@
 	let { message }: { message: ChatMessage } = $props();
 
 	const html = $derived.by(() => {
-		const raw = marked.parse(message.content ?? '', { async: false, breaks: true, gfm: true });
+		const raw = marked.parse(message.content ?? '', {
+			async: false,
+			breaks: true,
+			gfm: true
+		}) as string;
 		return browser ? DOMPurify.sanitize(raw) : raw;
 	});
 </script>

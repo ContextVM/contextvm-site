@@ -28,6 +28,10 @@ export function normalizeBaseURL(baseURL: string): string {
 		}
 	}
 
+	if (/\/v\d+$/.test(trimmed)) {
+		return trimmed;
+	}
+
 	return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
 }
 

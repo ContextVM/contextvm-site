@@ -84,6 +84,28 @@ function deriveTitle(messages: ChatMessage[]): string {
 	return truncateString(firstUserMessage.content.trim(), 64);
 }
 
+function upsertConversationInStore(conversation: Conversation): void {
+	const existing = conversationStore.conversations;
+	const index = existing.findIndex((item) => item.id === conversation.id);
+	const next = [...existing];
+
+	if (index >= 0) {
+		next[index] = conversation;
+	} else {
+		next.unshift(conversation);
+	}
+
+	conversationStore.conversations = next.sort(
+		(a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt)
+	);
+}
+
+function removeConversationFromStore(id: string): void {
+	conversationStore.conversations = conversationStore.conversations.filter(
+		(conversation) => conversation.id !== id
+	);
+}
+
 async function saveConversation(conversation: Conversation): Promise<void> {
 	const db = await openDatabase();
 	const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -158,7 +180,7 @@ export async function createConversation(): Promise<Conversation> {
 	};
 
 	await saveConversation(conversation);
-	await listConversations();
+	upsertConversationInStore(conversation);
 	return conversation;
 }
 
@@ -189,7 +211,7 @@ export async function updateConversation(
 	};
 
 	await saveConversation(updated);
-	await listConversations();
+	upsertConversationInStore(updated);
 	return updated;
 }
 
@@ -199,7 +221,7 @@ export async function deleteConversation(id: string): Promise<void> {
 	}
 
 	await removeConversation(id);
-	await listConversations();
+	removeConversationFromStore(id);
 }
 
 export async function renameConversation(id: string, title: string): Promise<Conversation> {
@@ -220,6 +242,6 @@ export async function renameConversation(id: string, title: string): Promise<Con
 	};
 
 	await saveConversation(updated);
-	await listConversations();
+	upsertConversationInStore(updated);
 	return updated;
 }

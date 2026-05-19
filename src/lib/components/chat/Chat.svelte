@@ -27,7 +27,7 @@
 	let llmService = $state<LLMService | null>(null);
 	let abortController = $state<AbortController | null>(null);
 	let scrollRef = $state<HTMLDivElement | null>(null);
-	let loadToken = 0;
+	let conversationToken = 0;
 
 	const isAutoMode = $derived.by(() => {
 		if (!config) {
@@ -61,8 +61,12 @@
 
 	$effect(() => {
 		const activeId = conversationId ?? null;
-		loadToken += 1;
-		const token = loadToken;
+		conversationToken += 1;
+		const token = conversationToken;
+		abortController?.abort();
+		abortController = null;
+		isStreaming = false;
+		errorMessage = null;
 
 		if (!activeId) {
 			messages = [];
@@ -71,7 +75,7 @@
 
 		(async () => {
 			const conversation = await getConversation(activeId);
-			if (token !== loadToken) {
+			if (token !== conversationToken) {
 				return;
 			}
 
@@ -102,6 +106,8 @@
 
 		errorMessage = null;
 		const activeId = conversationId;
+		const token = conversationToken;
+		let persistTimeout: ReturnType<typeof setTimeout> | null = null;
 		const userMessage: ChatMessage = {
 			id: crypto.randomUUID(),
 			content,
@@ -110,21 +116,40 @@
 		};
 
 		const outgoingMessages = [...messages, userMessage];
-		messages = outgoingMessages;
-		await updateConversation(activeId, messages);
+		let workingMessages = outgoingMessages;
+		messages = workingMessages;
+		await updateConversation(activeId, workingMessages);
 
 		const assistantId = crypto.randomUUID();
 		let assistantContent = '';
+		let assistantMessage: ChatMessage = {
+			id: assistantId,
+			content: '',
+			role: 'assistant',
+			timestamp: new Date()
+		};
 
-		messages = [
-			...messages,
-			{
-				id: assistantId,
-				content: '',
-				role: 'assistant',
-				timestamp: new Date()
+		const syncMessages = () => {
+			if (token !== conversationToken) {
+				return;
 			}
-		];
+
+			messages = [...workingMessages];
+		};
+
+		const schedulePersist = () => {
+			if (persistTimeout) {
+				return;
+			}
+
+			persistTimeout = setTimeout(async () => {
+				persistTimeout = null;
+				await updateConversation(activeId, workingMessages);
+			}, 1000);
+		};
+
+		workingMessages = [...workingMessages, assistantMessage];
+		syncMessages();
 
 		isStreaming = true;
 		const controller = new AbortController();
@@ -135,39 +160,51 @@
 				signal: controller.signal,
 				onDelta: (delta) => {
 					assistantContent += delta;
-					const assistantMessage = messages.find((message) => message.id === assistantId);
-					if (assistantMessage) {
-						assistantMessage.content = assistantContent;
-					}
+					assistantMessage = { ...assistantMessage, content: assistantContent };
+					workingMessages = workingMessages.map((message) =>
+						message.id === assistantId ? assistantMessage : message
+					);
+					syncMessages();
+					schedulePersist();
 				}
 			});
 
 			if (result.content && result.content !== assistantContent) {
 				assistantContent = result.content;
-				const assistantMessage = messages.find((message) => message.id === assistantId);
-				if (assistantMessage) {
-					assistantMessage.content = assistantContent;
-				}
+				assistantMessage = { ...assistantMessage, content: assistantContent };
+				workingMessages = workingMessages.map((message) =>
+					message.id === assistantId ? assistantMessage : message
+				);
+				syncMessages();
 			}
 		} catch (error) {
 			if (controller.signal.aborted) {
 				if (!assistantContent) {
-					messages = messages.filter((message) => message.id !== assistantId);
+					workingMessages = workingMessages.filter((message) => message.id !== assistantId);
+					syncMessages();
 				}
 				return;
 			}
 
 			const errorText = error instanceof Error ? error.message : 'Something went wrong.';
-			errorMessage = errorText;
-			messages = messages.map((chatMessage) =>
-				chatMessage.id === assistantId
-					? { ...chatMessage, content: `Error: ${errorText}` }
-					: chatMessage
+			if (token === conversationToken) {
+				errorMessage = errorText;
+			}
+			assistantMessage = { ...assistantMessage, content: `Error: ${errorText}` };
+			workingMessages = workingMessages.map((chatMessage) =>
+				chatMessage.id === assistantId ? assistantMessage : chatMessage
 			);
+			syncMessages();
 		} finally {
-			isStreaming = false;
-			abortController = null;
-			await updateConversation(activeId, messages);
+			if (persistTimeout) {
+				clearTimeout(persistTimeout);
+				persistTimeout = null;
+			}
+			if (token === conversationToken) {
+				isStreaming = false;
+				abortController = null;
+			}
+			await updateConversation(activeId, workingMessages);
 		}
 	};
 </script>
