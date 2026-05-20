@@ -68,19 +68,12 @@
 		}
 	];
 
-	const shuffleWithSeed = <T,>(items: T[], seed: number) => {
-		let value = (seed || 1) % 2147483647;
-		const random = () => {
-			value = (value * 48271) % 2147483647;
-			return (value - 1) / 2147483646;
-		};
-
+	const shuffleArray = <T,>(items: T[]) => {
 		const result = [...items];
 		for (let i = result.length - 1; i > 0; i -= 1) {
-			const j = Math.floor(random() * (i + 1));
+			const j = Math.floor(Math.random() * (i + 1));
 			[result[i], result[j]] = [result[j], result[i]];
 		}
-
 		return result;
 	};
 
@@ -100,12 +93,10 @@
 	let llmService: LLMService | null = null;
 	let abortController: AbortController | null = null;
 	let scrollRef = $state<HTMLDivElement | null>(null);
-	let conversationToken = $state(0);
+	let conversationToken = 0;
 	let isNearBottom = $state(true);
 	let skipLoadId: string | null = null;
-	let promptSeed = $state(0);
-
-	const starterPrompts = $derived.by(() => shuffleWithSeed(PROMPT_POOL, promptSeed).slice(0, 3));
+	let starterPrompts = $state<PromptItem[]>([]);
 
 	const isAutoMode = $derived.by(
 		() => config.model === 'auto' && config.baseURL.includes('openrouter.ai')
@@ -126,7 +117,7 @@
 
 	$effect(() => {
 		const activeId = conversationId ?? null;
-		promptSeed += 1;
+		starterPrompts = shuffleArray(PROMPT_POOL).slice(0, 3);
 		if (skipLoadId && activeId === skipLoadId) {
 			skipLoadId = null;
 			return;
