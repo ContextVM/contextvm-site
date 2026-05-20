@@ -5,7 +5,6 @@ import {
 	createSchemaProviderLoader
 } from '$lib/services/loaders.svelte';
 import { lastValueFrom } from 'rxjs';
-import type { Event } from 'nostr-tools';
 
 export function useCatalogSchemas() {
 	return createQuery({

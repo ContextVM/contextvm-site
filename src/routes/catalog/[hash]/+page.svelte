@@ -26,9 +26,7 @@
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 
 	const loading = $derived(
-		$schemasQuery.isFetching ||
-			$providersQuery?.isFetching ||
-			$serverAnnouncementsQuery.isFetching
+		$schemasQuery.isFetching || $providersQuery?.isFetching || $serverAnnouncementsQuery.isFetching
 	);
 
 	const providers = $derived.by(() => {
@@ -51,16 +49,14 @@
 			</p>
 			{#if currentSchema?.categories?.length}
 				<div class="mt-6 flex flex-wrap justify-center gap-2">
-					{#each currentSchema.categories as cat}
+					{#each currentSchema.categories as cat (cat)}
 						<span class="rounded-md bg-secondary/50 px-3 py-1 text-sm text-secondary-foreground"
 							>#{cat}</span
 						>
 					{/each}
 				</div>
 			{/if}
-			<div
-				class="mt-6 flex items-center justify-center font-mono text-sm text-muted-foreground"
-			>
+			<div class="mt-6 flex items-center justify-center font-mono text-sm text-muted-foreground">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					width="16"
@@ -71,7 +67,7 @@
 					stroke-width="2"
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					class="mr-2 lucide lucide-hash"
+					class="lucide lucide-hash mr-2"
 					><line x1="4" x2="20" y1="9" y2="9" /><line x1="4" x2="20" y1="15" y2="15" /><line
 						x1="10"
 						x2="8"
@@ -86,7 +82,7 @@
 		<div class="mx-auto max-w-6xl">
 			{#if loading && !providers.length}
 				<div class="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
-					{#each Array(3) as _}
+					{#each Array(3) as _, idx (idx)}
 						<div class="w-full max-w-sm"><LoadingCard layout="article" /></div>
 					{/each}
 				</div>

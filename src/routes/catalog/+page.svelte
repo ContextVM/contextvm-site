@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { useCatalogSchemas } from '$lib/queries/catalogQueries';
 	import { eventStore } from '$lib/services/eventStore';
 	import { CatalogSchemasModel } from '$lib/models/catalogSchemas';
@@ -51,7 +52,7 @@
 
 			{#if $query.isFetching && !$schemas?.length}
 				<div class="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
-					{#each Array(6) as _, i}
+					{#each Array(6) as _, idx (idx)}
 						<div class="w-full max-w-sm"><LoadingCard layout="article" /></div>
 					{/each}
 				</div>
@@ -68,7 +69,7 @@
 				</div>
 				<div class="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each filteredSchemas as schema (schema.hash)}
-						<a href="/catalog/{schema.hash}" class="group w-full max-w-sm">
+						<a href={resolve(`/catalog/${schema.hash}`)} class="group w-full max-w-sm">
 							<div
 								class="h-full rounded-xl border border-border/50 bg-card p-6 shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
 							>
@@ -84,7 +85,7 @@
 
 								{#if schema.categories.length > 0}
 									<div class="mb-4 flex flex-wrap gap-2">
-										{#each schema.categories as cat}
+										{#each schema.categories as cat (cat)}
 											<span
 												class="rounded-md bg-secondary/50 px-2 py-1 text-xs text-secondary-foreground"
 												>#{cat}</span

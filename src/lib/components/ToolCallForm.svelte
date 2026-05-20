@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { createForm, BasicForm, type Schema } from '@sjsf/form';
 	import { formDefaults } from '$lib/form-defaults';
 	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
@@ -48,7 +49,9 @@
 	});
 	const toolCap = $derived(findCapTagForTool(capTags, tool.name));
 
-	const commonSchemaTag = $derived(announcementTags?.find(t => t[0] === 'i' && t[2] === tool.name));
+	const commonSchemaTag = $derived(
+		announcementTags?.find((t) => t[0] === 'i' && t[2] === tool.name)
+	);
 	const schemaHash = $derived(commonSchemaTag?.[1]);
 
 	$effect(() => {
@@ -123,12 +126,29 @@
 				{/if}
 				{#if schemaHash}
 					<a
-						href={`/catalog/${schemaHash}`}
+						href={resolve(`/catalog/${schemaHash}`)}
 						class="flex items-center gap-1 rounded bg-secondary/50 px-2 py-0.5 font-mono text-xs text-secondary-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
 						title="View all servers that provide this schema"
 						onclick={(e) => e.stopPropagation()}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hash"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="12"
+							height="12"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="lucide lucide-hash"
+							><line x1="4" x2="20" y1="9" y2="9" /><line x1="4" x2="20" y1="15" y2="15" /><line
+								x1="10"
+								x2="8"
+								y1="3"
+								y2="21"
+							/><line x1="16" x2="14" y1="3" y2="21" /></svg
+						>
 						{schemaHash.substring(0, 8)}
 					</a>
 				{/if}
