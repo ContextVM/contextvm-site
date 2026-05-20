@@ -1,28 +1,97 @@
 <script lang="ts">
 	import { DEFAULT_OPENROUTER_KEY, type ChatMessage, type LLMConfig } from '$lib/types/chat-types';
 	import {
+		createConversation,
 		getConversation,
-		updateConversation,
-		createConversation
+		updateConversation
 	} from '$lib/services/conversation-store.svelte';
 	import { LLMService } from '$lib/services/llm';
 	import ChatBubble from '$lib/components/chat/ChatBubble.svelte';
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
 	import AutoModeBanner from '$lib/components/chat/AutoModeBanner.svelte';
 	import { cn } from '$lib/utils.js';
+	import ServerIcon from '@lucide/svelte/icons/server';
+	import GitBranchIcon from '@lucide/svelte/icons/git-branch';
+	import PlugIcon from '@lucide/svelte/icons/plug';
+	import TerminalIcon from '@lucide/svelte/icons/terminal';
 
-	const starterPrompts = [
-		'Map a clean MCP server workflow',
-		'Compare two tool integration options',
-		'Draft a ContextVM server announcement'
+	type PromptItem = { text: string; icon: typeof ServerIcon };
+
+	const PROMPT_POOL: PromptItem[] = [
+		{
+			text: 'Find MCP servers that offer code analysis tools',
+			icon: ServerIcon
+		},
+		{
+			text: 'List all available tools on my connected servers',
+			icon: ServerIcon
+		},
+		{
+			text: 'Compare capabilities of two MCP server providers',
+			icon: ServerIcon
+		},
+		{
+			text: 'Design a multi-step workflow using MCP tools',
+			icon: GitBranchIcon
+		},
+		{
+			text: 'Chain a file reader and a summarizer tool together',
+			icon: GitBranchIcon
+		},
+		{
+			text: 'Build an automated code review pipeline with MCP',
+			icon: GitBranchIcon
+		},
+		{
+			text: 'Help me connect a new MCP server via Nostr relay',
+			icon: PlugIcon
+		},
+		{
+			text: 'Generate a server announcement event for my tools',
+			icon: PlugIcon
+		},
+		{
+			text: 'Walk me through setting up a ContextVM transport',
+			icon: PlugIcon
+		},
+		{
+			text: 'Use the connected tools to analyze this codebase',
+			icon: TerminalIcon
+		},
+		{
+			text: 'Run a tool and explain the output step by step',
+			icon: TerminalIcon
+		},
+		{
+			text: 'Draft a Nostr event to publish my MCP server',
+			icon: TerminalIcon
+		}
 	];
+
+	const shuffleWithSeed = <T,>(items: T[], seed: number) => {
+		let value = (seed || 1) % 2147483647;
+		const random = () => {
+			value = (value * 48271) % 2147483647;
+			return (value - 1) / 2147483646;
+		};
+
+		const result = [...items];
+		for (let i = result.length - 1; i > 0; i -= 1) {
+			const j = Math.floor(random() * (i + 1));
+			[result[i], result[j]] = [result[j], result[i]];
+		}
+
+		return result;
+	};
 
 	let {
 		conversationId = $bindable(null),
-		config
+		config,
+		lastUsedModel = $bindable('')
 	}: {
 		conversationId?: string | null;
 		config: LLMConfig;
+		lastUsedModel?: string;
 	} = $props();
 
 	let messages = $state<ChatMessage[]>([]);
@@ -31,9 +100,12 @@
 	let llmService: LLMService | null = null;
 	let abortController: AbortController | null = null;
 	let scrollRef = $state<HTMLDivElement | null>(null);
-	let conversationToken = 0;
+	let conversationToken = $state(0);
 	let isNearBottom = $state(true);
 	let skipLoadId: string | null = null;
+	let promptSeed = $state(0);
+
+	const starterPrompts = $derived.by(() => shuffleWithSeed(PROMPT_POOL, promptSeed).slice(0, 3));
 
 	const isAutoMode = $derived.by(
 		() => config.model === 'auto' && config.baseURL.includes('openrouter.ai')
@@ -54,6 +126,7 @@
 
 	$effect(() => {
 		const activeId = conversationId ?? null;
+		promptSeed += 1;
 		if (skipLoadId && activeId === skipLoadId) {
 			skipLoadId = null;
 			return;
@@ -64,6 +137,7 @@
 		abortController = null;
 		isStreaming = false;
 		errorMessage = null;
+		lastUsedModel = '';
 
 		if (!activeId) {
 			messages = [];
@@ -199,7 +273,7 @@
 						scrollToBottom('auto');
 					}
 				},
-				onReset: () => {
+				onReset: (model) => {
 					assistantContent = '';
 					assistantMessage = { ...assistantMessage, content: '' };
 					workingMessages = workingMessages.map((message) =>
@@ -207,6 +281,9 @@
 					);
 					syncMessages();
 					schedulePersist();
+					if (token === conversationToken) {
+						lastUsedModel = model;
+					}
 				}
 			});
 
@@ -217,6 +294,9 @@
 					message.id === assistantId ? assistantMessage : message
 				);
 				syncMessages();
+			}
+			if (token === conversationToken) {
+				lastUsedModel = result.model;
 			}
 		} catch (error) {
 			if (controller.signal.aborted) {
@@ -247,20 +327,20 @@
 			}
 			try {
 				await updateConversation(activeId, workingMessages);
-			} catch (error) {
-				// Conversation might have been deleted mid-stream, safe to ignore
+			} catch (_error) {
+				// Conversation might have been deleted mid-stream, safe to ignore.
 			}
 		}
 	};
 </script>
 
-<div class="flex h-full flex-col">
+<div class="flex h-full min-h-0 flex-col">
 	{#if isAutoMode}
 		<div class="border-b border-border bg-background/80 px-4 py-3">
 			<AutoModeBanner {usingDefaultKey} />
 		</div>
 	{/if}
-	<div class="flex-1 overflow-auto" bind:this={scrollRef} onscroll={updateIsNearBottom}>
+	<div class="min-h-0 flex-1 overflow-auto" bind:this={scrollRef} onscroll={updateIsNearBottom}>
 		{#if !conversationId}
 			<div class="flex h-full items-center justify-center px-6">
 				<p class="max-w-sm text-center text-sm text-muted-foreground">
@@ -269,26 +349,43 @@
 			</div>
 		{:else if messages.length === 0}
 			<div
-				class="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-5 px-6 text-center"
+				class="animate-fade-in-up mx-auto flex h-full max-w-3xl flex-col items-center justify-center gap-6 px-6 text-center"
 			>
+				<div class="relative">
+					<div class="absolute inset-0 rounded-2xl bg-primary/10 blur-2xl"></div>
+					<div
+						class="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-background text-sm font-semibold text-primary"
+					>
+						CV
+					</div>
+				</div>
 				<div class="space-y-2">
-					<p class="text-lg font-semibold text-foreground">Ready when you are.</p>
+					<p class="text-xl font-semibold text-foreground">What can I help you build?</p>
 					<p class="text-sm leading-6 text-muted-foreground">
-						Start with a server idea, tool workflow, or integration question.
+						Orchestrate MCP servers, explore tools, and manage workflows — all from this chat.
 					</p>
 				</div>
-				<div class="grid w-full gap-2 sm:grid-cols-3">
-					{#each starterPrompts as prompt (prompt)}
+				<div class="grid w-full gap-3 sm:grid-cols-3">
+					{#each starterPrompts as prompt (prompt.text)}
+						{@const Icon = prompt.icon}
 						<button
 							type="button"
-							class="rounded-lg border border-border bg-background/70 px-3 py-3 text-left text-sm leading-5 text-foreground shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+							class="group flex h-full items-start gap-3 rounded-xl border border-border/60 bg-card/60 px-3.5 py-3 text-left text-sm leading-5 text-foreground shadow-sm backdrop-blur transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card/80 disabled:cursor-not-allowed disabled:opacity-60"
 							disabled={isStreaming}
-							onclick={() => handleSend(prompt)}
+							onclick={() => handleSend(prompt.text)}
 						>
-							{prompt}
+							<span
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+							>
+								<Icon class="h-4 w-4" />
+							</span>
+							<span class="min-w-0 text-left">{prompt.text}</span>
 						</button>
 					{/each}
 				</div>
+				<p class="text-[11px] text-muted-foreground/60">
+					Press Enter to send · Shift+Enter for new line
+				</p>
 			</div>
 		{:else}
 			<div class="mx-auto max-w-4xl space-y-4 px-4 py-6">
