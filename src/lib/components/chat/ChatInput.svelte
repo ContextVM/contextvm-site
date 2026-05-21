@@ -66,36 +66,40 @@
 	});
 </script>
 
-<div
-	class={cn(
-		'flex items-end gap-2 rounded-2xl border border-border bg-background/90 p-2 shadow-sm backdrop-blur transition-colors focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/15',
-		className
-	)}
-	{...restProps}
->
-	<Textarea
-		bind:ref={textareaRef}
-		bind:value
-		rows={1}
-		class="min-h-[44px] w-full resize-none border-none bg-transparent text-sm shadow-none focus-visible:ring-0"
-		{placeholder}
-		{disabled}
-		onkeydown={handleKeydown}
-		oninput={handleInput}
-	/>
-	<Button
-		size="icon"
-		variant={isStreaming ? 'secondary' : 'default'}
-		class="h-9 w-9"
-		disabled={isSendDisabled}
-		onclick={() => (isStreaming ? onStop?.() : handleSend())}
+<div class={cn('space-y-1', className)} {...restProps}>
+	<div
+		class={cn(
+			'flex items-end gap-2 rounded-2xl border border-border bg-background/90 p-2 shadow-sm backdrop-blur transition-all focus-within:border-primary/60 focus-within:shadow-lg focus-within:ring-2 focus-within:ring-primary/15 hover:border-primary/40 hover:shadow-md'
+		)}
 	>
-		{#if isStreaming}
-			<SquareIcon class="h-4 w-4" />
-			<span class="sr-only">Stop generating</span>
-		{:else}
-			<ArrowUpIcon class="h-4 w-4" />
-			<span class="sr-only">Send message</span>
-		{/if}
-	</Button>
+		<Textarea
+			bind:ref={textareaRef}
+			bind:value
+			rows={1}
+			class="min-h-[44px] w-full resize-none border-none bg-transparent text-sm shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-0"
+			{placeholder}
+			{disabled}
+			onkeydown={handleKeydown}
+			oninput={handleInput}
+		/>
+		<Button
+			size="icon"
+			variant={isStreaming ? 'secondary' : 'default'}
+			class={cn('h-9 w-9 transition-all', isStreaming ? 'animate-pulse' : 'hover:scale-105')}
+			disabled={isSendDisabled}
+			onclick={() => (isStreaming ? onStop?.() : handleSend())}
+		>
+			{#if isStreaming}
+				<SquareIcon class="h-4 w-4" />
+				<span class="sr-only">Stop generating</span>
+			{:else}
+				<ArrowUpIcon class="h-4 w-4" />
+				<span class="sr-only">Send message</span>
+			{/if}
+		</Button>
+	</div>
+	<div class="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
+		<span>Enter to send</span>
+		<span>Shift+Enter for new line</span>
+	</div>
 </div>

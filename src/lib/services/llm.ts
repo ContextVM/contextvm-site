@@ -6,7 +6,7 @@ import { FreeModelRotator, isRetryableError } from '$lib/services/auto-mode';
 export interface SendMessageOptions {
 	signal?: AbortSignal;
 	onDelta?: (delta: string) => void;
-	onReset?: () => void;
+	onReset?: (model: string) => void;
 }
 
 export interface SendMessageResult {
@@ -51,6 +51,7 @@ export class LLMService {
 	private config: LLMConfig;
 	private client: OpenAI;
 	private autoMode: FreeModelRotator | null = null;
+	private lastUsedModel: string | null = null;
 
 	constructor(config: LLMConfig) {
 		this.config = config;
@@ -66,6 +67,10 @@ export class LLMService {
 
 	public getConfig(): LLMConfig {
 		return this.config;
+	}
+
+	public getActiveModel(): string | null {
+		return this.lastUsedModel;
 	}
 
 	public async fetchModels(signal?: AbortSignal): Promise<string[]> {
@@ -108,7 +113,7 @@ export class LLMService {
 			}
 
 			if (attempt > 0) {
-				onReset?.();
+				onReset?.(model);
 			}
 
 			try {
@@ -176,6 +181,7 @@ export class LLMService {
 			}
 		}
 
+		this.lastUsedModel = model;
 		return { content, model };
 	}
 }

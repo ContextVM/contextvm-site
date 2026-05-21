@@ -15,6 +15,7 @@
 
 	let activeConversationId = $state<string | null>(null);
 	let config = $state<ChatLLMConfig>({ ...DEFAULT_LLM_CONFIG });
+	let lastUsedModel = $state('');
 	const selectedProvider = $derived(
 		PROVIDER_PRESETS.find((preset) => preset.key === config.provider) ?? PROVIDER_PRESETS[0]
 	);
@@ -43,10 +44,10 @@
 	url="https://contextvm.com/chat"
 />
 
-<Sidebar.Provider class="h-[calc(100vh-3.5rem)] overflow-hidden">
+<Sidebar.Provider class="h-[calc(100dvh-3.5rem)] min-h-0 overflow-hidden">
 	<ChatSidebar bind:activeId={activeConversationId} />
 	<main
-		class="relative flex h-full flex-1 flex-col bg-gradient-to-br from-background via-muted/30 to-background overflow-hidden"
+		class="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-gradient-to-br from-background via-muted/30 to-background"
 	>
 		<div
 			class="flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur"
@@ -70,6 +71,13 @@
 					>
 						{modelLabel}
 					</span>
+					{#if lastUsedModel}
+						<span
+							class="max-w-[14rem] truncate rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs text-primary"
+						>
+							Last used: {lastUsedModel}
+						</span>
+					{/if}
 					<span
 						class="rounded-md border border-border bg-background/70 px-2 py-1 text-xs"
 						class:text-primary={config.apiKey === DEFAULT_OPENROUTER_KEY}
@@ -81,8 +89,8 @@
 				<LLMConfig bind:config />
 			</div>
 		</div>
-		<div class="flex-1 min-h-0 overflow-hidden">
-			<Chat bind:conversationId={activeConversationId} {config} />
+		<div class="min-h-0 flex-1 overflow-hidden">
+			<Chat bind:conversationId={activeConversationId} bind:lastUsedModel {config} />
 		</div>
 	</main>
 </Sidebar.Provider>

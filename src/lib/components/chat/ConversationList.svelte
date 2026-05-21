@@ -116,7 +116,7 @@
 	<Button
 		variant="outline"
 		size="sm"
-		class="h-8 gap-1.5 bg-background/60 px-2.5 text-xs"
+		class="h-8 gap-1.5 border-transparent bg-gradient-to-r from-primary/90 to-primary px-2.5 text-xs text-primary-foreground shadow-sm hover:from-primary hover:to-primary/80 hover:shadow-md"
 		onclick={handleCreate}
 	>
 		<PlusIcon class="h-3.5 w-3.5" />
@@ -132,20 +132,30 @@
 			Loading conversations...
 		</div>
 	{:else if conversationStore.conversations.length === 0}
-		<div
-			class="rounded-lg border border-dashed border-border bg-background/35 px-3 py-5 text-sm leading-6 text-muted-foreground"
-		>
-			No saved conversations yet.
+		<div class="rounded-lg border border-dashed border-border bg-background/35 px-3 py-6">
+			<div class="flex flex-col items-center gap-2 text-center">
+				<div
+					class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"
+				>
+					<MessageSquareIcon class="h-4 w-4" />
+				</div>
+				<p class="text-sm font-medium">No conversations yet</p>
+				<p class="text-xs leading-5 text-muted-foreground">Start a new chat to save it here.</p>
+				<Button size="sm" class="mt-1 h-8" onclick={handleCreate}>
+					<PlusIcon class="mr-1.5 h-3.5 w-3.5" />
+					Start new chat
+				</Button>
+			</div>
 		</div>
 	{:else}
 		<div class="space-y-1 px-1 pb-2">
 			{#each conversationStore.conversations as conversation (conversation.id)}
 				<div
 					class={cn(
-						'group flex items-center gap-2 rounded-lg border px-2 py-2 text-sm transition-colors',
+						'group flex items-center gap-2 rounded-lg border px-2 py-2 text-sm transition-all',
 						activeId === conversation.id
-							? 'border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
-							: 'border-transparent text-sidebar-foreground/80 hover:border-sidebar-border/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
+							? 'border-primary/40 bg-sidebar-accent text-sidebar-accent-foreground shadow-md shadow-primary/10'
+							: 'border-transparent text-sidebar-foreground/80 hover:border-sidebar-border/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground hover:shadow-sm'
 					)}
 				>
 					{#if editingId === conversation.id}

@@ -143,9 +143,9 @@
 				Choose the provider, model, and key used for this browser.
 			</Sheet.Description>
 		</Sheet.Header>
-		<div class="space-y-5 py-6">
+		<div class="space-y-5 px-5 py-6">
 			<div class="rounded-xl border border-border bg-muted/30 p-3">
-				<div class="grid gap-2 text-sm">
+				<div class="grid gap-3 text-sm">
 					<div class="flex items-center justify-between gap-3">
 						<span class="text-muted-foreground">Provider</span>
 						<span class="truncate font-medium">{selectedProvider?.label ?? config.provider}</span>
