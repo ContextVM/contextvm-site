@@ -20,9 +20,11 @@
 		const label = lang ? `Copy ${lang}` : 'Copy';
 		const escaped = escapeHtml(text);
 		return `
-<div class="code-block group my-3">
-	<button type="button" class="${buttonClass}" aria-label="${label}">Copy</button>
-	<pre class="${codeClass}"><code class="${langClass}">${escaped}</code></pre>
+<div class="code-block group relative my-3 rounded-lg bg-muted/60" style="width:100%;min-width:0;max-width:100%">
+	<button type="button" class="${buttonClass} z-10" aria-label="${label}">Copy</button>
+	<div class="overflow-x-auto rounded-lg" style="width:0;min-width:100%">
+		<pre class="${codeClass} m-0" style="min-width:0"><code class="${langClass}">${escaped}</code></pre>
+	</div>
 </div>
 `;
 	};
@@ -92,7 +94,9 @@
 	};
 </script>
 
-<div class={cn('flex w-full gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+<div
+	class={cn('flex w-full min-w-0 gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}
+>
 	{#if message.role !== 'user'}
 		<div
 			class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-gradient-to-br from-primary/20 via-background to-background text-[11px] font-semibold text-primary/80"
@@ -102,13 +106,13 @@
 	{/if}
 	<div
 		class={cn(
-			'flex max-w-[min(80%,42rem)] min-w-0 flex-col',
+			'flex min-w-0 flex-1 flex-col overflow-hidden max-w-[90%] md:max-w-2xl lg:max-w-3xl',
 			message.role === 'user' ? 'items-end' : 'items-start'
 		)}
 	>
 		<div
 			class={cn(
-				'relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words shadow-sm',
+				'relative w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words shadow-sm',
 				message.role === 'user'
 					? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground shadow-md shadow-primary/10'
 					: message.role === 'system'

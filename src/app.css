@@ -132,6 +132,7 @@
 
 	pre {
 		@apply overflow-x-auto rounded-lg bg-muted p-4;
+		max-width: 100%;
 	}
 
 	blockquote {
@@ -434,6 +435,28 @@
 .animate-fade-in-up {
 	animation: fade-in-up 0.8s ease-out;
 }
+
+/* ============================================
+   Chat Bubble Overflow Containment
+   ============================================ */
+
+/* Force code blocks inside prose containers to respect parent width.
+   <pre> has an intrinsic min-width equal to content; this resets it. */
+.prose pre,
+.prose .code-block {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.prose .code-block > div {
+	min-width: 0;
+	max-width: 100%;
+}
+
+/* Code blocks inside chat bubbles: force the scrollable container
+   to compute its width from the bubble, not from its content.
+   The key trick is width:0 + min-width:100% on the scroll wrapper,
+   applied via inline styles in ChatBubble.svelte's renderer. */
 
 /* ============================================
    Mobile Optimizations

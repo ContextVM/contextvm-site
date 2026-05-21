@@ -47,7 +47,7 @@
 <Sidebar.Provider class="h-[calc(100dvh-3.5rem)] min-h-0 overflow-hidden">
 	<ChatSidebar bind:activeId={activeConversationId} />
 	<main
-		class="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-gradient-to-br from-background via-muted/30 to-background"
+		class="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gradient-to-br from-background via-muted/30 to-background"
 	>
 		<div
 			class="flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur"

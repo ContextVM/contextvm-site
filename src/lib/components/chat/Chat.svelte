@@ -325,13 +325,17 @@
 	};
 </script>
 
-<div class="flex h-full min-h-0 flex-col">
+<div class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
 	{#if isAutoMode}
 		<div class="border-b border-border bg-background/80 px-4 py-3">
 			<AutoModeBanner {usingDefaultKey} />
 		</div>
 	{/if}
-	<div class="min-h-0 flex-1 overflow-auto" bind:this={scrollRef} onscroll={updateIsNearBottom}>
+	<div
+		class="min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+		bind:this={scrollRef}
+		onscroll={updateIsNearBottom}
+	>
 		{#if !conversationId}
 			<div class="flex h-full items-center justify-center px-6">
 				<p class="max-w-sm text-center text-sm text-muted-foreground">
@@ -340,7 +344,7 @@
 			</div>
 		{:else if messages.length === 0}
 			<div
-				class="animate-fade-in-up mx-auto flex h-full max-w-3xl flex-col items-center justify-center gap-6 px-6 text-center"
+				class="animate-fade-in-up mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-6 px-6 text-center"
 			>
 				<div class="relative">
 					<div class="absolute inset-0 rounded-2xl bg-primary/10 blur-2xl"></div>
@@ -379,7 +383,7 @@
 				</p>
 			</div>
 		{:else}
-			<div class="mx-auto max-w-4xl space-y-4 px-4 py-6">
+			<div class="mx-auto w-full max-w-4xl space-y-4 px-4 py-6">
 				{#each messages as message (message.id)}
 					<ChatBubble {message} />
 				{/each}
