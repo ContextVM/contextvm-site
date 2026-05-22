@@ -11,7 +11,8 @@ import {
 	createServerNotesFilter,
 	serverAnnouncementsFilter,
 	commonSchemasFilter,
-	createSchemaProvidersFilter
+	createSchemaProvidersFilter,
+	createTagServersFilter
 } from '$lib/constants';
 import { relayStore } from '../stores/relay-store.svelte';
 import {
@@ -164,5 +165,13 @@ export const createSchemaProviderLoader = (hash: string, relays?: string[]) => {
 			eventStore
 		}
 	);
+	return loader();
+};
+
+export const createTagServersLoader = (tag: string, relays?: string[]) => {
+	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const loader = createTimelineLoader(relayPool, selectedRelays, createTagServersFilter(tag), {
+		eventStore
+	});
 	return loader();
 };

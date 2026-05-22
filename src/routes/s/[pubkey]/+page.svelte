@@ -48,6 +48,7 @@
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import { createServerNotesFilter } from '$lib/constants';
 	import { npubEncode } from 'nostr-tools/nip19';
+	import ServerTagCloud from '$lib/components/ServerTagCloud.svelte';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -283,10 +284,12 @@
 							{$serverQuery.data.server.name}
 						</h2>
 						{#if $serverQuery.data.server.website}
+							<!-- External URL — resolve() not applicable -->
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a
 								href={$serverQuery.data.server.website}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="noopener noreferrer external"
 								class="text-sm text-primary hover:underline"
 							>
 								{$serverQuery.data.server.website}
@@ -621,6 +624,9 @@
 					<ProfileCard {pubkey} mode="extended" />
 				</div>
 
+				<!-- Server-specific tag cloud: categories and schemas for THIS server -->
+				<ServerTagCloud tags={announcementTags} />
+
 				<!-- Server Information Tabs -->
 				<Tabs.Root value="info" class="mb-6">
 					<Tabs.List class={hasNotes ? 'grid w-full grid-cols-3' : 'grid w-full grid-cols-2'}>
@@ -653,10 +659,12 @@
 							{#each $notes as note (note.id)}
 								<ServerNoteCard {note} />
 							{/each}
+							<!-- External URL — resolve() not applicable -->
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a
 								href={jumbleProfileUrl}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="noopener noreferrer external"
 								class="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
 							>
 								Open profile

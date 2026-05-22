@@ -39,3 +39,9 @@ export function getToolSchemaHash(tool: Tool): string | undefined {
 	}
 	return undefined;
 }
+
+/** Formats a schema for display: 'tool_name:ha...sh' */
+export function formatSchemaLabel(name: string, hash: string): string {
+	const shortHash = hash.length > 12 ? hash.substring(0, 8) + '...' : hash;
+	return `${name}:${shortHash}`;
+}

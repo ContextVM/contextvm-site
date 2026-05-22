@@ -35,3 +35,10 @@ export function createSchemaProvidersFilter(hash: string): Filter {
 		'#i': [hash]
 	};
 }
+
+export function createTagServersFilter(tag: string): Filter {
+	return {
+		kinds: [TOOLS_LIST_KIND],
+		'#t': [tag]
+	};
+}

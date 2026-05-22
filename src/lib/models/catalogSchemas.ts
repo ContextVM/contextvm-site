@@ -82,3 +82,28 @@ export function SchemaProvidersModel(hash: string): Model<string[]> {
 			})
 		);
 }
+
+/** A model that returns pubkeys of servers that have a specific t-tag category */
+export function TagServersModel(tag: string): Model<string[]> {
+	return (events) =>
+		events.timeline({ kinds: [TOOLS_LIST_KIND] }).pipe(
+			map((events: Event[]) => {
+				const latestEventsByPubkey = new Map<string, Event>();
+				for (const event of events) {
+					const existing = latestEventsByPubkey.get(event.pubkey);
+					if (!existing || event.created_at > existing.created_at) {
+						latestEventsByPubkey.set(event.pubkey, event);
+					}
+				}
+
+				const providers: string[] = [];
+				for (const event of latestEventsByPubkey.values()) {
+					const categories = extractCategories(event);
+					if (categories.includes(tag)) {
+						providers.push(event.pubkey);
+					}
+				}
+				return providers;
+			})
+		);
+}
