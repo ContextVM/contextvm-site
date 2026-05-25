@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { HTMLAttributes } from 'svelte/elements';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { cn } from '$lib/utils.js';
@@ -13,15 +12,15 @@
 		onSend,
 		onStop,
 		placeholder = 'Ask ContextVM...',
-		class: className,
-		...restProps
-	}: HTMLAttributes<HTMLDivElement> & {
+		class: className
+	}: {
 		value?: string;
 		isStreaming?: boolean;
 		disabled?: boolean;
 		onSend?: (value: string) => void;
 		onStop?: () => void;
 		placeholder?: string;
+		class?: string;
 	} = $props();
 
 	let textareaRef = $state<HTMLTextAreaElement | null>(null);
@@ -66,7 +65,7 @@
 	});
 </script>
 
-<div class={cn('space-y-1', className)} {...restProps}>
+<div class={cn('space-y-1', className)}>
 	<div
 		class={cn(
 			'flex items-end gap-2 rounded-2xl border border-border bg-background/90 p-2 shadow-sm backdrop-blur transition-all focus-within:border-primary/60 focus-within:shadow-lg focus-within:ring-2 focus-within:ring-primary/15 hover:border-primary/40 hover:shadow-md'

@@ -11,6 +11,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import { cn } from '$lib/utils.js';
+	import { toast } from 'svelte-sonner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
@@ -25,10 +26,25 @@
 
 	let deleteTarget = $state<Conversation | null>(null);
 	let deleteOpen = $state(false);
+	let isCreating = $state(false);
+	let renamingId = $state<string | null>(null);
+	let deletingId = $state<string | null>(null);
 
 	const handleCreate = async () => {
-		const conversation = await createConversation();
-		activeId = conversation.id;
+		if (isCreating) {
+			return;
+		}
+
+		isCreating = true;
+		try {
+			const conversation = await createConversation();
+			activeId = conversation.id;
+		} catch (error) {
+			console.error('Failed to create conversation:', error);
+			toast.error('Failed to create conversation.');
+		} finally {
+			isCreating = false;
+		}
 	};
 
 	const handleSelect = (id: string) => {
@@ -41,18 +57,35 @@
 	};
 
 	const commitRename = async () => {
-		if (!editingId) {
+		if (!editingId || renamingId) {
 			return;
 		}
 
 		const nextId = editingId;
 		const nextTitle = editingTitle;
-		editingId = null;
-		editingTitle = '';
-		await renameConversation(nextId, nextTitle);
+		renamingId = nextId;
+
+		try {
+			await renameConversation(nextId, nextTitle);
+			if (editingId === nextId) {
+				editingId = null;
+				editingTitle = '';
+			}
+		} catch (error) {
+			console.error('Failed to rename conversation:', error);
+			toast.error('Failed to rename conversation.');
+		} finally {
+			if (renamingId === nextId) {
+				renamingId = null;
+			}
+		}
 	};
 
 	const cancelRename = () => {
+		if (renamingId) {
+			return;
+		}
+
 		editingId = null;
 		editingTitle = '';
 	};
@@ -63,24 +96,35 @@
 	};
 
 	const confirmDelete = async () => {
-		if (!deleteTarget) {
+		if (!deleteTarget || deletingId) {
 			return;
 		}
 
 		const targetId = deleteTarget.id;
-		deleteOpen = false;
-		deleteTarget = null;
-		await deleteConversation(targetId);
+		deletingId = targetId;
 
-		if (activeId === targetId) {
-			const fallback = conversationStore.conversations[0]?.id ?? null;
-			if (fallback) {
-				activeId = fallback;
-				return;
+		try {
+			await deleteConversation(targetId);
+			deleteOpen = false;
+			deleteTarget = null;
+
+			if (activeId === targetId) {
+				const fallback = conversationStore.conversations[0]?.id ?? null;
+				if (fallback) {
+					activeId = fallback;
+					return;
+				}
+
+				const conversation = await createConversation();
+				activeId = conversation.id;
 			}
-
-			const conversation = await createConversation();
-			activeId = conversation.id;
+		} catch (error) {
+			console.error('Failed to delete conversation:', error);
+			toast.error('Failed to delete conversation.');
+		} finally {
+			if (deletingId === targetId) {
+				deletingId = null;
+			}
 		}
 	};
 
@@ -117,6 +161,7 @@
 		variant="outline"
 		size="sm"
 		class="h-8 gap-1.5 border-transparent bg-gradient-to-r from-primary/90 to-primary px-2.5 text-xs text-primary-foreground shadow-sm hover:from-primary hover:to-primary/80 hover:shadow-md"
+		disabled={isCreating}
 		onclick={handleCreate}
 	>
 		<PlusIcon class="h-3.5 w-3.5" />
@@ -141,7 +186,7 @@
 				</div>
 				<p class="text-sm font-medium">No conversations yet</p>
 				<p class="text-xs leading-5 text-muted-foreground">Start a new chat to save it here.</p>
-				<Button size="sm" class="mt-1 h-8" onclick={handleCreate}>
+				<Button size="sm" class="mt-1 h-8" disabled={isCreating} onclick={handleCreate}>
 					<PlusIcon class="mr-1.5 h-3.5 w-3.5" />
 					Start new chat
 				</Button>
@@ -170,7 +215,13 @@
 								<CheckIcon class="h-3.5 w-3.5" />
 								<span class="sr-only">Save name</span>
 							</Button>
-							<Button variant="ghost" size="icon" class="h-7 w-7" onclick={cancelRename}>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="h-7 w-7"
+								disabled={renamingId === conversation.id}
+								onclick={cancelRename}
+							>
 								<XIcon class="h-3.5 w-3.5" />
 								<span class="sr-only">Cancel rename</span>
 							</Button>
@@ -236,7 +287,13 @@
 		</Dialog.Header>
 		<Dialog.Footer class="flex gap-2 sm:justify-end">
 			<Button variant="outline" onclick={() => (deleteOpen = false)}>Cancel</Button>
-			<Button variant="destructive" onclick={confirmDelete}>Delete</Button>
+			<Button
+				variant="destructive"
+				disabled={deletingId === deleteTarget?.id}
+				onclick={confirmDelete}
+			>
+				Delete
+			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

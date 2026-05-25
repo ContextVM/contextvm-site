@@ -14,6 +14,7 @@
 		DEFAULT_LLM_CONFIG,
 		DEFAULT_OPENROUTER_KEY,
 		PROVIDER_PRESETS,
+		isUsingDefaultKey,
 		type LLMConfig,
 		type ProviderPreset
 	} from '$lib/types/chat-types';
@@ -27,9 +28,7 @@
 	const selectedProvider = $derived(
 		PROVIDER_PRESETS.find((preset) => preset.key === config.provider) ?? PROVIDER_PRESETS[0]
 	);
-	const usingDefaultKey = $derived(
-		config.provider === 'openrouter' && config.apiKey === DEFAULT_OPENROUTER_KEY
-	);
+	const usingDefaultKey = $derived(isUsingDefaultKey(config));
 	const keyStatus = $derived.by(() => {
 		if (usingDefaultKey) {
 			return 'Bundled public key';

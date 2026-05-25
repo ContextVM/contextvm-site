@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { DEFAULT_OPENROUTER_KEY, type ChatMessage, type LLMConfig } from '$lib/types/chat-types';
+	import {
+		isAutoMode,
+		isUsingDefaultKey,
+		type ChatMessage,
+		type LLMConfig
+	} from '$lib/types/chat-types';
 	import {
 		createConversation,
 		getConversation,
@@ -93,18 +98,16 @@
 	let llmService: LLMService | null = null;
 	let abortController: AbortController | null = null;
 	let scrollRef = $state<HTMLDivElement | null>(null);
+	// Intentionally non-reactive: used only as a stale-update guard token.
 	let conversationToken = 0;
+	let loadedConversationId: string | null = null;
 	let isNearBottom = $state(true);
-	let skipLoadId: string | null = null;
-	let starterPrompts = $state<PromptItem[]>([]);
+	let starterPrompts = $state<PromptItem[]>(shuffleArray(PROMPT_POOL).slice(0, 3));
+	let persistTimeout: ReturnType<typeof setTimeout> | null = null;
+	let pendingPersist: { id: string; messages: ChatMessage[] } | null = null;
 
-	const isAutoMode = $derived.by(
-		() => config.model === 'auto' && config.baseURL.includes('openrouter.ai')
-	);
-
-	const usingDefaultKey = $derived.by(
-		() => config.baseURL.includes('openrouter.ai') && config.apiKey === DEFAULT_OPENROUTER_KEY
-	);
+	const autoModeEnabled = $derived(isAutoMode(config));
+	const usingDefaultKey = $derived(isUsingDefaultKey(config));
 
 	$effect(() => {
 		if (llmService) {
@@ -117,11 +120,11 @@
 
 	$effect(() => {
 		const activeId = conversationId ?? null;
-		starterPrompts = shuffleArray(PROMPT_POOL).slice(0, 3);
-		if (skipLoadId && activeId === skipLoadId) {
-			skipLoadId = null;
+		if (activeId === loadedConversationId) {
 			return;
 		}
+
+		loadedConversationId = activeId;
 		conversationToken += 1;
 		const token = conversationToken;
 		abortController?.abort();
@@ -136,12 +139,22 @@
 		}
 
 		(async () => {
-			const conversation = await getConversation(activeId);
-			if (token !== conversationToken) {
-				return;
-			}
+			try {
+				const conversation = await getConversation(activeId);
+				if (token !== conversationToken) {
+					return;
+				}
 
-			messages = conversation?.messages ?? [];
+				messages = conversation?.messages ?? [];
+			} catch (error) {
+				if (token !== conversationToken) {
+					return;
+				}
+
+				errorMessage =
+					error instanceof Error ? error.message : 'Failed to load conversation messages.';
+				messages = [];
+			}
 		})();
 
 		return () => {
@@ -176,6 +189,39 @@
 		scrollRef?.scrollTo({ top: scrollRef.scrollHeight, behavior });
 	};
 
+	const debouncedPersist = (id: string, nextMessages: ChatMessage[], ms = 1000) => {
+		pendingPersist = { id, messages: nextMessages };
+		if (persistTimeout) {
+			return;
+		}
+
+		persistTimeout = setTimeout(() => {
+			const pending = pendingPersist;
+			persistTimeout = null;
+			pendingPersist = null;
+
+			if (!pending) {
+				return;
+			}
+
+			updateConversation(pending.id, pending.messages).catch((error) => {
+				console.error('Failed to persist conversation:', error);
+			});
+		}, ms);
+	};
+
+	const clearDebouncedPersist = (id: string) => {
+		if (pendingPersist?.id !== id) {
+			return;
+		}
+
+		pendingPersist = null;
+		if (persistTimeout) {
+			clearTimeout(persistTimeout);
+			persistTimeout = null;
+		}
+	};
+
 	const handleStop = () => {
 		abortController?.abort();
 	};
@@ -187,15 +233,20 @@
 
 		let activeId = conversationId;
 		if (!activeId) {
-			const newConv = await createConversation();
-			activeId = newConv.id;
-			skipLoadId = activeId;
-			conversationId = activeId;
+			try {
+				const newConv = await createConversation();
+				activeId = newConv.id;
+				messages = [];
+				loadedConversationId = activeId;
+				conversationId = activeId;
+			} catch (error) {
+				errorMessage = error instanceof Error ? error.message : 'Failed to create conversation.';
+				return;
+			}
 		}
 
 		errorMessage = null;
 		const token = conversationToken;
-		let persistTimeout: ReturnType<typeof setTimeout> | null = null;
 		const userMessage: ChatMessage = {
 			id: crypto.randomUUID(),
 			content,
@@ -203,49 +254,41 @@
 			timestamp: new Date()
 		};
 
-		const outgoingMessages = [...messages, userMessage];
-		let workingMessages = outgoingMessages;
-		messages = workingMessages;
+		const streamMessages = messages;
+		streamMessages.push(userMessage);
+		const outgoingMessages = [...streamMessages];
+		isStreaming = true;
 
 		try {
-			await updateConversation(activeId, workingMessages);
+			await updateConversation(activeId, streamMessages);
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to save message.';
+			if (token === conversationToken) {
+				errorMessage = error instanceof Error ? error.message : 'Failed to save message.';
+				isStreaming = false;
+			}
 			return;
 		}
 
-		const assistantId = crypto.randomUUID();
-		let assistantContent = '';
-		let assistantMessage: ChatMessage = {
-			id: assistantId,
+		if (token !== conversationToken) {
+			return;
+		}
+
+		const assistantMessage: ChatMessage = {
+			id: crypto.randomUUID(),
 			content: '',
 			role: 'assistant',
 			timestamp: new Date()
 		};
+		streamMessages.push(assistantMessage);
+		const assistant = streamMessages[streamMessages.length - 1];
 
-		const syncMessages = () => {
-			if (token !== conversationToken) {
-				return;
+		if (!assistant) {
+			if (token === conversationToken) {
+				isStreaming = false;
 			}
+			return;
+		}
 
-			messages = [...workingMessages];
-		};
-
-		const schedulePersist = () => {
-			if (persistTimeout) {
-				return;
-			}
-
-			persistTimeout = setTimeout(async () => {
-				persistTimeout = null;
-				await updateConversation(activeId, workingMessages);
-			}, 1000);
-		};
-
-		workingMessages = [...workingMessages, assistantMessage];
-		syncMessages();
-
-		isStreaming = true;
 		const controller = new AbortController();
 		abortController = controller;
 
@@ -253,47 +296,40 @@
 			const result = await llmService.sendMessage(outgoingMessages, {
 				signal: controller.signal,
 				onDelta: (delta) => {
-					assistantContent += delta;
-					assistantMessage = { ...assistantMessage, content: assistantContent };
-					workingMessages = workingMessages.map((message) =>
-						message.id === assistantId ? assistantMessage : message
-					);
-					syncMessages();
-					schedulePersist();
+					if (token !== conversationToken) {
+						return;
+					}
+
+					assistant.content += delta;
+					debouncedPersist(activeId, streamMessages);
 					if (isNearBottom) {
 						scrollToBottom('auto');
 					}
 				},
 				onReset: (model) => {
-					assistantContent = '';
-					assistantMessage = { ...assistantMessage, content: '' };
-					workingMessages = workingMessages.map((message) =>
-						message.id === assistantId ? assistantMessage : message
-					);
-					syncMessages();
-					schedulePersist();
-					if (token === conversationToken) {
-						lastUsedModel = model;
+					if (token !== conversationToken) {
+						return;
 					}
+
+					assistant.content = '';
+					debouncedPersist(activeId, streamMessages);
+					lastUsedModel = model;
 				}
 			});
 
-			if (result.content && result.content !== assistantContent) {
-				assistantContent = result.content;
-				assistantMessage = { ...assistantMessage, content: assistantContent };
-				workingMessages = workingMessages.map((message) =>
-					message.id === assistantId ? assistantMessage : message
-				);
-				syncMessages();
+			if (result.content && result.content !== assistant.content) {
+				assistant.content = result.content;
 			}
 			if (token === conversationToken) {
 				lastUsedModel = result.model;
 			}
 		} catch (error) {
 			if (controller.signal.aborted) {
-				if (!assistantContent) {
-					workingMessages = workingMessages.filter((message) => message.id !== assistantId);
-					syncMessages();
+				if (!assistant.content) {
+					const assistantIndex = streamMessages.findIndex((message) => message.id === assistant.id);
+					if (assistantIndex >= 0) {
+						streamMessages.splice(assistantIndex, 1);
+					}
 				}
 				return;
 			}
@@ -302,22 +338,15 @@
 			if (token === conversationToken) {
 				errorMessage = errorText;
 			}
-			assistantMessage = { ...assistantMessage, content: `Error: ${errorText}` };
-			workingMessages = workingMessages.map((chatMessage) =>
-				chatMessage.id === assistantId ? assistantMessage : chatMessage
-			);
-			syncMessages();
+			assistant.content = `Error: ${errorText}`;
 		} finally {
-			if (persistTimeout) {
-				clearTimeout(persistTimeout);
-				persistTimeout = null;
-			}
+			clearDebouncedPersist(activeId);
 			if (token === conversationToken) {
 				isStreaming = false;
 				abortController = null;
 			}
 			try {
-				await updateConversation(activeId, workingMessages);
+				await updateConversation(activeId, streamMessages);
 			} catch (_error) {
 				// Conversation might have been deleted mid-stream, safe to ignore.
 			}
@@ -326,7 +355,7 @@
 </script>
 
 <div class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-	{#if isAutoMode}
+	{#if autoModeEnabled}
 		<div class="border-b border-border bg-background/80 px-4 py-3">
 			<AutoModeBanner {usingDefaultKey} />
 		</div>

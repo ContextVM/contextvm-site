@@ -62,16 +62,10 @@
 		const controller = new AbortController();
 		activeAbort = controller;
 
-		const service = new LLMService({
-			provider,
-			baseURL,
-			apiKey: apiKey || (provider === 'openrouter' ? DEFAULT_OPENROUTER_KEY : ''),
-			model: 'model-list'
-		});
+		const modelListApiKey = apiKey || (provider === 'openrouter' ? DEFAULT_OPENROUTER_KEY : '');
 
 		debounceHandle = setTimeout(() => {
-			service
-				.fetchModels(controller.signal)
+			LLMService.fetchModelList(baseURL, modelListApiKey, controller.signal)
 				.then((list) => {
 					if (cancelled || controller.signal.aborted) {
 						return;

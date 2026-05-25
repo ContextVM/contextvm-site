@@ -8,8 +8,8 @@
 	import SEO from '$lib/components/SEO.svelte';
 	import {
 		DEFAULT_LLM_CONFIG,
-		DEFAULT_OPENROUTER_KEY,
 		PROVIDER_PRESETS,
+		isUsingDefaultKey,
 		type LLMConfig as ChatLLMConfig
 	} from '$lib/types/chat-types';
 
@@ -22,19 +22,22 @@
 	const modelLabel = $derived(
 		config.model === 'auto' ? 'Auto free models' : config.model || 'No model'
 	);
-	const keyLabel = $derived(
-		config.apiKey === DEFAULT_OPENROUTER_KEY ? 'Default key' : 'Custom key'
-	);
+	const usingDefaultKey = $derived(isUsingDefaultKey(config));
+	const keyLabel = $derived(usingDefaultKey ? 'Default key' : 'Custom key');
 
 	onMount(async () => {
-		const conversations = await listConversations();
-		if (conversations.length) {
-			activeConversationId = conversations[0].id;
-			return;
-		}
+		try {
+			const conversations = await listConversations();
+			if (conversations.length) {
+				activeConversationId = conversations[0].id;
+				return;
+			}
 
-		const conversation = await createConversation();
-		activeConversationId = conversation.id;
+			const conversation = await createConversation();
+			activeConversationId = conversation.id;
+		} catch (error) {
+			console.error('Failed to initialize chat:', error);
+		}
 	});
 </script>
 
@@ -80,8 +83,8 @@
 					{/if}
 					<span
 						class="rounded-md border border-border bg-background/70 px-2 py-1 text-xs"
-						class:text-primary={config.apiKey === DEFAULT_OPENROUTER_KEY}
-						class:text-muted-foreground={config.apiKey !== DEFAULT_OPENROUTER_KEY}
+						class:text-primary={usingDefaultKey}
+						class:text-muted-foreground={!usingDefaultKey}
 					>
 						{keyLabel}
 					</span>

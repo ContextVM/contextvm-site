@@ -76,3 +76,14 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
 	apiKey: DEFAULT_OPENROUTER_KEY,
 	model: 'auto'
 };
+
+export function isAutoMode(config: LLMConfig): boolean {
+	return config.model === 'auto' && config.baseURL.toLowerCase().includes('openrouter.ai');
+}
+
+export function isUsingDefaultKey(config: LLMConfig): boolean {
+	return (
+		config.baseURL.toLowerCase().includes('openrouter.ai') &&
+		config.apiKey === DEFAULT_OPENROUTER_KEY
+	);
+}

@@ -190,47 +190,32 @@ export async function updateConversation(
 		throw new Error('IndexedDB is only available in the browser');
 	}
 
-	return new Promise((resolve, reject) => {
-		openDatabase()
-			.then((db) => {
-				const transaction = db.transaction(STORE_NAME, 'readwrite');
-				const store = transaction.objectStore(STORE_NAME);
+	const db = await openDatabase();
+	const transaction = db.transaction(STORE_NAME, 'readwrite');
+	const store = transaction.objectStore(STORE_NAME);
 
-				const getReq = store.get(id);
-				getReq.onsuccess = () => {
-					const existing = getReq.result as Conversation | undefined;
-					if (!existing) {
-						reject(new Error('Conversation not found'));
-						return;
-					}
+	const existing = (await requestToPromise(store.get(id))) as Conversation | undefined;
+	if (!existing) {
+		throw new Error('Conversation not found');
+	}
 
-					const nextTitle =
-						existing.title.trim() === DEFAULT_TITLE || existing.title.trim().length === 0
-							? deriveTitle(messages)
-							: existing.title;
+	const nextTitle =
+		existing.title.trim() === DEFAULT_TITLE || existing.title.trim().length === 0
+			? deriveTitle(messages)
+			: existing.title;
 
-					const updated: Conversation = {
-						...existing,
-						title: nextTitle,
-						messages,
-						// eslint-disable-next-line svelte/prefer-svelte-reactivity
-						updatedAt: new Date()
-					};
+	const updated: Conversation = {
+		...existing,
+		title: nextTitle,
+		messages,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
+		updatedAt: new Date()
+	};
 
-					store.put($state.snapshot(updated));
-
-					transaction.oncomplete = () => {
-						upsertConversationInStore(updated);
-						resolve(updated);
-					};
-				};
-
-				getReq.onerror = () => reject(getReq.error);
-				transaction.onerror = () => reject(transaction.error);
-				transaction.onabort = () => reject(transaction.error);
-			})
-			.catch(reject);
-	});
+	store.put($state.snapshot(updated));
+	await waitForTransaction(transaction);
+	upsertConversationInStore(updated);
+	return updated;
 }
 
 export async function deleteConversation(id: string): Promise<void> {
@@ -247,39 +232,24 @@ export async function renameConversation(id: string, title: string): Promise<Con
 		throw new Error('IndexedDB is only available in the browser');
 	}
 
-	return new Promise((resolve, reject) => {
-		openDatabase()
-			.then((db) => {
-				const transaction = db.transaction(STORE_NAME, 'readwrite');
-				const store = transaction.objectStore(STORE_NAME);
+	const db = await openDatabase();
+	const transaction = db.transaction(STORE_NAME, 'readwrite');
+	const store = transaction.objectStore(STORE_NAME);
 
-				const getReq = store.get(id);
-				getReq.onsuccess = () => {
-					const existing = getReq.result as Conversation | undefined;
-					if (!existing) {
-						reject(new Error('Conversation not found'));
-						return;
-					}
+	const existing = (await requestToPromise(store.get(id))) as Conversation | undefined;
+	if (!existing) {
+		throw new Error('Conversation not found');
+	}
 
-					const updated: Conversation = {
-						...existing,
-						title: title.trim() || DEFAULT_TITLE,
-						// eslint-disable-next-line svelte/prefer-svelte-reactivity
-						updatedAt: new Date()
-					};
+	const updated: Conversation = {
+		...existing,
+		title: title.trim() || DEFAULT_TITLE,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
+		updatedAt: new Date()
+	};
 
-					store.put($state.snapshot(updated));
-
-					transaction.oncomplete = () => {
-						upsertConversationInStore(updated);
-						resolve(updated);
-					};
-				};
-
-				getReq.onerror = () => reject(getReq.error);
-				transaction.onerror = () => reject(transaction.error);
-				transaction.onabort = () => reject(transaction.error);
-			})
-			.catch(reject);
-	});
+	store.put($state.snapshot(updated));
+	await waitForTransaction(transaction);
+	upsertConversationInStore(updated);
+	return updated;
 }

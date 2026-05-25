@@ -25,8 +25,7 @@ export function isRetryableError(error: unknown): boolean {
 		return true;
 	}
 
-	const message = (error as { message?: string }).message;
-	return typeof message === 'string' && message.toLowerCase().includes('rate limit');
+	return false;
 }
 
 export class FreeModelRotator {

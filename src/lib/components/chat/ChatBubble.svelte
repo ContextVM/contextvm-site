@@ -41,39 +41,14 @@
 	import { browser } from '$app/environment';
 	import DOMPurify from 'dompurify';
 	import type { ChatMessage } from '$lib/types/chat-types';
-	import { cn, copyToClipboard } from '$lib/utils.js';
+	import { cn, copyToClipboard, formatRelativeTime } from '$lib/utils.js';
 
 	let { message }: { message: ChatMessage } = $props();
 
 	const html = $derived.by(() => {
 		const raw = marked.parse(message.content ?? '', parseOptions) as string;
-		return browser ? DOMPurify.sanitize(raw) : raw;
+		return browser ? DOMPurify.sanitize(raw) : '';
 	});
-
-	const formatRelativeTime = (value: Date | string) => {
-		const date = value instanceof Date ? value : new Date(value);
-		if (Number.isNaN(date.getTime())) {
-			return '';
-		}
-
-		const deltaSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
-		if (deltaSeconds < 20) {
-			return 'just now';
-		}
-		if (deltaSeconds < 60) {
-			return `${deltaSeconds}s ago`;
-		}
-		const deltaMinutes = Math.floor(deltaSeconds / 60);
-		if (deltaMinutes < 60) {
-			return `${deltaMinutes}m ago`;
-		}
-		const deltaHours = Math.floor(deltaMinutes / 60);
-		if (deltaHours < 24) {
-			return `${deltaHours}h ago`;
-		}
-		const deltaDays = Math.floor(deltaHours / 24);
-		return `${deltaDays}d ago`;
-	};
 
 	const timestampLabel = $derived.by(() => formatRelativeTime(message.timestamp));
 
@@ -106,10 +81,11 @@
 	{/if}
 	<div
 		class={cn(
-			'flex min-w-0 flex-1 flex-col overflow-hidden max-w-[90%] md:max-w-2xl lg:max-w-3xl',
+			'flex max-w-[90%] min-w-0 flex-1 flex-col overflow-hidden md:max-w-2xl lg:max-w-3xl',
 			message.role === 'user' ? 'items-end' : 'items-start'
 		)}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 		<div
 			class={cn(
 				'relative w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words shadow-sm',

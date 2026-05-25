@@ -38,6 +38,34 @@ export function formatUnixTimestamp(
 	return date.toLocaleString(locale, options);
 }
 
+export function formatRelativeTime(value: Date | string): string {
+	const date = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return '';
+	}
+
+	const deltaSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+	if (deltaSeconds < 20) {
+		return 'just now';
+	}
+	if (deltaSeconds < 60) {
+		return `${deltaSeconds}s ago`;
+	}
+
+	const deltaMinutes = Math.floor(deltaSeconds / 60);
+	if (deltaMinutes < 60) {
+		return `${deltaMinutes}m ago`;
+	}
+
+	const deltaHours = Math.floor(deltaMinutes / 60);
+	if (deltaHours < 24) {
+		return `${deltaHours}h ago`;
+	}
+
+	const deltaDays = Math.floor(deltaHours / 24);
+	return `${deltaDays}d ago`;
+}
+
 // Server capability utilities
 export function hasCapability(server: InitializeResult, capability: string): boolean {
 	return capability in server.capabilities;
