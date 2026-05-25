@@ -6,9 +6,9 @@
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 	import {
 		createTagServersLoader,
-		createServerAnnouncementsLoader,
 		createCommonSchemaAnnouncementsLoader
 	} from '$lib/services/loaders.svelte';
+	import { useServerAnnouncements } from '$lib/queries/serverQueries';
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import Seo from '$lib/components/SEO.svelte';
@@ -30,29 +30,25 @@
 		return $serverAnnouncements.filter((s) => providerPubkeys.includes(s.pubkey));
 	});
 
+	// Use the existing query to track loading state for server announcements
+	const serverAnnouncementsQuery = useServerAnnouncements();
 	let loading = $state(true);
 
 	$effect(() => {
-		loading = true;
-
 		const subs = [
 			createTagServersLoader(cat).subscribe(),
-			createServerAnnouncementsLoader().subscribe(),
 			createCommonSchemaAnnouncementsLoader().subscribe()
 		];
 
-		const timer = setTimeout(() => {
-			loading = false;
-		}, 5000);
-
 		return () => {
 			subs.forEach((s) => s.unsubscribe());
-			clearTimeout(timer);
 		};
 	});
 
+	// Drop loading state once we have our initial server query resolved
+	// (or if we already have matching providers)
 	$effect(() => {
-		if ($serverAnnouncements !== undefined && $providerPubkeysStore !== undefined) {
+		if (!$serverAnnouncementsQuery.isFetching || providers.length > 0) {
 			loading = false;
 		}
 	});

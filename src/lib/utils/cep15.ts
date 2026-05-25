@@ -1,12 +1,20 @@
 import type { Event } from 'nostr-tools';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 
+import { COMMON_SCHEMA_NAMESPACE } from '$lib/constants';
+
 export interface CEP15SchemaInfo {
 	hash: string;
 	name: string;
 }
 
 export function extractCommonSchemas(event: Event): CEP15SchemaInfo[] {
+	const hasCommonSchemaNamespace = event.tags.some(
+		(tag) => tag[0] === 'k' && tag[1] === COMMON_SCHEMA_NAMESPACE
+	);
+
+	if (!hasCommonSchemaNamespace) return [];
+
 	const schemas: CEP15SchemaInfo[] = [];
 	for (const tag of event.tags) {
 		if (tag[0] === 'i' && tag.length >= 3) {

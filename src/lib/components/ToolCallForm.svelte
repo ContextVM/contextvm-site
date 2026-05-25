@@ -126,7 +126,7 @@
 				{/if}
 				{#if schemaHash}
 					<a
-						href={resolve(`/catalog/${schemaHash}`)}
+						href={resolve(`/servers/i/${schemaHash}`)}
 						class="flex items-center gap-1 rounded bg-secondary/50 px-2 py-0.5 font-mono text-xs text-secondary-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
 						title="View all servers that provide this schema"
 						onclick={(e) => e.stopPropagation()}

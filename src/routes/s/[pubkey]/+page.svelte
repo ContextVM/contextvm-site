@@ -171,6 +171,8 @@
 		prompts: $promptsQuery?.data || null
 	});
 	const announcementTags = $derived($serverQuery?.data?.server?.tags ?? []);
+	const toolsListEvent = $derived(mcpClientService.getServerToolsListEvent(pubkey));
+	const toolsListTags = $derived(toolsListEvent?.tags ?? []);
 
 	let activeTab = $state('about');
 
@@ -427,7 +429,7 @@
 										{tool}
 										serverPubkey={connectionIdentifier}
 										{connectionState}
-										{announcementTags}
+										announcementTags={toolsListTags}
 									/>
 								{/each}
 							{:else}
@@ -482,7 +484,7 @@
 											{resource}
 											serverPubkey={connectionIdentifier}
 											{connectionState}
-											{announcementTags}
+											announcementTags={toolsListTags}
 										/>
 									{/each}
 								{/if}
@@ -572,7 +574,7 @@
 										{prompt}
 										{connectionState}
 										serverPubkey={connectionIdentifier}
-										{announcementTags}
+										announcementTags={toolsListTags}
 									/>
 								{/each}
 							{:else}
@@ -625,7 +627,7 @@
 				</div>
 
 				<!-- Server-specific tag cloud: categories and schemas for THIS server -->
-				<ServerTagCloud tags={announcementTags} />
+				<ServerTagCloud tags={toolsListTags} />
 
 				<!-- Server Information Tabs -->
 				<Tabs.Root value="info" class="mb-6">
