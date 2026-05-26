@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { eventStore } from '$lib/services/eventStore';
 	import { TagServersModel, CatalogSchemasModel } from '$lib/models/catalogSchemas';
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
@@ -25,7 +26,7 @@
 	const allSchemas = eventStore.model(CatalogSchemasModel);
 	const relatedSchemas = $derived(($allSchemas || []).filter((s) => s.categories.includes(cat)));
 	const allCategories = $derived.by(() => {
-		const seen = new Set<string>();
+		const seen = new SvelteSet<string>();
 		for (const schema of relatedSchemas) {
 			for (const category of schema.categories) {
 				seen.add(category);
