@@ -54,6 +54,7 @@
 </script>
 
 {#if href}
+	<!-- href is passed by the caller who is responsible for using resolve() -->
 	<a
 		bind:this={ref}
 		data-slot="button"

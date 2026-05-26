@@ -55,7 +55,7 @@
 	const canPublishReview = $derived(!!composerContent.trim() && !isPublishing);
 
 	$effect(() => {
-		refreshCount;
+		void refreshCount;
 		isLoading = true;
 		isRefreshing = true;
 		const loaderSubscription = createServerReviewsLoader(pubkey, relayHints).subscribe();

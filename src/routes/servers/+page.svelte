@@ -6,9 +6,12 @@
 	import { useServerAnnouncement, useServerAnnouncements } from '$lib/queries/serverQueries';
 	import { eventStore } from '$lib/services/eventStore';
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
+	import { CatalogSchemasModel } from '$lib/models/catalogSchemas';
+	import { createCommonSchemaAnnouncementsLoader } from '$lib/services/loaders.svelte';
 	import Seo from '$lib/components/SEO.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
+	import CatalogBrowseSection from '$lib/components/CatalogBrowseSection.svelte';
 	import {
 		decodeServerIdentifier,
 		encodeServerIdentity,
@@ -16,8 +19,28 @@
 	} from '$lib/utils';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
+	const allSchemas = eventStore.model(CatalogSchemasModel);
+
+	// All unique categories and schemas across the network for the discovery strip
+	const allCategories = $derived.by(() => {
+		const seen: string[] = [];
+		for (const schema of $allSchemas || []) {
+			for (const cat of schema.categories) {
+				if (!seen.includes(cat)) seen.push(cat);
+			}
+		}
+		return seen.sort();
+	});
+	const schemaBadges = $derived(
+		($allSchemas || []).map((schema) => ({ ...schema, providerCount: schema.providers.length }))
+	);
 
 	const serverAnnouncementsQuery = useServerAnnouncements();
+
+	$effect(() => {
+		const sub = createCommonSchemaAnnouncementsLoader().subscribe();
+		return () => sub.unsubscribe();
+	});
 
 	let loading = $state($serverAnnouncementsQuery.isFetching);
 	let searchTerm = $state('');
@@ -83,6 +106,17 @@
 				domains, no OAuth, no port forwarding—just cryptographic keys and relays.
 			</p>
 		</div>
+
+		<!-- Discovery Strip: Categories & Schemas -->
+		{#if allCategories.length > 0 || schemaBadges.length > 0}
+			<div class="mx-auto mb-10 max-w-6xl">
+				<CatalogBrowseSection
+					title="Browse Catalog"
+					categories={allCategories}
+					schemas={schemaBadges}
+				/>
+			</div>
+		{/if}
 
 		<!-- Server Announcements Section -->
 		<div class="mx-auto max-w-6xl">

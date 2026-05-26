@@ -23,6 +23,11 @@ interface ServerQueryResult {
 	server: ServerAnnouncement | null;
 }
 
+export interface ServerToolsQueryResult {
+	tools: Tool[] | null;
+	tags: NostrEvent['tags'];
+}
+
 interface ParsedRelayList {
 	relays: string[];
 	hasPublishedRelayList: boolean;
@@ -81,7 +86,7 @@ export function useServerIdentity(pubkey: string, explicitRelayHints: string[] =
 }
 
 export function useServerTools(pubkey: string, isPublic: boolean, relayHints: string[] = []) {
-	return createQuery<Tool[] | null>({
+	return createQuery<ServerToolsQueryResult>({
 		queryKey: serverKeys.capabilities.tools(pubkey),
 		queryFn: async () => {
 			if (isPublic) {
@@ -136,24 +141,35 @@ export function useServerPrompts(pubkey: string, isPublic: boolean, relayHints: 
 async function fetchToolsFromAnnouncements(
 	pubkey: string,
 	relayHints: string[] = []
-): Promise<Tool[] | null> {
+): Promise<ServerToolsQueryResult> {
 	const event = await lastValueFrom(
 		createToolsAnnouncementByPubkeyLoader(pubkey, getLookupRelays(relayHints))
 	);
-	if (!event) return null;
+	if (!event) {
+		return { tools: null, tags: [] };
+	}
 	try {
 		const content = JSON.parse(event.content);
-		return content.tools || [];
+		return {
+			tools: content.tools || [],
+			tags: event.tags
+		};
 	} catch (err) {
 		console.error('Failed to parse tools announcement:', err);
-		return null;
+		return {
+			tools: null,
+			tags: event.tags
+		};
 	}
 }
 
-async function fetchToolsFromMCP(pubkey: string): Promise<Tool[]> {
+async function fetchToolsFromMCP(pubkey: string): Promise<ServerToolsQueryResult> {
 	try {
 		const result = await mcpClientService.listTools(pubkey);
-		return result.tools;
+		return {
+			tools: result.tools,
+			tags: []
+		};
 	} catch (error) {
 		console.error('Failed to fetch tools from MCP:', error);
 		throw error;

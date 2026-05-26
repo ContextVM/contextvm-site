@@ -85,9 +85,10 @@
 			</div>
 
 			<div class="grid gap-6">
-				{#each slideDecks as deck}
+				{#each slideDecks as deck (deck.href)}
 					<a
 						href={deck.href}
+						rel="external"
 						class="group block rounded-2xl border bg-card/80 p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl"
 					>
 						<div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">

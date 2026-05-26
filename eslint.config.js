@@ -45,5 +45,12 @@ export default ts.config(
 				svelteConfig
 			}
 		}
+	},
+	{
+		// button.svelte is a generic pass-through component — callers are responsible for resolve()
+		files: ['src/lib/components/ui/button/button.svelte'],
+		rules: {
+			'svelte/no-navigation-without-resolve': 'off'
+		}
 	}
 );
