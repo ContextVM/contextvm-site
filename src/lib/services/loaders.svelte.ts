@@ -148,7 +148,7 @@ export const createNoteEventLoader = (id: string, relays?: string[]) => {
 };
 
 export const createCommonSchemaAnnouncementsLoader = (relays?: string[]) => {
-	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const selectedRelays = relays || relayStore.selectedRelays;
 	const loader = createTimelineLoader(relayPool, selectedRelays, commonSchemasFilter, {
 		eventStore
 	});
@@ -156,7 +156,7 @@ export const createCommonSchemaAnnouncementsLoader = (relays?: string[]) => {
 };
 
 export const createSchemaProviderLoader = (hash: string, relays?: string[]) => {
-	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const selectedRelays = relays || relayStore.selectedRelays;
 	const loader = createTimelineLoader(
 		relayPool,
 		selectedRelays,
@@ -169,7 +169,7 @@ export const createSchemaProviderLoader = (hash: string, relays?: string[]) => {
 };
 
 export const createTagServersLoader = (tag: string, relays?: string[]) => {
-	const selectedRelays = mergeRelaySets(relays || relayStore.selectedRelays, commonRelays);
+	const selectedRelays = relays || relayStore.selectedRelays;
 	const loader = createTimelineLoader(relayPool, selectedRelays, createTagServersFilter(tag), {
 		eventStore
 	});

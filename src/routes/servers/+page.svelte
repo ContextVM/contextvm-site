@@ -12,7 +12,7 @@
 	import Seo from '$lib/components/SEO.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
-	import { formatSchemaLabel } from '$lib/utils/cep15';
+	import CatalogBrowseSection from '$lib/components/CatalogBrowseSection.svelte';
 	import {
 		decodeServerIdentifier,
 		encodeServerIdentity,
@@ -32,6 +32,9 @@
 		}
 		return seen.sort();
 	});
+	const schemaBadges = $derived(
+		($allSchemas || []).map((schema) => ({ ...schema, providerCount: schema.providers.length }))
+	);
 
 	const serverAnnouncementsQuery = useServerAnnouncements();
 
@@ -106,48 +109,13 @@
 		</div>
 
 		<!-- Discovery Strip: Categories & Schemas -->
-		{#if allCategories.length > 0 || ($allSchemas || []).length > 0}
+		{#if allCategories.length > 0 || schemaBadges.length > 0}
 			<div class="mx-auto mb-10 max-w-6xl">
-				{#if allCategories.length > 0}
-					<div class="mb-6">
-						<h2 class="mb-3 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-							Browse by Category
-						</h2>
-						<div class="flex flex-wrap gap-2">
-							{#each allCategories as cat (cat)}
-								<a
-									href={resolve(`/servers/t/${cat}`)}
-									class="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
-								>
-									#{cat}
-								</a>
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				{#if ($allSchemas || []).length > 0}
-					<div>
-						<h2 class="mb-3 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-							Browse by Common Schema
-						</h2>
-						<div class="flex flex-wrap gap-2">
-							{#each $allSchemas || [] as schema (schema.hash)}
-								<a
-									href={resolve(`/servers/i/${schema.hash}`)}
-									class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 font-mono text-xs transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
-								>
-									<span class="font-medium">{formatSchemaLabel(schema.name, schema.hash)}</span>
-									<span
-										class="rounded-full bg-primary/10 px-1.5 py-0.5 font-sans text-xs font-semibold text-primary"
-									>
-										{schema.providers.length}
-									</span>
-								</a>
-							{/each}
-						</div>
-					</div>
-				{/if}
+				<CatalogBrowseSection
+					title="Browse Catalog"
+					categories={allCategories}
+					schemas={schemaBadges}
+				/>
 			</div>
 		{/if}
 

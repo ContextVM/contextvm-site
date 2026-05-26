@@ -48,7 +48,6 @@
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import { createServerNotesFilter } from '$lib/constants';
 	import { npubEncode } from 'nostr-tools/nip19';
-	import ServerTagCloud from '$lib/components/ServerTagCloud.svelte';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -165,14 +164,12 @@
 
 	// Server capabilities data
 	const serverData = $derived({
-		tools: $toolsQuery?.data || null,
+		tools: $toolsQuery?.data?.tools || null,
 		resources: $resourcesQuery?.data || null,
 		resourceTemplates: $resourceTemplatesQuery?.data || null,
 		prompts: $promptsQuery?.data || null
 	});
-	const announcementTags = $derived($serverQuery?.data?.server?.tags ?? []);
-	const toolsListEvent = $derived(mcpClientService.getServerToolsListEvent(pubkey));
-	const toolsListTags = $derived(toolsListEvent?.tags ?? []);
+	const toolsAnnouncementTags = $derived($toolsQuery?.data?.tags ?? []);
 
 	let activeTab = $state('about');
 
@@ -429,7 +426,7 @@
 										{tool}
 										serverPubkey={connectionIdentifier}
 										{connectionState}
-										announcementTags={toolsListTags}
+										announcementTags={toolsAnnouncementTags}
 									/>
 								{/each}
 							{:else}
@@ -484,7 +481,7 @@
 											{resource}
 											serverPubkey={connectionIdentifier}
 											{connectionState}
-											announcementTags={toolsListTags}
+											announcementTags={toolsAnnouncementTags}
 										/>
 									{/each}
 								{/if}
@@ -574,7 +571,7 @@
 										{prompt}
 										{connectionState}
 										serverPubkey={connectionIdentifier}
-										announcementTags={toolsListTags}
+										announcementTags={toolsAnnouncementTags}
 									/>
 								{/each}
 							{:else}
@@ -626,9 +623,6 @@
 					<ProfileCard {pubkey} mode="extended" />
 				</div>
 
-				<!-- Server-specific tag cloud: categories and schemas for THIS server -->
-				<ServerTagCloud tags={toolsListTags} />
-
 				<!-- Server Information Tabs -->
 				<Tabs.Root value="info" class="mb-6">
 					<Tabs.List class={hasNotes ? 'grid w-full grid-cols-3' : 'grid w-full grid-cols-2'}>
@@ -644,6 +638,7 @@
 						<ServerInformationCard
 							server={$serverQuery.data.server}
 							identity={$serverIdentityQuery?.data}
+							tags={toolsAnnouncementTags}
 						/>
 					</Tabs.Content>
 

@@ -12,6 +12,7 @@
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import Seo from '$lib/components/SEO.svelte';
+	import CatalogBrowseSection from '$lib/components/CatalogBrowseSection.svelte';
 
 	const cat = $derived(page.params.cat as string);
 
@@ -23,6 +24,18 @@
 	// All schemas — for displaying related schemas in this category
 	const allSchemas = eventStore.model(CatalogSchemasModel);
 	const relatedSchemas = $derived(($allSchemas || []).filter((s) => s.categories.includes(cat)));
+	const allCategories = $derived.by(() => {
+		const seen = new Set<string>();
+		for (const schema of relatedSchemas) {
+			for (const category of schema.categories) {
+				seen.add(category);
+			}
+		}
+		return Array.from(seen).sort();
+	});
+	const schemaBadges = $derived(
+		relatedSchemas.map((schema) => ({ ...schema, providerCount: schema.providers.length }))
+	);
 
 	// Matching server announcements
 	const providers = $derived.by(() => {
@@ -79,28 +92,13 @@
 		</div>
 
 		<div class="mx-auto max-w-6xl">
-			<!-- Related schemas for this category -->
-			{#if relatedSchemas.length > 0}
-				<div class="mb-10">
-					<h2 class="mb-4 text-xl font-semibold">Common Schemas in this category</h2>
-					<div class="flex flex-wrap gap-2">
-						{#each relatedSchemas as schema (schema.hash)}
-							<a
-								href={resolve(`/servers/i/${schema.hash}`)}
-								class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 font-mono text-sm transition-colors hover:border-primary/50 hover:bg-primary/5"
-							>
-								<span class="font-medium text-primary">{schema.name}</span>
-								<span class="text-muted-foreground">:{schema.hash.substring(0, 8)}...</span>
-								<span
-									class="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary"
-								>
-									{schema.providers.length}
-								</span>
-							</a>
-						{/each}
-					</div>
-				</div>
-			{/if}
+			<div class="mb-10">
+				<CatalogBrowseSection
+					title="Explore Related Catalog"
+					categories={allCategories}
+					schemas={schemaBadges}
+				/>
+			</div>
 
 			<!-- Server grid -->
 			<h2 class="mb-6 text-xl font-semibold">

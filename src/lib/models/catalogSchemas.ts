@@ -16,7 +16,6 @@ export function CatalogSchemasModel(): Model<CatalogSchemaGroup[]> {
 		events.timeline({ kinds: [TOOLS_LIST_KIND] }).pipe(
 			map((events: Event[]) => {
 				const latestEventsByPubkey = new Map<string, Event>();
-
 				for (const event of events) {
 					const existing = latestEventsByPubkey.get(event.pubkey);
 					if (!existing || event.created_at > existing.created_at) {

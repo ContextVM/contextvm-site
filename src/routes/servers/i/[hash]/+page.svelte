@@ -13,6 +13,7 @@
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
 	import Seo from '$lib/components/SEO.svelte';
 	import { formatSchemaLabel } from '$lib/utils/cep15';
+	import CatalogBrowseSection from '$lib/components/CatalogBrowseSection.svelte';
 
 	const hash = $derived(page.params.hash as string);
 
@@ -21,6 +22,15 @@
 	const currentSchema = $derived(($allSchemas || []).find((s) => s.hash === hash));
 	const schemaLabel = $derived(
 		currentSchema ? formatSchemaLabel(currentSchema.name, hash) : `${hash.substring(0, 8)}...`
+	);
+	const relatedSchemas = $derived(
+		($allSchemas || [])
+			.filter(
+				(schema) =>
+					schema.hash !== hash &&
+					schema.categories.some((category) => currentSchema?.categories.includes(category))
+			)
+			.map((schema) => ({ ...schema, providerCount: schema.providers.length }))
 	);
 
 	// Provider pubkeys for this schema hash
@@ -81,19 +91,13 @@
 				MCP servers implementing this common tool schema.
 			</p>
 
-			<!-- Category tags -->
-			{#if currentSchema?.categories?.length}
-				<div class="mt-6 flex flex-wrap justify-center gap-2">
-					{#each currentSchema.categories as cat (cat)}
-						<a
-							href={resolve(`/servers/t/${cat}`)}
-							class="rounded-md bg-secondary/50 px-3 py-1 text-sm text-secondary-foreground transition-colors hover:bg-secondary"
-						>
-							#{cat}
-						</a>
-					{/each}
-				</div>
-			{/if}
+			<div class="mt-6">
+				<CatalogBrowseSection
+					title="Explore Related Catalog"
+					categories={currentSchema?.categories ?? []}
+					schemas={relatedSchemas}
+				/>
+			</div>
 
 			<!-- Full hash -->
 			<div class="mt-4 flex items-center justify-center font-mono text-sm text-muted-foreground">
