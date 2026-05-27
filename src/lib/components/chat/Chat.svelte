@@ -3,14 +3,17 @@
 		isAutoMode,
 		isUsingDefaultKey,
 		type ChatMessage,
-		type LLMConfig
+		type LLMConfig,
+		type ToolCallData
 	} from '$lib/types/chat-types';
 	import {
 		createConversation,
 		getConversation,
 		updateConversation
 	} from '$lib/services/conversation-store.svelte';
-	import { LLMService } from '$lib/services/llm';
+	import { LLMService, type SendMessageResult } from '$lib/services/llm';
+	import { ToolRegistry } from '$lib/services/mcp-openai-bridge';
+	import { mcpClientService } from '$lib/services/mcpClient.svelte';
 	import ChatBubble from '$lib/components/chat/ChatBubble.svelte';
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
 	import AutoModeBanner from '$lib/components/chat/AutoModeBanner.svelte';
@@ -19,6 +22,7 @@
 	import GitBranchIcon from '@lucide/svelte/icons/git-branch';
 	import PlugIcon from '@lucide/svelte/icons/plug';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 	type PromptItem = { text: string; icon: typeof ServerIcon };
 
@@ -73,6 +77,8 @@
 		}
 	];
 
+	const MAX_TOOL_ROUNDS = 5;
+
 	const shuffleArray = <T,>(items: T[]) => {
 		const result = [...items];
 		for (let i = result.length - 1; i > 0; i -= 1) {
@@ -105,9 +111,41 @@
 	let starterPrompts = $state<PromptItem[]>(shuffleArray(PROMPT_POOL).slice(0, 3));
 	let persistTimeout: ReturnType<typeof setTimeout> | null = null;
 	let pendingPersist: { id: string; messages: ChatMessage[] } | null = null;
+	let pendingApprovals = $state(
+		new Map<
+			string,
+			{
+				resolve: () => void;
+				reject: (reason: Error) => void;
+			}
+		>()
+	);
 
 	const autoModeEnabled = $derived(isAutoMode(config));
 	const usingDefaultKey = $derived(isUsingDefaultKey(config));
+
+	function waitForUserApproval(toolCallId: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			pendingApprovals.set(toolCallId, { resolve, reject });
+		});
+	}
+
+	function approveToolCall(toolCallId: string) {
+		pendingApprovals.get(toolCallId)?.resolve();
+		pendingApprovals.delete(toolCallId);
+	}
+
+	function rejectToolCall(toolCallId: string) {
+		pendingApprovals.get(toolCallId)?.reject(new Error('User rejected tool call'));
+		pendingApprovals.delete(toolCallId);
+	}
+
+	function rejectPendingApprovals(reason: Error) {
+		for (const approval of pendingApprovals.values()) {
+			approval.reject(reason);
+		}
+		pendingApprovals.clear();
+	}
 
 	$effect(() => {
 		if (llmService) {
@@ -128,6 +166,7 @@
 		conversationToken += 1;
 		const token = conversationToken;
 		abortController?.abort();
+		rejectPendingApprovals(new Error('Conversation changed'));
 		abortController = null;
 		isStreaming = false;
 		errorMessage = null;
@@ -159,6 +198,7 @@
 
 		return () => {
 			abortController?.abort();
+			rejectPendingApprovals(new Error('Conversation changed'));
 		};
 	});
 
@@ -222,8 +262,169 @@
 		}
 	};
 
+	const buildToolRegistry = async (): Promise<ToolRegistry> => {
+		const registry = new ToolRegistry();
+		const connectedServers = [...mcpClientService.clients.entries()];
+
+		await Promise.all(
+			connectedServers.map(async ([pubkey, client]) => {
+				const serverName = client.getServerVersion()?.name ?? 'mcp_server';
+
+				try {
+					const toolsResult = await mcpClientService.listTools(pubkey);
+					registry.register(pubkey, serverName, toolsResult.tools);
+				} catch (error) {
+					console.warn(`Failed to list tools for ${serverName}:`, error);
+				}
+			})
+		);
+
+		return registry;
+	};
+
+	const withToolSystemContext = (
+		baseMessages: ChatMessage[],
+		systemContext: string
+	): ChatMessage[] => {
+		if (!systemContext) {
+			return [...baseMessages];
+		}
+
+		return [
+			{
+				id: 'mcp-tool-system-context',
+				content: systemContext,
+				role: 'system',
+				timestamp: new Date()
+			},
+			...baseMessages
+		];
+	};
+
+	const makeToolResultMessage = (
+		toolCallId: string,
+		toolName: string,
+		content: string
+	): ChatMessage => ({
+		id: crypto.randomUUID(),
+		content,
+		role: 'tool',
+		timestamp: new Date(),
+		toolCallId,
+		toolName
+	});
+
+	const updateToolCallStatus = (
+		message: ChatMessage,
+		toolCallId: string,
+		status: ToolCallData['status'],
+		result?: string
+	) => {
+		const toolCall = message.toolCalls?.find((candidate) => candidate.id === toolCallId);
+		if (!toolCall) {
+			return;
+		}
+
+		toolCall.status = status;
+		if (result !== undefined) {
+			toolCall.result = result;
+		}
+	};
+
+	const serializeToolResult = (result: CallToolResult): string => {
+		const hasStructuredContent =
+			result.structuredContent && Object.keys(result.structuredContent).length > 0;
+
+		if (
+			result.content?.length === 1 &&
+			result.content[0].type === 'text' &&
+			!hasStructuredContent &&
+			!result.isError
+		) {
+			return result.content[0].text;
+		}
+
+		return JSON.stringify(
+			{
+				content: result.content ?? [],
+				...(hasStructuredContent ? { structuredContent: result.structuredContent } : {}),
+				...(result.isError ? { isError: result.isError } : {})
+			},
+			null,
+			2
+		);
+	};
+
+	const applyToolCallsToAssistantMessage = (
+		registry: ToolRegistry,
+		assistantMessage: ChatMessage,
+		toolCalls: NonNullable<SendMessageResult['toolCalls']>
+	) => {
+		assistantMessage.toolCalls = toolCalls.map((toolCall) => {
+			const resolved = registry.resolve(toolCall.functionName, toolCall.arguments);
+
+			return {
+				id: toolCall.id,
+				name: toolCall.functionName,
+				arguments: toolCall.arguments,
+				status: resolved?.tier === 'auto' ? 'running' : 'pending',
+				serverName: resolved?.serverName
+			};
+		});
+	};
+
+	const executeToolCalls = async (
+		registry: ToolRegistry,
+		assistantMessage: ChatMessage,
+		toolCalls: NonNullable<SendMessageResult['toolCalls']>
+	): Promise<ChatMessage[]> => {
+		const executions = toolCalls.map(async (toolCall) => {
+			const resolved = registry.resolve(toolCall.functionName, toolCall.arguments);
+			if (!resolved) {
+				const error = 'Error: Unknown tool or invalid tool arguments.';
+				updateToolCallStatus(assistantMessage, toolCall.id, 'error', error);
+				return makeToolResultMessage(toolCall.id, toolCall.functionName, error);
+			}
+
+			try {
+				if (resolved.tier !== 'auto') {
+					updateToolCallStatus(assistantMessage, toolCall.id, 'pending');
+					await waitForUserApproval(toolCall.id);
+					updateToolCallStatus(assistantMessage, toolCall.id, 'approved');
+				}
+
+				updateToolCallStatus(assistantMessage, toolCall.id, 'running');
+				const result = await mcpClientService.callTool(
+					resolved.serverPubkey,
+					resolved.originalToolName,
+					resolved.args
+				);
+				const serialized = serializeToolResult(result);
+				updateToolCallStatus(assistantMessage, toolCall.id, 'completed', serialized);
+				return makeToolResultMessage(toolCall.id, toolCall.functionName, serialized);
+			} catch (error) {
+				const errorText = error instanceof Error ? error.message : 'Tool call failed';
+				const serialized = `Error: ${errorText}`;
+				updateToolCallStatus(assistantMessage, toolCall.id, 'error', serialized);
+				return makeToolResultMessage(toolCall.id, toolCall.functionName, serialized);
+			}
+		});
+
+		const results = await Promise.allSettled(executions);
+		return results.map((result, index) =>
+			result.status === 'fulfilled'
+				? result.value
+				: makeToolResultMessage(
+						toolCalls[index]?.id ?? crypto.randomUUID(),
+						toolCalls[index]?.functionName ?? 'unknown_tool',
+						'Error: Tool execution failed.'
+					)
+		);
+	};
+
 	const handleStop = () => {
 		abortController?.abort();
+		rejectPendingApprovals(new Error('Tool execution stopped'));
 	};
 
 	const handleSend = async (content: string) => {
@@ -245,6 +446,10 @@
 			}
 		}
 
+		if (!activeId) {
+			return;
+		}
+
 		errorMessage = null;
 		const token = conversationToken;
 		const userMessage: ChatMessage = {
@@ -256,7 +461,6 @@
 
 		const streamMessages = messages;
 		streamMessages.push(userMessage);
-		const outgoingMessages = [...streamMessages];
 		isStreaming = true;
 
 		try {
@@ -273,60 +477,117 @@
 			return;
 		}
 
-		const assistantMessage: ChatMessage = {
-			id: crypto.randomUUID(),
-			content: '',
-			role: 'assistant',
-			timestamp: new Date()
-		};
-		streamMessages.push(assistantMessage);
-		const assistant = streamMessages[streamMessages.length - 1];
-
-		if (!assistant) {
-			if (token === conversationToken) {
-				isStreaming = false;
-			}
-			return;
-		}
-
 		const controller = new AbortController();
 		abortController = controller;
 
 		try {
-			const result = await llmService.sendMessage(outgoingMessages, {
-				signal: controller.signal,
-				onDelta: (delta) => {
-					if (token !== conversationToken) {
-						return;
-					}
+			const registry = await buildToolRegistry();
+			const tools = registry.getOpenAITools();
+			const systemContext = registry.getSystemContext();
+			let outgoingMessages = withToolSystemContext(streamMessages, systemContext);
+			let done = false;
+			let round = 0;
 
-					assistant.content += delta;
-					debouncedPersist(activeId, streamMessages);
-					if (isNearBottom) {
-						scrollToBottom('auto');
-					}
-				},
-				onReset: (model) => {
-					if (token !== conversationToken) {
-						return;
-					}
+			while (!done && round < MAX_TOOL_ROUNDS) {
+				round += 1;
 
-					assistant.content = '';
-					debouncedPersist(activeId, streamMessages);
-					lastUsedModel = model;
+				const assistant: ChatMessage = {
+					id: crypto.randomUUID(),
+					content: '',
+					role: 'assistant',
+					timestamp: new Date()
+				};
+				streamMessages.push(assistant);
+
+				const result = await llmService.sendMessage(outgoingMessages, {
+					signal: controller.signal,
+					tools: tools.length > 0 ? tools : undefined,
+					onDelta: (delta) => {
+						if (token !== conversationToken) {
+							return;
+						}
+
+						assistant.content += delta;
+						debouncedPersist(activeId, streamMessages);
+						if (isNearBottom) {
+							scrollToBottom('auto');
+						}
+					},
+					onReset: (model) => {
+						if (token !== conversationToken) {
+							return;
+						}
+
+						assistant.content = '';
+						assistant.toolCalls = undefined;
+						debouncedPersist(activeId, streamMessages);
+						lastUsedModel = model;
+					}
+				});
+
+				if (token !== conversationToken || controller.signal.aborted) {
+					return;
 				}
-			});
 
-			if (result.content && result.content !== assistant.content) {
-				assistant.content = result.content;
-			}
-			if (token === conversationToken) {
+				if (result.content && result.content !== assistant.content) {
+					assistant.content = result.content;
+				}
 				lastUsedModel = result.model;
+
+				if (result.finishReason === 'tool_calls') {
+					if (!result.toolCalls?.length) {
+						assistant.content =
+							assistant.content ||
+							'Error: The model requested a tool call but did not provide a complete tool call.';
+						done = true;
+						break;
+					}
+
+					applyToolCallsToAssistantMessage(registry, assistant, result.toolCalls);
+					debouncedPersist(activeId, streamMessages);
+
+					const toolResultMessages = await executeToolCalls(registry, assistant, result.toolCalls);
+					if (token !== conversationToken || controller.signal.aborted) {
+						return;
+					}
+
+					for (const toolResultMessage of toolResultMessages) {
+						streamMessages.push(toolResultMessage);
+					}
+
+					debouncedPersist(activeId, streamMessages);
+					outgoingMessages = withToolSystemContext(streamMessages, systemContext);
+					continue;
+				}
+
+				if (!assistant.content.trim()) {
+					const assistantIndex = streamMessages.findIndex((message) => message.id === assistant.id);
+					if (assistantIndex >= 0) {
+						streamMessages.splice(assistantIndex, 1);
+					}
+				}
+
+				done = true;
+			}
+
+			if (!done && token === conversationToken && !controller.signal.aborted) {
+				streamMessages.push({
+					id: crypto.randomUUID(),
+					content: `Stopped after ${MAX_TOOL_ROUNDS} tool rounds to avoid a runaway loop.`,
+					role: 'assistant',
+					timestamp: new Date()
+				});
 			}
 		} catch (error) {
+			const latestAssistant = [...streamMessages]
+				.reverse()
+				.find((message) => message.role === 'assistant');
+
 			if (controller.signal.aborted) {
-				if (!assistant.content) {
-					const assistantIndex = streamMessages.findIndex((message) => message.id === assistant.id);
+				if (latestAssistant && !latestAssistant.content && !latestAssistant.toolCalls?.length) {
+					const assistantIndex = streamMessages.findIndex(
+						(message) => message.id === latestAssistant.id
+					);
 					if (assistantIndex >= 0) {
 						streamMessages.splice(assistantIndex, 1);
 					}
@@ -338,9 +599,13 @@
 			if (token === conversationToken) {
 				errorMessage = errorText;
 			}
-			assistant.content = `Error: ${errorText}`;
+
+			if (latestAssistant) {
+				latestAssistant.content = `Error: ${errorText}`;
+			}
 		} finally {
 			clearDebouncedPersist(activeId);
+			rejectPendingApprovals(new Error('Tool execution finished'));
 			if (token === conversationToken) {
 				isStreaming = false;
 				abortController = null;
@@ -414,7 +679,11 @@
 		{:else}
 			<div class="mx-auto w-full max-w-4xl space-y-4 px-4 py-6">
 				{#each messages as message (message.id)}
-					<ChatBubble {message} />
+					<ChatBubble
+						{message}
+						onApproveToolCall={approveToolCall}
+						onRejectToolCall={rejectToolCall}
+					/>
 				{/each}
 			</div>
 		{/if}

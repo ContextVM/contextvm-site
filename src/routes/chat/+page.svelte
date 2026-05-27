@@ -12,6 +12,8 @@
 		isUsingDefaultKey,
 		type LLMConfig as ChatLLMConfig
 	} from '$lib/types/chat-types';
+	import { mcpClientService } from '$lib/services/mcpClient.svelte';
+	import PlugIcon from '@lucide/svelte/icons/plug';
 
 	let activeConversationId = $state<string | null>(null);
 	let config = $state<ChatLLMConfig>({ ...DEFAULT_LLM_CONFIG });
@@ -24,6 +26,7 @@
 	);
 	const usingDefaultKey = $derived(isUsingDefaultKey(config));
 	const keyLabel = $derived(usingDefaultKey ? 'Default key' : 'Custom key');
+	const connectedServerCount = $derived(mcpClientService.clients.size);
 
 	onMount(async () => {
 		try {
@@ -79,6 +82,14 @@
 							class="max-w-[14rem] truncate rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs text-primary"
 						>
 							Last used: {lastUsedModel}
+						</span>
+					{/if}
+					{#if connectedServerCount > 0}
+						<span
+							class="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300"
+						>
+							<PlugIcon class="h-3 w-3" />
+							{connectedServerCount} server{connectedServerCount > 1 ? 's' : ''}
 						</span>
 					{/if}
 					<span

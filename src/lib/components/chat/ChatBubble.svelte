@@ -41,9 +41,18 @@
 	import { browser } from '$app/environment';
 	import DOMPurify from 'dompurify';
 	import type { ChatMessage } from '$lib/types/chat-types';
+	import ToolCallCard from '$lib/components/chat/ToolCallCard.svelte';
 	import { cn, copyToClipboard, formatRelativeTime } from '$lib/utils.js';
 
-	let { message }: { message: ChatMessage } = $props();
+	let {
+		message,
+		onApproveToolCall,
+		onRejectToolCall
+	}: {
+		message: ChatMessage;
+		onApproveToolCall?: (toolCallId: string) => void;
+		onRejectToolCall?: (toolCallId: string) => void;
+	} = $props();
 
 	const html = $derived.by(() => {
 		const raw = marked.parse(message.content ?? '', parseOptions) as string;
@@ -69,56 +78,79 @@
 	};
 </script>
 
-<div
-	class={cn('flex w-full min-w-0 gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}
->
-	{#if message.role !== 'user'}
-		<div
-			class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-gradient-to-br from-primary/20 via-background to-background text-[11px] font-semibold text-primary/80"
-		>
-			CV
-		</div>
-	{/if}
+{#if message.role !== 'tool'}
 	<div
 		class={cn(
-			'flex max-w-[90%] min-w-0 flex-1 flex-col overflow-hidden md:max-w-2xl lg:max-w-3xl',
-			message.role === 'user' ? 'items-end' : 'items-start'
+			'flex w-full min-w-0 gap-2',
+			message.role === 'user' ? 'justify-end' : 'justify-start'
 		)}
 	>
-		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+		{#if message.role !== 'user'}
+			<div
+				class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-gradient-to-br from-primary/20 via-background to-background text-[11px] font-semibold text-primary/80"
+			>
+				CV
+			</div>
+		{/if}
 		<div
 			class={cn(
-				'relative w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words shadow-sm',
-				message.role === 'user'
-					? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground shadow-md shadow-primary/10'
-					: message.role === 'system'
-						? 'bg-muted text-muted-foreground'
-						: 'border border-border/60 bg-card/80 text-card-foreground backdrop-blur-sm',
-				message.role !== 'user' ? 'prose prose-sm dark:prose-invert max-w-none' : ''
+				'flex max-w-[90%] min-w-0 flex-1 flex-col overflow-hidden md:max-w-2xl lg:max-w-3xl',
+				message.role === 'user' ? 'items-end' : 'items-start'
 			)}
-			onclick={handleCodeCopy}
 		>
-			{#if message.role === 'user'}
-				<p class="whitespace-pre-wrap">{message.content}</p>
-			{:else if message.role === 'assistant' && !message.content}
-				<span class="flex h-5 items-center gap-1.5" aria-label="Assistant is responding">
-					<span
-						class="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/70 shadow-[0_0_6px_rgba(59,130,246,0.35)]"
-					></span>
-					<span
-						class="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/60 shadow-[0_0_6px_rgba(59,130,246,0.3)] [animation-delay:120ms]"
-					></span>
-					<span
-						class="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/50 shadow-[0_0_6px_rgba(59,130,246,0.25)] [animation-delay:240ms]"
-					></span>
-				</span>
-			{:else}
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized through DOMPurify before rendering -->
-				{@html html}
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<div
+				class={cn(
+					'relative w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words shadow-sm',
+					message.role === 'user'
+						? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground shadow-md shadow-primary/10'
+						: message.role === 'system'
+							? 'bg-muted text-muted-foreground'
+							: 'border border-border/60 bg-card/80 text-card-foreground backdrop-blur-sm',
+					message.role !== 'user' ? 'prose prose-sm dark:prose-invert max-w-none' : ''
+				)}
+				onclick={handleCodeCopy}
+			>
+				{#if message.role === 'user'}
+					<p class="whitespace-pre-wrap">{message.content}</p>
+				{:else if message.role === 'assistant' && message.toolCalls?.length}
+					<div class="space-y-3">
+						{#if message.content}
+							<div>
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized through DOMPurify before rendering -->
+								{@html html}
+							</div>
+						{/if}
+						<div class="not-prose space-y-2">
+							{#each message.toolCalls as toolCall (toolCall.id)}
+								<ToolCallCard
+									{toolCall}
+									onApprove={() => onApproveToolCall?.(toolCall.id)}
+									onReject={() => onRejectToolCall?.(toolCall.id)}
+								/>
+							{/each}
+						</div>
+					</div>
+				{:else if message.role === 'assistant' && !message.content}
+					<span class="flex h-5 items-center gap-1.5" aria-label="Assistant is responding">
+						<span
+							class="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/70 shadow-[0_0_6px_rgba(59,130,246,0.35)]"
+						></span>
+						<span
+							class="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/60 shadow-[0_0_6px_rgba(59,130,246,0.3)] [animation-delay:120ms]"
+						></span>
+						<span
+							class="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/50 shadow-[0_0_6px_rgba(59,130,246,0.25)] [animation-delay:240ms]"
+						></span>
+					</span>
+				{:else}
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized through DOMPurify before rendering -->
+					{@html html}
+				{/if}
+			</div>
+			{#if timestampLabel}
+				<span class="mt-1 text-[10px] text-muted-foreground/50">{timestampLabel}</span>
 			{/if}
 		</div>
-		{#if timestampLabel}
-			<span class="mt-1 text-[10px] text-muted-foreground/50">{timestampLabel}</span>
-		{/if}
 	</div>
-</div>
+{/if}
