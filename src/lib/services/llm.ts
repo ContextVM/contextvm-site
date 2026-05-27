@@ -1,12 +1,12 @@
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import { isAutoMode, type ChatMessage, type LLMConfig } from '$lib/types/chat-types';
-import { FreeModelRotator, isRetryableError } from '$lib/services/auto-mode';
+import type { ChatMessage, LLMConfig } from '$lib/types/chat-types';
+import { FreeModelRotator, isRateLimitError } from '$lib/services/auto-mode';
 
 export interface SendMessageOptions {
 	signal?: AbortSignal;
 	onDelta?: (delta: string) => void;
-	onReset?: (model: string) => void;
+	onReset?: () => void;
 }
 
 export interface SendMessageResult {
@@ -43,61 +43,35 @@ function toOpenAiMessages(messages: ChatMessage[]): ChatCompletionMessageParam[]
 	}));
 }
 
-function getDefaultHeaders(baseURL: string): Record<string, string> | undefined {
-	const isOpenRouter = baseURL.includes('openrouter.ai');
-	return isOpenRouter && typeof window !== 'undefined'
-		? {
-				'HTTP-Referer': window.location.origin,
-				'X-Title': 'ContextVM'
-			}
-		: undefined;
+function shouldUseAutoMode(config: LLMConfig): boolean {
+	return config.model === 'auto' && normalizeBaseURL(config.baseURL).includes('openrouter.ai');
 }
 
 export class LLMService {
 	private config: LLMConfig;
 	private client: OpenAI;
 	private autoMode: FreeModelRotator | null = null;
-	private lastUsedModel: string | null = null;
 
 	constructor(config: LLMConfig) {
 		this.config = config;
 		this.client = this.createClient(config);
-		this.autoMode = isAutoMode(config) ? new FreeModelRotator(this.client) : null;
+		this.autoMode = shouldUseAutoMode(config) ? new FreeModelRotator(this.client) : null;
 	}
 
 	public reconfigure(config: LLMConfig): void {
 		this.config = config;
 		this.client = this.createClient(config);
-		this.autoMode = isAutoMode(config) ? new FreeModelRotator(this.client) : null;
+		this.autoMode = shouldUseAutoMode(config) ? new FreeModelRotator(this.client) : null;
 	}
 
 	public getConfig(): LLMConfig {
 		return this.config;
 	}
 
-	public getActiveModel(): string | null {
-		return this.lastUsedModel;
-	}
-
-	public static async fetchModelList(
-		baseURL: string,
-		apiKey: string,
-		signal?: AbortSignal
-	): Promise<string[]> {
-		const normalizedBaseURL = normalizeBaseURL(baseURL);
-		const client = new OpenAI({
-			apiKey,
-			baseURL: normalizedBaseURL,
-			defaultHeaders: getDefaultHeaders(normalizedBaseURL),
-			dangerouslyAllowBrowser: true
-		});
-
-		const response = await client.models.list(signal ? { signal } : undefined);
-		return response.data.map((model) => model.id);
-	}
-
 	public async fetchModels(signal?: AbortSignal): Promise<string[]> {
-		const response = await this.client.models.list(signal ? { signal } : undefined);
+		const response = signal
+			? await this.client.models.list({}, { signal })
+			: await this.client.models.list();
 		return response.data.map((model) => model.id);
 	}
 
@@ -134,7 +108,7 @@ export class LLMService {
 			}
 
 			if (attempt > 0) {
-				onReset?.(model);
+				onReset?.();
 			}
 
 			try {
@@ -142,7 +116,7 @@ export class LLMService {
 			} catch (error) {
 				lastError = error;
 
-				if (!isRetryableError(error)) {
+				if (!isRateLimitError(error)) {
 					throw error;
 				}
 
@@ -157,11 +131,19 @@ export class LLMService {
 
 	private createClient(config: LLMConfig): OpenAI {
 		const baseURL = normalizeBaseURL(config.baseURL);
+		const isOpenRouter = baseURL.includes('openrouter.ai');
+		const defaultHeaders =
+			isOpenRouter && typeof window !== 'undefined'
+				? {
+					'HTTP-Referer': window.location.origin,
+					'X-Title': 'ContextVM'
+				}
+				: undefined;
 
 		return new OpenAI({
 			apiKey: config.apiKey,
 			baseURL,
-			defaultHeaders: getDefaultHeaders(baseURL),
+			defaultHeaders,
 			dangerouslyAllowBrowser: true
 		});
 	}
@@ -194,7 +176,6 @@ export class LLMService {
 			}
 		}
 
-		this.lastUsedModel = model;
 		return { content, model };
 	}
 }
