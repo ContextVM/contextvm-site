@@ -31,10 +31,6 @@
 	description="A collection of ContextVM slide decks and presentation materials."
 />
 
-<svelte:head>
-	<title>Slides — ContextVM</title>
-</svelte:head>
-
 <main class="relative overflow-x-hidden bg-background text-foreground">
 	<section class="relative overflow-hidden border-b bg-muted/30">
 		<div class="bg-gradients">
