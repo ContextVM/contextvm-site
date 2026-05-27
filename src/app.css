@@ -118,6 +118,7 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+		font-family: 'Inter', system-ui, sans-serif;
 	}
 
 	/* Ensure main element is positioned for absolute children */
