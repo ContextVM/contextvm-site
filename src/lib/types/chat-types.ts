@@ -1,8 +1,22 @@
+export type ToolApprovalTier = 'auto' | 'prompt' | 'payment';
+
+export interface ToolCallData {
+	id: string;
+	name: string;
+	arguments: string;
+	status: 'pending' | 'running' | 'approved' | 'completed' | 'error';
+	result?: string;
+	serverName?: string;
+}
+
 export interface ChatMessage {
 	id: string;
 	content: string;
-	role: 'user' | 'assistant' | 'system';
+	role: 'user' | 'assistant' | 'system' | 'tool';
 	timestamp: Date;
+	toolCalls?: ToolCallData[];
+	toolCallId?: string;
+	toolName?: string;
 }
 
 export interface Conversation {
