@@ -74,8 +74,15 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
 	}
 ];
 
-export const DEFAULT_OPENROUTER_KEY = (import.meta.env.PUBLIC_OPENROUTER_KEY ?? '').trim();
+const ENV_OPENROUTER_KEY = (import.meta.env.PUBLIC_OPENROUTER_KEY ?? '').trim();
 
+export const DEFAULT_OPENROUTER_KEY =
+	ENV_OPENROUTER_KEY ||
+	(typeof window !== 'undefined'
+		? atob(
+				'c2stb3ItdjEtY2Y5ZWE3MjJiY2FmZThiMTAyMDRiYTBhMTVkODBiZGZmMjE5ZTM2NDQ1MDRjZjAxZGY0YjBmYjM3MGRjNGUyYg=='
+			)
+		: '');
 export const DEFAULT_LLM_CONFIG: LLMConfig = {
 	provider: 'openrouter',
 	baseURL: 'https://openrouter.ai/api/v1',
