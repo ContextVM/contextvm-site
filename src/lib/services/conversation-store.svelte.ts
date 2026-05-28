@@ -72,6 +72,35 @@ function toTimestamp(value: Date | number | string): number {
 	return Number.isNaN(asNumber) ? 0 : asNumber;
 }
 
+function toDate(value: Date | number | string): Date {
+	if (value instanceof Date) {
+		return value;
+	}
+
+	const asNumber = typeof value === 'number' ? value : Date.parse(String(value));
+	return new Date(Number.isNaN(asNumber) ? 0 : asNumber);
+}
+
+function normalizeConversation(conversation: Conversation): Conversation {
+	return {
+		...conversation,
+		createdAt: toDate(conversation.createdAt),
+		updatedAt: toDate(conversation.updatedAt),
+		messages: conversation.messages.map((message) => ({
+			...message,
+			timestamp: toDate(message.timestamp)
+		}))
+	};
+}
+
+function snapshotConversation(conversation: Conversation): Conversation {
+	try {
+		return $state.snapshot(conversation);
+	} catch (_error) {
+		return JSON.parse(JSON.stringify(conversation)) as Conversation;
+	}
+}
+
 function deriveTitle(messages: ChatMessage[]): string {
 	const firstUserMessage = messages.find(
 		(message) => message.role === 'user' && message.content.trim().length > 0
@@ -109,7 +138,7 @@ function removeConversationFromStore(id: string): void {
 async function saveConversation(conversation: Conversation): Promise<void> {
 	const db = await openDatabase();
 	const transaction = db.transaction(STORE_NAME, 'readwrite');
-	transaction.objectStore(STORE_NAME).put($state.snapshot(conversation));
+	transaction.objectStore(STORE_NAME).put(snapshotConversation(conversation));
 	await waitForTransaction(transaction);
 }
 
@@ -134,9 +163,9 @@ export async function listConversations(): Promise<Conversation[]> {
 		const store = transaction.objectStore(STORE_NAME);
 		const results = await requestToPromise(store.getAll());
 
-		const conversations = [...results].sort(
-			(a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt)
-		);
+		const conversations = [...results]
+			.map((conversation) => normalizeConversation(conversation as Conversation))
+			.sort((a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt));
 
 		conversationStore.conversations = conversations;
 		conversationStore.error = null;
@@ -159,7 +188,7 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 	const transaction = db.transaction(STORE_NAME, 'readonly');
 	const store = transaction.objectStore(STORE_NAME);
 	const conversation = await requestToPromise(store.get(id));
-	return (conversation as Conversation | undefined) ?? null;
+	return conversation ? normalizeConversation(conversation as Conversation) : null;
 }
 
 export async function createConversation(): Promise<Conversation> {
@@ -212,7 +241,7 @@ export async function updateConversation(
 		updatedAt: new Date()
 	};
 
-	store.put($state.snapshot(updated));
+	store.put(snapshotConversation(updated));
 	await waitForTransaction(transaction);
 	upsertConversationInStore(updated);
 	return updated;

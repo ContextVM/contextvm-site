@@ -420,33 +420,17 @@ export class McpClientService {
 			{
 				name: toolName,
 				arguments: arguments_,
-				_meta: { progressToken: Math.random().toString(36).substring(2, 15) }
+				_meta: { progressToken: crypto.randomUUID() }
 			},
 			undefined,
-			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS, resetTimeoutOnProgress: true }
+			{
+				timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS,
+				resetTimeoutOnProgress: true,
+				signal
+			}
 		);
-
-		if (!signal) {
-			const result = await toolPromise;
-			return result as CallToolResult;
-		}
-
-		const abortState = { cleanup: (() => {}) as () => void };
-		const abortPromise = new Promise<never>((_, reject) => {
-			const onAbort = () => {
-				reject(new Error('Tool execution stopped'));
-			};
-
-			signal.addEventListener('abort', onAbort, { once: true });
-			abortState.cleanup = () => signal.removeEventListener('abort', onAbort);
-		});
-
-		try {
-			const result = await Promise.race([toolPromise, abortPromise]);
-			return result as CallToolResult;
-		} finally {
-			abortState.cleanup();
-		}
+		const result = await toolPromise;
+		return result as CallToolResult;
 	}
 
 	// Read a resource from a server

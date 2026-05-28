@@ -54,7 +54,7 @@ describe('mcpToolToOpenAI', () => {
 });
 
 describe('ToolRegistry tiers', () => {
-	it('classifies prompt-tier tools by keyword', () => {
+	it('defaults to prompt tier for tools', () => {
 		const registry = new ToolRegistry();
 		registry.register('abcd1234', 'Server', [
 			makeTool({ name: 'delete_user', description: 'delete a user' })
@@ -67,9 +67,10 @@ describe('ToolRegistry tiers', () => {
 		}
 	});
 
-	it('defaults to auto tier for benign tools', () => {
+	it('respects tier overrides', () => {
 		const registry = new ToolRegistry();
-		registry.register('abcd1234', 'Server', [makeTool({ name: 'list_status' })]);
+		const overrides = new Map<string, 'auto' | 'prompt'>([['list_status', 'auto']]);
+		registry.register('abcd1234', 'Server', [makeTool({ name: 'list_status' })], overrides);
 
 		const resolved = registry.resolve('server_list_status', '{}');
 		expect(resolved.ok).toBe(true);
@@ -97,9 +98,9 @@ describe('ToolRegistry collisions', () => {
 		expect(toolNames).not.toContain(baseName);
 		expect(toolNames).toEqual(
 			expect.arrayContaining([
-				`${baseName}_aaaa`,
-				`${baseName}_bbbb`,
-				`${baseName}_cccc`
+				`${baseName}_aaaa1111`,
+				`${baseName}_bbbb2222`,
+				`${baseName}_cccc3333`
 			])
 		);
 	});
@@ -114,6 +115,41 @@ describe('ToolRegistry resolve', () => {
 
 		registry.register('aaaa1111', serverName, [makeTool({ name: toolName })]);
 		const resolved = registry.resolve(baseName, '{"bad_json": }');
+		expect(resolved.ok).toBe(false);
+		if (!resolved.ok) {
+			expect(resolved.reason).toBe('invalid_arguments');
+		}
+	});
+
+	it('returns unknown_tool for missing mappings', () => {
+		const registry = new ToolRegistry();
+		const resolved = registry.resolve('missing_tool', '{}');
+		expect(resolved.ok).toBe(false);
+		if (!resolved.ok) {
+			expect(resolved.reason).toBe('unknown_tool');
+		}
+	});
+
+	it('returns invalid_arguments for schema validation failures', () => {
+		const registry = new ToolRegistry();
+		const serverName = 'Server';
+		const toolName = 'tool_x';
+		const baseName = `${sanitizeServerName(serverName)}_${toolName}`;
+
+		registry.register('aaaa1111', serverName, [
+			makeTool({
+				name: toolName,
+				inputSchema: {
+					type: 'object',
+					properties: {
+						name: { type: 'string' }
+					},
+					required: ['name']
+				}
+			})
+		]);
+
+		const resolved = registry.resolve(baseName, '{}');
 		expect(resolved.ok).toBe(false);
 		if (!resolved.ok) {
 			expect(resolved.reason).toBe('invalid_arguments');

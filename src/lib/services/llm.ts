@@ -50,6 +50,14 @@ function toOpenAiMessages(messages: ChatMessage[]): ChatCompletionMessageParam[]
 	const mapped: ChatCompletionMessageParam[] = [];
 
 	for (const message of messages) {
+		if (message.role === 'system') {
+			mapped.push({
+				role: 'system' as const,
+				content: message.content
+			});
+			continue;
+		}
+
 		if (message.role === 'tool') {
 			if (!message.toolCallId) {
 				console.warn('Skipping tool message without toolCallId:', message.id);
@@ -104,6 +112,7 @@ export class LLMService {
 	private client: OpenAI;
 	private autoMode: FreeModelRotator | null = null;
 	private lastUsedModel: string | null = null;
+	private static readonly STREAM_IDLE_TIMEOUT_MS = 30_000;
 
 	constructor(config: LLMConfig) {
 		this.config = config;
@@ -202,6 +211,27 @@ export class LLMService {
 		signal: AbortSignal | undefined,
 		tools: ChatCompletionTool[] | undefined
 	): Promise<SendMessageResult> {
+		const controller = new AbortController();
+		const handleAbort = () => controller.abort();
+		if (signal) {
+			if (signal.aborted) {
+				controller.abort();
+			}
+			signal.addEventListener('abort', handleAbort, { once: true });
+		}
+
+		let idleTimeoutId: ReturnType<typeof setTimeout> | null = null;
+		let timedOut = false;
+		const resetIdleTimeout = () => {
+			if (idleTimeoutId) {
+				clearTimeout(idleTimeoutId);
+			}
+			idleTimeoutId = setTimeout(() => {
+				timedOut = true;
+				controller.abort();
+			}, LLMService.STREAM_IDLE_TIMEOUT_MS);
+		};
+
 		const stream = await this.client.chat.completions.create(
 			{
 				model,
@@ -210,7 +240,7 @@ export class LLMService {
 				...(tools?.length ? { tools } : {})
 			},
 			{
-				signal
+				signal: controller.signal
 			}
 		);
 
@@ -218,53 +248,68 @@ export class LLMService {
 		let finishReason = 'stop';
 		const toolCallAccumulator = new Map<number, { id: string; name: string; args: string }>();
 
-		for await (const chunk of stream) {
-			const choice = chunk.choices[0];
-			if (!choice) {
-				continue;
-			}
+		try {
+			resetIdleTimeout();
+			for await (const chunk of stream) {
+				resetIdleTimeout();
+				const choice = chunk.choices[0];
+				if (!choice) {
+					continue;
+				}
 
-			if (choice.finish_reason) {
-				finishReason = choice.finish_reason;
-			}
+				if (choice.finish_reason) {
+					finishReason = choice.finish_reason;
+				}
 
-			const delta = choice.delta;
-			if (delta?.content) {
-				content += delta.content;
-				onDelta?.(delta.content);
-			}
+				const delta = choice.delta;
+				if (delta?.content) {
+					content += delta.content;
+					onDelta?.(delta.content);
+				}
 
-			if (delta?.tool_calls) {
-				for (const toolCall of delta.tool_calls) {
-					const existing = toolCallAccumulator.get(toolCall.index) ?? {
-						id: '',
-						name: '',
-						args: ''
-					};
+				if (delta?.tool_calls) {
+					for (const toolCall of delta.tool_calls) {
+						const existing = toolCallAccumulator.get(toolCall.index) ?? {
+							id: '',
+							name: '',
+							args: ''
+						};
 
-					if (toolCall.id) {
-						existing.id = toolCall.id;
-					}
-					if (toolCall.function?.name) {
-						const chunkName = toolCall.function.name;
-						if (!existing.name) {
-							existing.name = chunkName;
-						} else if (existing.name === chunkName) {
-							// Already matched
-						} else if (chunkName.startsWith(existing.name)) {
-							// The chunk contains the full name, overwrite to avoid duplicates
-							existing.name = chunkName;
-						} else {
-							existing.name += chunkName;
+						if (toolCall.id) {
+							existing.id = toolCall.id;
 						}
-					}
-					if (toolCall.function?.arguments) {
-						existing.args += toolCall.function.arguments;
-					}
+						if (toolCall.function?.name) {
+							const chunkName = toolCall.function.name;
+							if (!existing.name) {
+								existing.name = chunkName;
+							} else if (existing.name === chunkName) {
+								// Already matched
+							} else if (chunkName.startsWith(existing.name)) {
+								// The chunk contains the full name, overwrite to avoid duplicates
+								existing.name = chunkName;
+							} else {
+								existing.name += chunkName;
+							}
+						}
+						if (toolCall.function?.arguments) {
+							existing.args += toolCall.function.arguments;
+						}
 
-					toolCallAccumulator.set(toolCall.index, existing);
+						toolCallAccumulator.set(toolCall.index, existing);
+					}
 				}
 			}
+		} finally {
+			if (idleTimeoutId) {
+				clearTimeout(idleTimeoutId);
+			}
+			if (signal) {
+				signal.removeEventListener('abort', handleAbort);
+			}
+		}
+
+		if (timedOut) {
+			throw new Error('LLM response timed out');
 		}
 
 		const toolCalls =

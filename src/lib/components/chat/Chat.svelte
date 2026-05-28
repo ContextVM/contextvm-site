@@ -133,7 +133,7 @@
 			llmService.reconfigure(config);
 		}
 
-		if (llmService && !orchestrator) {
+		if (llmService) {
 			orchestrator = new AgentOrchestrator({
 				llmService,
 				mcpClientService
@@ -218,7 +218,7 @@
 	const debouncedPersist = (id: string, nextMessages: ChatMessage[], ms = 1000) => {
 		pendingPersist = { id, messages: nextMessages };
 		if (persistTimeout) {
-			return;
+			clearTimeout(persistTimeout);
 		}
 
 		persistTimeout = setTimeout(() => {
@@ -286,8 +286,8 @@
 			timestamp: new Date()
 		};
 
+		messages = [...messages, userMessage];
 		const streamMessages = messages;
-		streamMessages.push(userMessage);
 		starterPrompts = [];
 		isStreaming = true;
 

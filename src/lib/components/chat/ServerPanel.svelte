@@ -5,7 +5,7 @@
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import ServerIcon from '@lucide/svelte/icons/server';
 
-	const serversHref = $derived<`/servers`>('/servers');
+	const serversHref = $derived('/servers');
 
 	const connectedServers = $derived.by(() =>
 		[...mcpClientService.clients.entries()].map(([pubkey, client]) => {

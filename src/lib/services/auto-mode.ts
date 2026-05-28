@@ -15,12 +15,18 @@ export function isRetryableError(error: unknown): boolean {
 		return false;
 	}
 
-	const status = (error as { status?: number }).status;
+	const status =
+		typeof (error as { status?: unknown }).status === 'number'
+			? (error as { status: number }).status
+			: undefined;
 	if (status && [408, 429, 500, 502, 503, 504].includes(status)) {
 		return true;
 	}
 
-	const code = (error as { code?: string }).code;
+	const code =
+		typeof (error as { code?: unknown }).code === 'string'
+			? (error as { code: string }).code
+			: undefined;
 	if (code === 'rate_limit_exceeded') {
 		return true;
 	}

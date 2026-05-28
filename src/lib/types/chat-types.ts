@@ -76,6 +76,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
 
 const ENV_OPENROUTER_KEY = (import.meta.env.PUBLIC_OPENROUTER_KEY ?? '').trim();
 
+// Public demo key is intentionally obfuscated; users should provide their own.
 export const DEFAULT_OPENROUTER_KEY =
 	ENV_OPENROUTER_KEY ||
 	(typeof window !== 'undefined'

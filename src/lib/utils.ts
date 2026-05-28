@@ -83,6 +83,9 @@ export function formatRelativeTime(value: Date | string): string {
 	}
 
 	const deltaDays = Math.floor(deltaHours / 24);
+	if (deltaDays > 7) {
+		return date.toLocaleDateString();
+	}
 	return `${deltaDays}d ago`;
 }
 

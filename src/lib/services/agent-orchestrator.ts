@@ -2,10 +2,12 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ChatMessage, ToolCallData } from '$lib/types/chat-types';
 import type { LLMService, SendMessageResult } from '$lib/services/llm';
 import type { McpClientService } from '$lib/services/mcpClient.svelte';
-import { ToolRegistry, type ResolvedToolCall, type ToolResolveResult } from '$lib/services/mcp-openai-bridge';
+import { ToolRegistry, type ToolResolveResult } from '$lib/services/mcp-openai-bridge';
 
 const DEFAULT_MAX_TOOL_ROUNDS = 5;
 const DEFAULT_TOOL_APPROVAL_TIMEOUT_MS = 120_000;
+const DEFAULT_REGISTRY_CACHE_MS = 60_000;
+const DEFAULT_TOOL_CONCURRENCY = 4;
 
 type PendingApproval = {
 	resolve: () => void;
@@ -41,6 +43,9 @@ export type AgentOrchestratorResult = {
 export class AgentOrchestrator {
 	private maxToolRounds: number;
 	private toolApprovalTimeoutMs: number;
+	private registryCacheMs: number;
+	private toolConcurrency: number;
+	private registryCache: { registry: ToolRegistry; timestamp: number } | null = null;
 	private pendingApprovals = new Map<string, PendingApproval>();
 	private llmService: LLMService;
 	private mcpClientService: McpClientService;
@@ -50,12 +55,16 @@ export class AgentOrchestrator {
 		mcpClientService: McpClientService;
 		maxToolRounds?: number;
 		toolApprovalTimeoutMs?: number;
+		registryCacheMs?: number;
+		toolConcurrency?: number;
 	}) {
 		this.llmService = options.llmService;
 		this.mcpClientService = options.mcpClientService;
 		this.maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
 		this.toolApprovalTimeoutMs =
 			options.toolApprovalTimeoutMs ?? DEFAULT_TOOL_APPROVAL_TIMEOUT_MS;
+		this.registryCacheMs = options.registryCacheMs ?? DEFAULT_REGISTRY_CACHE_MS;
+		this.toolConcurrency = Math.max(1, options.toolConcurrency ?? DEFAULT_TOOL_CONCURRENCY);
 	}
 
 	public approveToolCall(toolCallId: string): void {
@@ -79,17 +88,18 @@ export class AgentOrchestrator {
 		let lastModel: string | null = null;
 
 		try {
-			callbacks?.onPreparingToolsChange?.(true);
-			let registry: ToolRegistry;
-			try {
-				registry = await this.buildToolRegistry();
-			} finally {
-				callbacks?.onPreparingToolsChange?.(false);
-			}
-
+			const registry = await this.getOrBuildRegistry(callbacks);
 			const tools = registry.getOpenAITools();
 			const systemContext = registry.getSystemContext();
-			let outgoingMessages = this.withToolSystemContext(messages, systemContext);
+			const systemMessage = systemContext
+				? {
+						id: crypto.randomUUID(),
+						content: systemContext,
+						role: 'system' as const,
+						timestamp: new Date()
+					}
+				: null;
+			let outgoingMessages = this.withToolSystemContext(messages, systemMessage);
 			let done = false;
 			let round = 0;
 
@@ -169,7 +179,7 @@ export class AgentOrchestrator {
 						messages.push(toolResultMessage);
 					}
 					callbacks?.onToolResultsAdded?.(toolResultMessages);
-					outgoingMessages = this.withToolSystemContext(messages, systemContext);
+					outgoingMessages = this.withToolSystemContext(messages, systemMessage);
 					continue;
 				}
 
@@ -229,9 +239,33 @@ export class AgentOrchestrator {
 		}
 	}
 
+	public invalidateRegistry(): void {
+		this.registryCache = null;
+	}
+
+	private async getOrBuildRegistry(
+		callbacks?: AgentOrchestratorCallbacks
+	): Promise<ToolRegistry> {
+		const now = Date.now();
+		if (this.registryCache && now - this.registryCache.timestamp < this.registryCacheMs) {
+			return this.registryCache.registry;
+		}
+
+		callbacks?.onPreparingToolsChange?.(true);
+		try {
+			const registry = await this.buildToolRegistry();
+			this.registryCache = { registry, timestamp: Date.now() };
+			return registry;
+		} finally {
+			callbacks?.onPreparingToolsChange?.(false);
+		}
+	}
+
 	private async buildToolRegistry(): Promise<ToolRegistry> {
 		const registry = new ToolRegistry();
-		const connectedServers = [...this.mcpClientService.clients.entries()];
+		const connectedServers = [...this.mcpClientService.clients.entries()].sort(([a], [b]) =>
+			a.localeCompare(b)
+		);
 
 		await Promise.all(
 			connectedServers.map(async ([pubkey, client]) => {
@@ -253,20 +287,15 @@ export class AgentOrchestrator {
 		return registry;
 	}
 
-	private withToolSystemContext(baseMessages: ChatMessage[], systemContext: string): ChatMessage[] {
-		if (!systemContext) {
+	private withToolSystemContext(
+		baseMessages: ChatMessage[],
+		systemMessage: ChatMessage | null
+	): ChatMessage[] {
+		if (!systemMessage) {
 			return [...baseMessages];
 		}
 
-		return [
-			{
-				id: crypto.randomUUID(),
-				content: systemContext,
-				role: 'system',
-				timestamp: new Date()
-			},
-			...baseMessages
-		];
+		return [systemMessage, ...baseMessages];
 	}
 
 	private makeToolResultMessage(
@@ -304,8 +333,14 @@ export class AgentOrchestrator {
 	private serializeToolResult(result: CallToolResult): string {
 		const hasStructuredContent =
 			result.structuredContent && Object.keys(result.structuredContent).length > 0;
+		const hasContent = Array.isArray(result.content) && result.content.length > 0;
+
+		if (!hasContent && !hasStructuredContent && !result.isError) {
+			return '';
+		}
 
 		if (
+			hasContent &&
 			result.content?.length === 1 &&
 			result.content[0].type === 'text' &&
 			!hasStructuredContent &&
@@ -341,7 +376,7 @@ export class AgentOrchestrator {
 					id: toolCall.id,
 					name: toolCall.functionName,
 					arguments: toolCall.arguments,
-					status: 'error' as const,
+					status: 'error',
 					result: `Error: ${resolved.error}`
 				};
 			}
@@ -350,7 +385,7 @@ export class AgentOrchestrator {
 				id: toolCall.id,
 				name: toolCall.functionName,
 				arguments: toolCall.arguments,
-				status: (resolved.value.tier === 'auto' ? 'running' : 'pending') as ToolCallData['status'],
+				status: resolved.value.tier === 'auto' ? 'running' : 'pending',
 				serverName: resolved.value.serverName
 			};
 		});
@@ -383,7 +418,7 @@ export class AgentOrchestrator {
 			}
 		};
 
-		const executions = toolCalls.map(async (toolCall) => {
+		const runTool = async (toolCall: NonNullable<SendMessageResult['toolCalls']>[number]) => {
 			const resolved = resolvedMap.get(toolCall.id);
 			if (!resolved || !resolved.ok) {
 				const error = resolved && !resolved.ok ? `Error: ${resolved.error}` : 'Error: Tool not resolved';
@@ -418,18 +453,29 @@ export class AgentOrchestrator {
 				markStatus(toolCall.id, status, serialized);
 				return this.makeToolResultMessage(toolCall.id, toolCall.functionName, serialized);
 			}
-		});
+		};
 
-		const results = await Promise.allSettled(executions);
-		return results.map((result, index) =>
-			result.status === 'fulfilled'
-				? result.value
-				: this.makeToolResultMessage(
+		const results: ChatMessage[] = new Array(toolCalls.length);
+		let currentIndex = 0;
+		const workerCount = Math.min(this.toolConcurrency, toolCalls.length);
+		const workers = Array.from({ length: workerCount }, async () => {
+			while (currentIndex < toolCalls.length) {
+				const index = currentIndex;
+				currentIndex += 1;
+				try {
+					results[index] = await runTool(toolCalls[index]);
+				} catch (_error) {
+					results[index] = this.makeToolResultMessage(
 						toolCalls[index]?.id ?? crypto.randomUUID(),
 						toolCalls[index]?.functionName ?? 'unknown_tool',
 						'Error: Tool execution failed.'
-					)
-		);
+					);
+				}
+			}
+		});
+
+		await Promise.all(workers);
+		return results;
 	}
 
 	private waitForUserApproval(
