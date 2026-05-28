@@ -26,6 +26,7 @@
 
 {#if sidebar.isMobile && sidebar.openMobile}
 	<button
+		type="button"
 		class="fixed inset-0 z-40 bg-black/50"
 		aria-label="Close sidebar"
 		onclick={() => sidebar.setOpenMobile(false)}

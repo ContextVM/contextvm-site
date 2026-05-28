@@ -246,7 +246,17 @@ export class LLMService {
 						existing.id = toolCall.id;
 					}
 					if (toolCall.function?.name) {
-						existing.name += toolCall.function.name;
+						const chunkName = toolCall.function.name;
+						if (!existing.name) {
+							existing.name = chunkName;
+						} else if (existing.name === chunkName) {
+							// Already matched
+						} else if (chunkName.startsWith(existing.name)) {
+							// The chunk contains the full name, overwrite to avoid duplicates
+							existing.name = chunkName;
+						} else {
+							existing.name += chunkName;
+						}
 					}
 					if (toolCall.function?.arguments) {
 						existing.args += toolCall.function.arguments;

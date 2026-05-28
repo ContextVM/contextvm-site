@@ -19,7 +19,7 @@ describe('sanitizeServerName', () => {
 		expect(sanitizeServerName('   ')).toBe('mcp_server');
 	});
 
-	it('normalizes unicode and trims length', () => {
+	it('strips non-alphanumeric characters and trims length', () => {
 		const normalized = sanitizeServerName('\u6d4b\u8bd5 server');
 		expect(normalized).toBe('server');
 
