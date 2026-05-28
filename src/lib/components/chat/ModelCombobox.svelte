@@ -65,8 +65,15 @@
 		const modelListApiKey = apiKey || (provider === 'openrouter' ? DEFAULT_OPENROUTER_KEY : '');
 
 		debounceHandle = setTimeout(() => {
-			LLMService.fetchModelList(baseURL, modelListApiKey, controller.signal)
-				.then((list) => {
+			const tempService = new LLMService({
+				provider,
+				baseURL,
+				apiKey: modelListApiKey,
+				model: 'auto'
+			});
+
+			tempService.fetchModels(controller.signal)
+				.then((list: string[]) => {
 					if (cancelled || controller.signal.aborted) {
 						return;
 					}
@@ -81,7 +88,7 @@
 					models = list;
 					status = 'idle';
 				})
-				.catch((error) => {
+				.catch((error: unknown) => {
 					if (cancelled || controller.signal.aborted) {
 						return;
 					}

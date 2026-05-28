@@ -14,6 +14,14 @@ interface ToolMapping {
 	openAITool: ChatCompletionTool;
 }
 
+type ParsedArguments =
+	| { ok: true; value: Record<string, unknown> }
+	| { ok: false; error: string };
+
+export type ToolResolveResult =
+	| { ok: true; value: ResolvedToolCall }
+	| { ok: false; reason: 'unknown_tool' | 'invalid_arguments'; error: string };
+
 export interface ResolvedToolCall {
 	serverPubkey: string;
 	serverName: string;
@@ -61,18 +69,19 @@ function classifyToolTier(tool: Tool): ToolApprovalTier {
 	return PROMPT_TIER_KEYWORDS.some((keyword) => searchable.includes(keyword)) ? 'prompt' : 'auto';
 }
 
-function parseToolArguments(rawArgs: string): Record<string, unknown> | null {
+
+function parseToolArguments(rawArgs: string): ParsedArguments {
 	if (!rawArgs.trim()) {
-		return {};
+		return { ok: true, value: {} };
 	}
 
 	try {
 		const parsed = JSON.parse(rawArgs) as unknown;
 		return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-			? (parsed as Record<string, unknown>)
-			: null;
+			? { ok: true, value: parsed as Record<string, unknown> }
+			: { ok: false, error: 'Tool arguments must be a JSON object.' };
 	} catch (_error) {
-		return null;
+		return { ok: false, error: 'Arguments are not valid JSON.' };
 	}
 }
 
@@ -103,6 +112,7 @@ export function mcpToolToOpenAI(tool: Tool, serverName: string): ChatCompletionT
 
 export class ToolRegistry {
 	private mappings = new Map<string, ToolMapping>();
+	private baseNameIndex = new Map<string, Set<string>>();
 
 	public register(
 		serverPubkey: string,
@@ -112,23 +122,47 @@ export class ToolRegistry {
 	): void {
 		for (const tool of tools) {
 			const baseName = buildNamespacedName(serverName, tool.name);
-			const existing = this.mappings.get(baseName);
-			
+			const existingNames = this.baseNameIndex.get(baseName);
+			const disambiguator = `_${serverPubkey.slice(0, 4).toLowerCase() || 'srv'}`;
+
 			let namespacedName = baseName;
-			if (existing && (existing.serverPubkey !== serverPubkey || existing.originalName !== tool.name)) {
-				// Relocate original conflicting entry to its disambiguated name
-				const origDisambiguator = `_${existing.serverPubkey.slice(0, 4).toLowerCase() || 'srv'}`;
-				const origNewName = buildNamespacedName(existing.serverName, existing.originalName, origDisambiguator);
-				
-				this.mappings.delete(baseName);
-				this.mappings.set(origNewName, {
-					...existing,
-					openAITool: withFunctionName(existing.openAITool, origNewName)
-				});
-				
-				// New tool also gets disambiguated
-				const newDisambiguator = `_${serverPubkey.slice(0, 4).toLowerCase() || 'srv'}`;
-				namespacedName = buildNamespacedName(serverName, tool.name, newDisambiguator);
+			if (!existingNames) {
+				this.baseNameIndex.set(baseName, new Set([baseName]));
+			} else {
+				const existingBase = this.mappings.get(baseName);
+				const isSameTool =
+					existingBase &&
+					existingBase.serverPubkey === serverPubkey &&
+					existingBase.originalName === tool.name;
+
+				if (!isSameTool) {
+					if (existingNames.has(baseName)) {
+						const existing = this.mappings.get(baseName);
+						if (existing) {
+							const origDisambiguator = `_${existing.serverPubkey
+								.slice(0, 4)
+								.toLowerCase() || 'srv'}`;
+							const origNewName = buildNamespacedName(
+								existing.serverName,
+								existing.originalName,
+								origDisambiguator
+							);
+
+							this.mappings.delete(baseName);
+							this.mappings.set(origNewName, {
+								...existing,
+								openAITool: withFunctionName(existing.openAITool, origNewName)
+							});
+							existingNames.delete(baseName);
+							existingNames.add(origNewName);
+						} else {
+							existingNames.delete(baseName);
+						}
+					}
+
+					namespacedName = buildNamespacedName(serverName, tool.name, disambiguator);
+					existingNames.add(namespacedName);
+				}
 			}
 
 			const openAITool = withFunctionName(mcpToolToOpenAI(tool, serverName), namespacedName);
@@ -147,20 +181,38 @@ export class ToolRegistry {
 		}
 	}
 
-	public resolve(namespacedName: string, rawArgs: string): ResolvedToolCall | null {
+	public resolve(namespacedName: string, rawArgs: string): ToolResolveResult {
 		const mapping = this.mappings.get(namespacedName);
 		const args = parseToolArguments(rawArgs);
+		const snippet = rawArgs.slice(0, 200);
 
-		if (!mapping || !args) {
-			return null;
+		if (!mapping) {
+			return {
+				ok: false,
+				reason: 'unknown_tool',
+				error: `Unknown tool: ${namespacedName}`
+			};
+		}
+
+		if (!args.ok) {
+			return {
+				ok: false,
+				reason: 'invalid_arguments',
+				error: `Malformed arguments JSON for ${namespacedName}: ${args.error}${
+					snippet ? ` :: ${snippet}` : ''
+				}`
+			};
 		}
 
 		return {
-			serverPubkey: mapping.serverPubkey,
-			serverName: mapping.serverName,
-			originalToolName: mapping.originalName,
-			args,
-			tier: mapping.tier
+			ok: true,
+			value: {
+				serverPubkey: mapping.serverPubkey,
+				serverName: mapping.serverName,
+				originalToolName: mapping.originalName,
+				args: args.value,
+				tier: mapping.tier
+			}
 		};
 	}
 
@@ -170,15 +222,23 @@ export class ToolRegistry {
 
 	public getSystemContext(): string {
 		const serverLines: string[] = [];
-		const seen = new Set<string>();
+		const serverTools = new Map<string, { name: string; tools: string[] }>();
 
-		for (const mapping of this.mappings.values()) {
-			if (seen.has(mapping.serverPubkey)) {
-				continue;
+		for (const [name, mapping] of this.mappings.entries()) {
+			const existing = serverTools.get(mapping.serverPubkey);
+			if (existing) {
+				existing.tools.push(name);
+			} else {
+				serverTools.set(mapping.serverPubkey, {
+					name: mapping.serverName,
+					tools: [name]
+				});
 			}
+		}
 
-			seen.add(mapping.serverPubkey);
-			serverLines.push(`- "${mapping.serverName}": provides tools for MCP operations`);
+		for (const entry of serverTools.values()) {
+			entry.tools.sort();
+			serverLines.push(`- "${entry.name}": ${entry.tools.join(', ')}`);
 		}
 
 		if (serverLines.length === 0) {
@@ -196,5 +256,6 @@ export class ToolRegistry {
 
 	public clear(): void {
 		this.mappings.clear();
+		this.baseNameIndex.clear();
 	}
 }

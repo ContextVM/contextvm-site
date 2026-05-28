@@ -78,7 +78,15 @@
 	};
 </script>
 
-{#if message.role !== 'tool'}
+{#if message.role === 'tool'}
+	<div class="flex w-full min-w-0 justify-start pl-10">
+		<span
+			class="rounded-full border border-border/60 bg-muted/60 px-2 py-1 text-[10px] text-muted-foreground/70"
+		>
+			Tool result for {message.toolName ?? 'unknown'} received
+		</span>
+	</div>
+{:else}
 	<div
 		class={cn(
 			'flex w-full min-w-0 gap-2',

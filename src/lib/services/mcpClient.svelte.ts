@@ -374,9 +374,11 @@ export class McpClientService {
 	}
 
 	// List tools for a server
-	async listTools(serverIdentifier: string): Promise<ListToolsResult> {
+	async listTools(serverIdentifier: string, cursor?: string): Promise<ListToolsResult> {
 		const client = await this.getConnectedClientOrThrow(serverIdentifier);
-		return client.listTools(undefined, { timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS });
+		return client.listTools(cursor ? { cursor } : undefined, {
+			timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS
+		});
 	}
 
 	// List resources for a server
@@ -405,11 +407,16 @@ export class McpClientService {
 	async callTool(
 		serverIdentifier: string,
 		toolName: string,
-		arguments_: Record<string, unknown>
+		arguments_: Record<string, unknown>,
+		signal?: AbortSignal
 	): Promise<CallToolResult> {
 		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 
-		const result = await client.callTool(
+		if (signal?.aborted) {
+			throw new Error('Tool execution stopped');
+		}
+
+		const toolPromise = client.callTool(
 			{
 				name: toolName,
 				arguments: arguments_,
@@ -418,7 +425,28 @@ export class McpClientService {
 			undefined,
 			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS, resetTimeoutOnProgress: true }
 		);
-		return result as CallToolResult;
+
+		if (!signal) {
+			const result = await toolPromise;
+			return result as CallToolResult;
+		}
+
+		const abortState = { cleanup: (() => {}) as () => void };
+		const abortPromise = new Promise<never>((_, reject) => {
+			const onAbort = () => {
+				reject(new Error('Tool execution stopped'));
+			};
+
+			signal.addEventListener('abort', onAbort, { once: true });
+			abortState.cleanup = () => signal.removeEventListener('abort', onAbort);
+		});
+
+		try {
+			const result = await Promise.race([toolPromise, abortPromise]);
+			return result as CallToolResult;
+		} finally {
+			abortState.cleanup();
+		}
 	}
 
 	// Read a resource from a server

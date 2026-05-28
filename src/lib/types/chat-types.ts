@@ -4,7 +4,7 @@ export interface ToolCallData {
 	id: string;
 	name: string;
 	arguments: string;
-	status: 'pending' | 'running' | 'approved' | 'completed' | 'error';
+	status: 'pending' | 'running' | 'approved' | 'completed' | 'rejected' | 'error';
 	result?: string;
 	serverName?: string;
 }

@@ -47,17 +47,25 @@ export function normalizeBaseURL(baseURL: string): string {
 }
 
 function toOpenAiMessages(messages: ChatMessage[]): ChatCompletionMessageParam[] {
-	return messages.map((message) => {
+	const mapped: ChatCompletionMessageParam[] = [];
+
+	for (const message of messages) {
 		if (message.role === 'tool') {
-			return {
+			if (!message.toolCallId) {
+				console.warn('Skipping tool message without toolCallId:', message.id);
+				continue;
+			}
+
+			mapped.push({
 				role: 'tool' as const,
-				tool_call_id: message.toolCallId ?? message.id,
+				tool_call_id: message.toolCallId,
 				content: message.content
-			};
+			});
+			continue;
 		}
 
 		if (message.role === 'assistant' && message.toolCalls?.length) {
-			return {
+			mapped.push({
 				role: 'assistant' as const,
 				content: message.content || null,
 				tool_calls: message.toolCalls.map((toolCall) => ({
@@ -68,14 +76,17 @@ function toOpenAiMessages(messages: ChatMessage[]): ChatCompletionMessageParam[]
 						arguments: toolCall.arguments
 					}
 				}))
-			};
+			});
+			continue;
 		}
 
-		return {
+		mapped.push({
 			role: message.role,
 			content: message.content
-		};
-	});
+		});
+	}
+
+	return mapped;
 }
 
 function getDefaultHeaders(baseURL: string): Record<string, string> | undefined {
@@ -115,9 +126,7 @@ export class LLMService {
 	}
 
 	public async fetchModels(signal?: AbortSignal): Promise<string[]> {
-		const response = signal
-			? await this.client.models.list({}, { signal })
-			: await this.client.models.list();
+		const response = await this.client.models.list(signal ? { signal } : undefined);
 		return response.data.map((model) => model.id);
 	}
 

@@ -23,6 +23,8 @@
 
 	let argsOpen = $state(false);
 	let resultOpen = $state(false);
+	let formattedArguments = $state('{}');
+	let lastArguments = $state('');
 
 	const title = $derived(toolCall.name.replace(/_/g, ' '));
 	const statusLabel = $derived.by(() => {
@@ -33,21 +35,30 @@
 				return 'Approved';
 			case 'completed':
 				return 'Completed';
+			case 'rejected':
+				return 'Rejected';
 			case 'error':
 				return 'Error';
 			default:
 				return 'Approval needed';
 		}
 	});
-	const formattedArguments = $derived.by(() => {
-		if (!toolCall.arguments.trim()) {
-			return '{}';
+	$effect(() => {
+		const rawArguments = toolCall.arguments;
+		if (rawArguments === lastArguments) {
+			return;
+		}
+
+		lastArguments = rawArguments;
+		if (!rawArguments.trim()) {
+			formattedArguments = '{}';
+			return;
 		}
 
 		try {
-			return JSON.stringify(JSON.parse(toolCall.arguments), null, 2);
+			formattedArguments = JSON.stringify(JSON.parse(rawArguments), null, 2);
 		} catch (_error) {
-			return toolCall.arguments;
+			formattedArguments = rawArguments;
 		}
 	});
 	const resultPreview = $derived(toolCall.result ?? '');
@@ -76,14 +87,21 @@
 						? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
 						: toolCall.status === 'error'
 							? 'bg-destructive/10 text-destructive'
-							: toolCall.status === 'running'
-								? 'bg-primary/10 text-primary'
-								: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+							: toolCall.status === 'rejected'
+								? 'bg-slate-500/10 text-slate-600 dark:text-slate-300'
+								: toolCall.status === 'running'
+									? 'bg-primary/10 text-primary'
+									: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
 				)}
+				role="status"
+				aria-live="polite"
+				aria-atomic="true"
 			>
 				{#if toolCall.status === 'completed'}
 					<CheckCircleIcon class="h-3 w-3" />
 				{:else if toolCall.status === 'error'}
+					<XCircleIcon class="h-3 w-3" />
+				{:else if toolCall.status === 'rejected'}
 					<XCircleIcon class="h-3 w-3" />
 				{:else if toolCall.status === 'running'}
 					<LoaderCircleIcon class="h-3 w-3 animate-spin" />

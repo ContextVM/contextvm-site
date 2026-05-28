@@ -42,7 +42,7 @@
 		<div class="space-y-1">
 			{#each connectedServers as server (server.pubkey)}
 				<a
-					href={resolve('/s/[pubkey]', { pubkey: server.pubkey })}
+					href={resolve(`/s/${server.pubkey}`)}
 					class="mx-2 flex min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
 				>
 					<span
