@@ -11,8 +11,17 @@
 	import { mcpClientService } from '$lib/services/mcpClient.svelte';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import { parsePmiTagsFromEvent } from '$lib/services/payments/cep8-tags';
+	import ServerTagCloud from '$lib/components/ServerTagCloud.svelte';
 
-	let { server, identity }: { server: ServerAnnouncement; identity?: ServerIdentity } = $props();
+	let {
+		server,
+		identity,
+		tags = []
+	}: {
+		server: ServerAnnouncement;
+		identity?: ServerIdentity;
+		tags?: ServerAnnouncement['tags'];
+	} = $props();
 	let activeIdentityTab = $state<'npub' | 'hex' | 'nprofile'>('npub');
 
 	const publishedAt = $derived(formatUnixTimestamp(server.created_at, true));
@@ -147,6 +156,11 @@
 					</div>
 				</div>
 			{/if}
+			<div>
+				<div class="mt-2">
+					<ServerTagCloud {tags} />
+				</div>
+			</div>
 		</div>
 	</Card.Content>
 </Card.Root>

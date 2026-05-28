@@ -164,12 +164,12 @@
 
 	// Server capabilities data
 	const serverData = $derived({
-		tools: $toolsQuery?.data || null,
+		tools: $toolsQuery?.data?.tools || null,
 		resources: $resourcesQuery?.data || null,
 		resourceTemplates: $resourceTemplatesQuery?.data || null,
 		prompts: $promptsQuery?.data || null
 	});
-	const announcementTags = $derived($serverQuery?.data?.server?.tags ?? []);
+	const toolsAnnouncementTags = $derived($toolsQuery?.data?.tags ?? []);
 
 	let activeTab = $state('about');
 
@@ -283,10 +283,12 @@
 							{$serverQuery.data.server.name}
 						</h2>
 						{#if $serverQuery.data.server.website}
+							<!-- External URL — resolve() not applicable -->
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a
 								href={$serverQuery.data.server.website}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="noopener noreferrer external"
 								class="text-sm text-primary hover:underline"
 							>
 								{$serverQuery.data.server.website}
@@ -424,7 +426,7 @@
 										{tool}
 										serverPubkey={connectionIdentifier}
 										{connectionState}
-										{announcementTags}
+										announcementTags={toolsAnnouncementTags}
 									/>
 								{/each}
 							{:else}
@@ -479,7 +481,7 @@
 											{resource}
 											serverPubkey={connectionIdentifier}
 											{connectionState}
-											{announcementTags}
+											announcementTags={toolsAnnouncementTags}
 										/>
 									{/each}
 								{/if}
@@ -569,7 +571,7 @@
 										{prompt}
 										{connectionState}
 										serverPubkey={connectionIdentifier}
-										{announcementTags}
+										announcementTags={toolsAnnouncementTags}
 									/>
 								{/each}
 							{:else}
@@ -636,6 +638,7 @@
 						<ServerInformationCard
 							server={$serverQuery.data.server}
 							identity={$serverIdentityQuery?.data}
+							tags={toolsAnnouncementTags}
 						/>
 					</Tabs.Content>
 
@@ -653,10 +656,12 @@
 							{#each $notes as note (note.id)}
 								<ServerNoteCard {note} />
 							{/each}
+							<!-- External URL — resolve() not applicable -->
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a
 								href={jumbleProfileUrl}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="noopener noreferrer external"
 								class="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
 							>
 								Open profile

@@ -146,10 +146,11 @@
 			{segment.value}
 		{:else if segment.type === 'link'}
 			<span class="inline-flex max-w-full flex-wrap items-center gap-2 align-middle">
+				<!-- External URL from note content — resolve() not applicable -->
 				<a
 					href={segment.href}
 					target="_blank"
-					rel="noopener noreferrer"
+					rel="noopener noreferrer external"
 					class="break-all text-primary underline underline-offset-2 hover:text-primary/80"
 				>
 					{segment.value}
