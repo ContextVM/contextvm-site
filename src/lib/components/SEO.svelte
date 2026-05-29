@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { asset } from '$app/paths';
 
-	const logoBlackSrc = asset('/logo-black.svg');
+	import { page } from '$app/stores';
+
+	const defaultOgImageSrc = asset('/apple-touch-icon-180x180.png');
 	const favicon32Src = asset('/favicon-32x32.png');
 	const favicon16Src = asset('/favicon-16x16.png');
 	const appleTouchIconSrc = asset('/apple-touch-icon-180x180.png');
@@ -9,15 +11,17 @@
 	let {
 		title = 'ContextVM',
 		description = 'Discover and connect with Model Context Protocol (MCP) servers on Nostr.',
-		url = 'https://contextvm.com',
-		image = logoBlackSrc,
+		url = $page.url.href,
+		image = defaultOgImageSrc,
 		type = 'website' as 'website' | 'article',
 		siteName = 'ContextVM',
 		locale = 'en_US'
 	} = $props();
 
 	// Generate the full title by combining site name and page title
-	const fullTitle = $derived(`${title || 'Untitled'} | ${siteName}`);
+	const fullTitle = $derived(
+		`${title || 'Untitled'} ${title === 'ContextVM' ? '' : `| ${siteName}`}`.trim()
+	);
 </script>
 
 <svelte:head>
