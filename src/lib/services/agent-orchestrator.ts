@@ -106,13 +106,15 @@ export class AgentOrchestrator {
 			while (!done && round < this.maxToolRounds) {
 				round += 1;
 
-				const assistant: ChatMessage = {
+				const rawAssistant: ChatMessage = {
 					id: crypto.randomUUID(),
 					content: '',
 					role: 'assistant',
 					timestamp: new Date()
 				};
-				messages.push(assistant);
+				messages.push(rawAssistant);
+				// Retrieve the proxied reference so mutations trigger Svelte 5 reactivity.
+				const assistant = messages[messages.length - 1];
 				callbacks?.onAssistantAdded?.(assistant);
 
 				const result = await this.llmService.sendMessage(outgoingMessages, {
