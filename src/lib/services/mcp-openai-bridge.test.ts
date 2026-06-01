@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { ToolRegistry, mcpToolToOpenAI, sanitizeServerName } from './mcp-openai-bridge';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 
