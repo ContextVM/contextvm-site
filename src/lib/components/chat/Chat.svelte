@@ -141,6 +141,12 @@
 		}
 	});
 
+	// Invalidate cached tool registry when servers connect/disconnect.
+	$effect(() => {
+		void mcpClientService.clients.size;
+		orchestrator?.invalidateRegistry();
+	});
+
 	$effect(() => {
 		const activeId = conversationId ?? null;
 		if (activeId === loadedConversationId) {
