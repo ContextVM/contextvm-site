@@ -43,7 +43,9 @@
 	});
 
 	$effect(() => {
-		if (!baseURL.trim()) {
+		const effectiveKey = apiKey || (provider === 'openrouter' ? DEFAULT_OPENROUTER_KEY : '');
+
+		if (!baseURL.trim() || !effectiveKey) {
 			models = [];
 			status = 'idle';
 			errorMessage = null;
@@ -62,13 +64,11 @@
 		const controller = new AbortController();
 		activeAbort = controller;
 
-		const modelListApiKey = apiKey || (provider === 'openrouter' ? DEFAULT_OPENROUTER_KEY : '');
-
 		debounceHandle = setTimeout(() => {
 			const tempService = new LLMService({
 				provider,
 				baseURL,
-				apiKey: modelListApiKey,
+				apiKey: effectiveKey,
 				model: 'auto'
 			});
 
