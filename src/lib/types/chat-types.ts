@@ -1,4 +1,4 @@
-export type ToolApprovalTier = 'auto' | 'prompt' | 'payment';
+export type ToolApprovalTier = 'auto' | 'prompt';
 
 export interface ToolCallData {
 	id: string;
