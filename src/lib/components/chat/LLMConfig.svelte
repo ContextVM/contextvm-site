@@ -20,7 +20,11 @@
 	} from '$lib/types/chat-types';
 
 	const STORAGE_KEY = 'contextvm.chat.config';
-	const sanitizeConfig = (current: LLMConfig) => ({ ...current, apiKey: '' });
+	// Persist custom API keys but never store the bundled default key.
+	const sanitizeConfig = (current: LLMConfig) => ({
+		...current,
+		apiKey: current.apiKey === DEFAULT_OPENROUTER_KEY ? '' : current.apiKey
+	});
 
 	let { config = $bindable({ ...DEFAULT_LLM_CONFIG }) }: { config?: LLMConfig } = $props();
 	let hasLoadedStoredConfig = $state(false);
@@ -99,8 +103,8 @@
 
 		try {
 			const stored = JSON.parse(raw) as Partial<LLMConfig>;
-			const { apiKey: _ignored, ...storedSafe } = stored;
-			const nextConfig = { ...DEFAULT_LLM_CONFIG, ...storedSafe };
+			const nextConfig = { ...DEFAULT_LLM_CONFIG, ...stored };
+			// Restore the default key only when no custom key was persisted.
 			if (nextConfig.provider === 'openrouter' && !nextConfig.apiKey) {
 				nextConfig.apiKey = DEFAULT_OPENROUTER_KEY;
 			}
