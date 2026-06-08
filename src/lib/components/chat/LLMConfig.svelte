@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
+	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -139,89 +140,91 @@
 		<SettingsIcon class="h-4 w-4" />
 		<span class="sr-only">Open settings</span>
 	</Sheet.Trigger>
-	<Sheet.Content side="right" class="w-full max-w-md">
+	<Sheet.Content side="right" class="w-full max-w-md overflow-x-hidden">
 		<Sheet.Header>
 			<Sheet.Title>Chat settings</Sheet.Title>
 			<Sheet.Description>
 				Choose the provider, model, and key used for this browser.
 			</Sheet.Description>
 		</Sheet.Header>
-		<div class="space-y-5 px-5 py-6">
-			<div class="rounded-xl border border-border bg-muted/30 p-3">
-				<div class="grid gap-3 text-sm">
-					<div class="flex items-center justify-between gap-3">
-						<span class="text-muted-foreground">Provider</span>
-						<span class="truncate font-medium">{selectedProvider?.label ?? config.provider}</span>
-					</div>
-					<div class="flex items-center justify-between gap-3">
-						<span class="text-muted-foreground">Model</span>
-						<span class="truncate font-medium">{modelStatus}</span>
-					</div>
-					<div class="flex items-center justify-between gap-3">
-						<span class="text-muted-foreground">Key</span>
-						<span
-							class="inline-flex max-w-[13rem] items-center gap-1.5 truncate rounded-md border border-border bg-background px-2 py-1 text-xs"
-							class:text-primary={usingDefaultKey}
-							class:text-destructive={selectedProvider?.requiresKey && !config.apiKey.trim()}
-						>
-							<KeyRoundIcon class="h-3.5 w-3.5 shrink-0" />
-							<span class="truncate">{keyStatus}</span>
-						</span>
+		<ScrollArea class="min-h-0 min-w-0 flex-1">
+			<div class="space-y-5 overflow-x-hidden px-5 py-6 break-words">
+				<div class="rounded-xl border border-border bg-muted/30 p-3">
+					<div class="grid gap-3 text-sm">
+						<div class="grid grid-cols-[auto,1fr] items-center gap-3">
+							<span class="text-muted-foreground">Provider</span>
+							<span class="truncate font-medium">{selectedProvider?.label ?? config.provider}</span>
+						</div>
+						<div class="grid grid-cols-[auto,1fr] items-center gap-3">
+							<span class="text-muted-foreground">Model</span>
+							<span class="truncate font-medium">{modelStatus}</span>
+						</div>
+						<div class="flex items-center justify-between gap-3">
+							<span class="text-muted-foreground">Key</span>
+							<span
+								class="inline-flex max-w-[13rem] items-center gap-1.5 truncate rounded-md border border-border bg-background px-2 py-1 text-xs"
+								class:text-primary={usingDefaultKey}
+								class:text-destructive={selectedProvider?.requiresKey && !config.apiKey.trim()}
+							>
+								<KeyRoundIcon class="h-3.5 w-3.5 shrink-0" />
+								<span class="truncate">{keyStatus}</span>
+							</span>
+						</div>
 					</div>
 				</div>
-			</div>
-			<div class="space-y-2">
-				<Label>Provider</Label>
-				<ProviderCombobox value={config.provider} onSelect={handleProviderSelect} />
-			</div>
-			<div class="space-y-2">
-				<Label>Base URL</Label>
-				<Input
-					value={config.baseURL}
-					oninput={handleBaseUrlInput}
-					placeholder="https://api.example.com/v1"
-				/>
-				<p class="text-xs leading-5 text-muted-foreground">
-					Pasted completion endpoints are normalized automatically.
-				</p>
-			</div>
-			<div class="space-y-2">
-				<Label>API key</Label>
-				<Input
-					type="password"
-					value={config.apiKey}
-					oninput={handleApiKeyInput}
-					placeholder="sk-..."
-				/>
-				{#if config.provider === 'openrouter' && !usingDefaultKey}
-					<Button variant="ghost" size="sm" class="h-7 px-0 text-xs" onclick={useDefaultKey}>
-						Use default OpenRouter key
-					</Button>
-				{:else if usingDefaultKey}
+				<div class="space-y-2">
+					<Label>Provider</Label>
+					<ProviderCombobox value={config.provider} onSelect={handleProviderSelect} />
+				</div>
+				<div class="space-y-2">
+					<Label>Base URL</Label>
+					<Input
+						value={config.baseURL}
+						oninput={handleBaseUrlInput}
+						placeholder="https://api.example.com/v1"
+					/>
 					<p class="text-xs leading-5 text-muted-foreground">
-						The default key is public and limited to free-model usage.
+						Pasted completion endpoints are normalized automatically.
 					</p>
-				{:else if selectedProvider?.requiresKey && !config.apiKey.trim()}
-					<p class="text-xs leading-5 text-destructive">This provider needs your API key.</p>
-				{/if}
+				</div>
+				<div class="space-y-2">
+					<Label>API key</Label>
+					<Input
+						type="password"
+						value={config.apiKey}
+						oninput={handleApiKeyInput}
+						placeholder="sk-..."
+					/>
+					{#if config.provider === 'openrouter' && !usingDefaultKey}
+						<Button variant="ghost" size="sm" class="h-7 px-0 text-xs" onclick={useDefaultKey}>
+							Use default OpenRouter key
+						</Button>
+					{:else if usingDefaultKey}
+						<p class="text-xs leading-5 text-muted-foreground">
+							The default key is public and limited to free-model usage.
+						</p>
+					{:else if selectedProvider?.requiresKey && !config.apiKey.trim()}
+						<p class="text-xs leading-5 text-destructive">This provider needs your API key.</p>
+					{/if}
+				</div>
+				<div class="space-y-2">
+					<Label>Model</Label>
+					<ModelCombobox
+						provider={config.provider}
+						baseURL={config.baseURL}
+						apiKey={config.apiKey}
+						value={config.model}
+						onChange={handleModelChange}
+					/>
+				</div>
+				<div class="flex items-center justify-between border-t border-border pt-4">
+					<p class="text-xs text-muted-foreground">Provider and model persist on this device.</p>
+					<Button variant="outline" size="sm" class="gap-1.5" onclick={resetConfig}>
+						<RotateCcwIcon class="h-3.5 w-3.5" />
+						Reset
+					</Button>
+				</div>
 			</div>
-			<div class="space-y-2">
-				<Label>Model</Label>
-				<ModelCombobox
-					provider={config.provider}
-					baseURL={config.baseURL}
-					apiKey={config.apiKey}
-					value={config.model}
-					onChange={handleModelChange}
-				/>
-			</div>
-			<div class="flex items-center justify-between border-t border-border pt-4">
-				<p class="text-xs text-muted-foreground">Provider and model persist on this device.</p>
-				<Button variant="outline" size="sm" class="gap-1.5" onclick={resetConfig}>
-					<RotateCcwIcon class="h-3.5 w-3.5" />
-					Reset
-				</Button>
-			</div>
-		</div>
+		</ScrollArea>
 	</Sheet.Content>
 </Sheet.Root>

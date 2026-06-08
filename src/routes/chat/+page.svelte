@@ -4,6 +4,7 @@
 	import ChatSidebar from '$lib/components/chat/ChatSidebar.svelte';
 	import Chat from '$lib/components/chat/Chat.svelte';
 	import LLMConfig from '$lib/components/chat/LLMConfig.svelte';
+	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { createConversation, listConversations } from '$lib/services/conversation-store.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import {
@@ -18,6 +19,7 @@
 	let activeConversationId = $state<string | null>(null);
 	let config = $state<ChatLLMConfig>({ ...DEFAULT_LLM_CONFIG });
 	let lastUsedModel = $state('');
+	let autoApproveTools = $state(false);
 	const selectedProvider = $derived(
 		PROVIDER_PRESETS.find((preset) => preset.key === config.provider) ?? PROVIDER_PRESETS[0]
 	);
@@ -100,11 +102,20 @@
 						{keyLabel}
 					</span>
 				</div>
+				<div class="flex items-center gap-1.5">
+					<Switch bind:checked={autoApproveTools} size="sm" />
+					<span class="hidden text-[11px] text-muted-foreground sm:inline">Auto-approve</span>
+				</div>
 				<LLMConfig bind:config />
 			</div>
 		</div>
 		<div class="min-h-0 flex-1 overflow-hidden">
-			<Chat bind:conversationId={activeConversationId} bind:lastUsedModel {config} />
+			<Chat
+				bind:conversationId={activeConversationId}
+				bind:lastUsedModel
+				{config}
+				{autoApproveTools}
+			/>
 		</div>
 	</main>
 </Sidebar.Provider>

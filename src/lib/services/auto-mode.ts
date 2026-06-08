@@ -2,11 +2,16 @@ import type OpenAI from 'openai';
 
 export const FREE_MODEL_SUFFIX = ':free';
 
+/** Free models that are excluded from auto-mode rotation. */
+export const FREE_MODEL_BLACKLIST: ReadonlySet<string> = new Set([
+	'nvidia/nemotron-3.5-content-safety:free'
+]);
+
 export async function fetchFreeModels(client: OpenAI): Promise<string[]> {
 	const response = await client.models.list();
 	const freeModels = response.data
 		.map((model) => model.id)
-		.filter((id) => id.endsWith(FREE_MODEL_SUFFIX));
+		.filter((id) => id.endsWith(FREE_MODEL_SUFFIX) && !FREE_MODEL_BLACKLIST.has(id));
 	return [...new Set(freeModels)];
 }
 

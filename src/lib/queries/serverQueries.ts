@@ -16,7 +16,7 @@ import { lastValueFrom } from 'rxjs';
 import type { NostrEvent } from 'nostr-tools';
 import { getSeenRelays, mergeRelaySets } from 'applesauce-core/helpers/relays';
 import { relayStore } from '$lib/stores/relay-store.svelte';
-import { encodeServerIdentity, type ServerIdentity } from '$lib/utils';
+import { encodeServerIdentity, decodeServerIdentifier, type ServerIdentity } from '$lib/utils';
 
 interface ServerQueryResult {
 	isPublic: boolean;
@@ -320,4 +320,25 @@ function parseServerRelayList(event: NostrEvent | null): ParsedRelayList {
 
 function getEventSeenRelays(event: NostrEvent | null | undefined): string[] {
 	return event ? mergeRelaySets(getSeenRelays(event)) : [];
+}
+
+/**
+ * Shared server search predicate used by both the /servers page and the chat
+ * sidebar ServerPanel. Matches a server announcement against a user-supplied
+ * search term (name, about, website, hex pubkey, npub).
+ */
+export function matchesServerSearch(server: ServerAnnouncement, term: string): boolean {
+	const termLower = term.toLowerCase().trim();
+	const decodedIdentifier = decodeServerIdentifier(term);
+	const normalizedPubkey = decodedIdentifier?.pubkey;
+	const identity = encodeServerIdentity(server.pubkey, []);
+
+	return (
+		server.name.toLowerCase().includes(termLower) ||
+		server.about?.toLowerCase().includes(termLower) ||
+		server.website?.toLowerCase().includes(termLower) ||
+		server.pubkey.includes(term) ||
+		identity.npub.toLowerCase().includes(termLower) ||
+		(normalizedPubkey !== undefined && server.pubkey === normalizedPubkey)
+	);
 }

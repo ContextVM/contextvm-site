@@ -72,7 +72,8 @@
 				model: 'auto'
 			});
 
-			tempService.fetchModels(controller.signal)
+			tempService
+				.fetchModels(controller.signal)
 				.then((list: string[]) => {
 					if (cancelled || controller.signal.aborted) {
 						return;

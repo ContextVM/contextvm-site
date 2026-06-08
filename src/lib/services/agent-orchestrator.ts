@@ -61,8 +61,7 @@ export class AgentOrchestrator {
 		this.llmService = options.llmService;
 		this.mcpClientService = options.mcpClientService;
 		this.maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
-		this.toolApprovalTimeoutMs =
-			options.toolApprovalTimeoutMs ?? DEFAULT_TOOL_APPROVAL_TIMEOUT_MS;
+		this.toolApprovalTimeoutMs = options.toolApprovalTimeoutMs ?? DEFAULT_TOOL_APPROVAL_TIMEOUT_MS;
 		this.registryCacheMs = options.registryCacheMs ?? DEFAULT_REGISTRY_CACHE_MS;
 		this.toolConcurrency = Math.max(1, options.toolConcurrency ?? DEFAULT_TOOL_CONCURRENCY);
 	}
@@ -245,9 +244,7 @@ export class AgentOrchestrator {
 		this.registryCache = null;
 	}
 
-	private async getOrBuildRegistry(
-		callbacks?: AgentOrchestratorCallbacks
-	): Promise<ToolRegistry> {
+	private async getOrBuildRegistry(callbacks?: AgentOrchestratorCallbacks): Promise<ToolRegistry> {
 		const now = Date.now();
 		if (this.registryCache && now - this.registryCache.timestamp < this.registryCacheMs) {
 			return this.registryCache.registry;
@@ -406,11 +403,7 @@ export class AgentOrchestrator {
 		} = {}
 	): Promise<ChatMessage[]> {
 		const { signal, onStatusUpdate, approvalTimeoutMs = this.toolApprovalTimeoutMs } = options;
-		const markStatus = (
-			toolCallId: string,
-			status: ToolCallData['status'],
-			result?: string
-		) => {
+		const markStatus = (toolCallId: string, status: ToolCallData['status'], result?: string) => {
 			this.updateToolCallStatus(assistantMessage, toolCallId, status, result);
 			onStatusUpdate?.(toolCallId);
 		};
@@ -423,7 +416,8 @@ export class AgentOrchestrator {
 		const runTool = async (toolCall: NonNullable<SendMessageResult['toolCalls']>[number]) => {
 			const resolved = resolvedMap.get(toolCall.id);
 			if (!resolved || !resolved.ok) {
-				const error = resolved && !resolved.ok ? `Error: ${resolved.error}` : 'Error: Tool not resolved';
+				const error =
+					resolved && !resolved.ok ? `Error: ${resolved.error}` : 'Error: Tool not resolved';
 				markStatus(toolCall.id, 'error', error);
 				return this.makeToolResultMessage(toolCall.id, toolCall.functionName, error);
 			}

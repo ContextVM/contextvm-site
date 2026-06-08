@@ -19,9 +19,7 @@ interface ToolMapping {
 	validator?: ValidateFunction<unknown>;
 }
 
-type ParsedArguments =
-	| { ok: true; value: Record<string, unknown> }
-	| { ok: false; error: string };
+type ParsedArguments = { ok: true; value: Record<string, unknown> } | { ok: false; error: string };
 
 export type ToolResolveResult =
 	| { ok: true; value: ResolvedToolCall }
@@ -46,13 +44,18 @@ function sanitizeFunctionSegment(value: string, fallback: string, maxLength?: nu
 	return maxLength ? segment.slice(0, maxLength).replace(/_+$/g, '') || fallback : segment;
 }
 
-function toParameters(inputSchema: Tool['inputSchema']): Record<string, unknown> {
-	const rawSchema =
-		inputSchema && typeof inputSchema === 'object' && !Array.isArray(inputSchema)
-			? (inputSchema as Record<string, unknown>)
-			: { type: 'object', properties: {} };
-	const { $schema: _schema, ...parameters } = rawSchema;
+function stripSchemaMeta(schema: Record<string, unknown>): Record<string, unknown> {
+	const { $schema: _, ...rest } = schema;
+	return rest;
+}
 
+function toParameters(inputSchema: Tool['inputSchema']): Record<string, unknown> {
+	if (!inputSchema || typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+		return { type: 'object', properties: {} };
+	}
+
+	const rawSchema = inputSchema as Record<string, unknown>;
+	const parameters = stripSchemaMeta(rawSchema);
 	return Object.keys(parameters).length > 0 ? parameters : { type: 'object', properties: {} };
 }
 
@@ -70,10 +73,11 @@ function withFunctionName(tool: ChatCompletionTool, name: string): ChatCompletio
 	};
 }
 
+// Tools default to 'prompt' (requires user approval).
+// Mark specific tools as 'auto' via tierOverrides passed to register().
 function classifyToolTier(_tool: Tool): ToolApprovalTier {
 	return 'prompt';
 }
-
 
 function parseToolArguments(rawArgs: string): ParsedArguments {
 	if (!rawArgs.trim()) {
@@ -135,9 +139,9 @@ export class ToolRegistry {
 		for (const tool of tools) {
 			const baseName = buildNamespacedName(serverName, tool.name);
 			const existingNames = this.baseNameIndex.get(baseName);
-			const disambiguator = `_${serverPubkey
-				.slice(0, DISAMBIGUATOR_LENGTH)
-				.toLowerCase() || 'srv'}`;
+			const disambiguator = `_${
+				serverPubkey.slice(0, DISAMBIGUATOR_LENGTH).toLowerCase() || 'srv'
+			}`;
 
 			let namespacedName = baseName;
 			if (!existingNames) {
@@ -153,9 +157,9 @@ export class ToolRegistry {
 					if (existingNames.has(baseName)) {
 						const existing = this.mappings.get(baseName);
 						if (existing) {
-							const origDisambiguator = `_${existing.serverPubkey
-								.slice(0, DISAMBIGUATOR_LENGTH)
-								.toLowerCase() || 'srv'}`;
+							const origDisambiguator = `_${
+								existing.serverPubkey.slice(0, DISAMBIGUATOR_LENGTH).toLowerCase() || 'srv'
+							}`;
 							const origNewName = buildNamespacedName(
 								existing.serverName,
 								existing.originalName,
@@ -182,7 +186,8 @@ export class ToolRegistry {
 			let validator: ValidateFunction<unknown> | undefined;
 			if (tool.inputSchema && typeof tool.inputSchema === 'object') {
 				try {
-					validator = ajv.compile(tool.inputSchema as Record<string, unknown>);
+					const cleanSchema = stripSchemaMeta(tool.inputSchema as Record<string, unknown>);
+					validator = ajv.compile(cleanSchema);
 				} catch (error) {
 					console.warn(`Failed to compile schema for ${tool.name}:`, error);
 				}
@@ -233,9 +238,9 @@ export class ToolRegistry {
 			return {
 				ok: false,
 				reason: 'invalid_arguments',
-				error: `Schema validation failed for ${namespacedName}: ${
-					ajv.errorsText(mapping.validator.errors)
-				}`
+				error: `Schema validation failed for ${namespacedName}: ${ajv.errorsText(
+					mapping.validator.errors
+				)}`
 			};
 		}
 

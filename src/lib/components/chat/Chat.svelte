@@ -88,11 +88,13 @@
 	let {
 		conversationId = $bindable(null),
 		config,
-		lastUsedModel = $bindable('')
+		lastUsedModel = $bindable(''),
+		autoApproveTools = false
 	}: {
 		conversationId?: string | null;
 		config: LLMConfig;
 		lastUsedModel?: string;
+		autoApproveTools?: boolean;
 	} = $props();
 
 	let messages = $state<ChatMessage[]>([]);
@@ -114,6 +116,25 @@
 	const autoModeEnabled = $derived(isAutoMode(config));
 	const usingDefaultKey = $derived(isUsingDefaultKey(config));
 
+	// Auto-approve pending tool calls when the toggle is enabled.
+	$effect(() => {
+		if (!autoApproveTools) {
+			return;
+		}
+
+		for (const message of messages) {
+			if (message.role !== 'assistant' || !message.toolCalls?.length) {
+				continue;
+			}
+
+			for (const toolCall of message.toolCalls) {
+				if (toolCall.status === 'pending') {
+					approveToolCall(toolCall.id);
+				}
+			}
+		}
+	});
+
 	const approveToolCall = (toolCallId: string) => {
 		orchestrator?.approveToolCall(toolCallId);
 	};
@@ -126,18 +147,16 @@
 		orchestrator?.rejectPendingApprovals(reason);
 	};
 
+	// Keep LLMService in sync with config changes without recreating the orchestrator.
 	$effect(() => {
 		if (!llmService) {
 			llmService = new LLMService(config);
-		} else {
-			llmService.reconfigure(config);
-		}
-
-		if (llmService) {
 			orchestrator = new AgentOrchestrator({
 				llmService,
 				mcpClientService
 			});
+		} else {
+			llmService.reconfigure(config);
 		}
 	});
 

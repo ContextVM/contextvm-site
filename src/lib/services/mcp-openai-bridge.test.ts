@@ -7,8 +7,7 @@ const makeTool = (overrides: Partial<Tool> = {}): Tool => ({
 	description: 'Test tool',
 	inputSchema: {
 		type: 'object',
-		properties: {},
-		$schema: 'http://example.com/schema.json'
+		properties: {}
 	},
 	...overrides
 });
