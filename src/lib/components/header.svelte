@@ -3,6 +3,8 @@
 	import { page } from '$app/stores';
 	import Github from '@lucide/svelte/icons/github';
 	import Menu from '@lucide/svelte/icons/menu';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import ThemeToggle from './theme-toggle.svelte';
 	import AccountLoginDialog from './AccountLoginDialog.svelte';
 	import ProfileCard from './ProfileCard.svelte';
@@ -21,7 +23,47 @@
 	const logoWhiteSrc = asset('/logo-white.svg');
 
 	let isMenuOpen = $state(false);
+	let isDropdownOpen = $state(false);
+	let isMobileResourcesOpen = $state(false);
+	let closeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// Check if any resource page is currently active
+	const isResourcePageActive = $derived(
+		$page.url.pathname.startsWith(resolve(blogHref)) ||
+			$page.url.pathname.startsWith(resolve(aboutHref)) ||
+			$page.url.pathname.startsWith(resolve(faqsHref)) ||
+			$page.url.pathname.startsWith(resolve(slidesHref))
+	);
+
+	function openDropdown() {
+		if (closeTimeout) {
+			clearTimeout(closeTimeout);
+			closeTimeout = null;
+		}
+		isDropdownOpen = true;
+	}
+
+	function closeDropdown() {
+		closeTimeout = setTimeout(() => {
+			isDropdownOpen = false;
+		}, 150);
+	}
+
+	function handleClickOutside(event: MouseEvent) {
+		const target = event.target as HTMLElement;
+		if (!target.closest('.dropdown-container')) {
+			isDropdownOpen = false;
+		}
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			isDropdownOpen = false;
+		}
+	}
 </script>
+
+<svelte:window onclick={handleClickOutside} onkeydown={handleKeydown} />
 
 <header
 	class="fixed top-0 right-0 left-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60"
@@ -64,46 +106,99 @@
 				>
 					Servers
 				</a>
-				<a
-					href={resolve(blogHref)}
-					class="transition-colors {$page.url.pathname.startsWith(resolve(blogHref))
-						? 'font-semibold text-primary'
-						: 'text-foreground/60 hover:text-primary'}"
+
+				<!-- Resources Dropdown -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					class="dropdown-container relative"
+					onmouseenter={openDropdown}
+					onmouseleave={closeDropdown}
 				>
-					Blog
-				</a>
-				<a
-					href={resolve(aboutHref)}
-					class="transition-colors {$page.url.pathname.startsWith(resolve(aboutHref))
-						? 'font-semibold text-primary'
-						: 'text-foreground/60 hover:text-primary'}"
-				>
-					About
-				</a>
-				<a
-					href={resolve(faqsHref)}
-					class="transition-colors {$page.url.pathname.startsWith(resolve(faqsHref))
-						? 'font-semibold text-primary'
-						: 'text-foreground/60 hover:text-primary'}"
-				>
-					FAQs
-				</a>
-				<a
-					href="https://docs.contextvm.org"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="text-foreground/60 transition-colors hover:text-primary"
-				>
-					Docs
-				</a>
-				<a
-					href={resolve(slidesHref)}
-					class="transition-colors {$page.url.pathname.startsWith(resolve(slidesHref))
-						? 'font-semibold text-primary'
-						: 'text-foreground/60 hover:text-primary'}"
-				>
-					Slides
-				</a>
+					<button
+						class="flex items-center gap-1 transition-colors {isResourcePageActive
+							? 'font-semibold text-primary'
+							: 'text-foreground/60 hover:text-primary'}"
+						onclick={() => (isDropdownOpen = !isDropdownOpen)}
+						aria-expanded={isDropdownOpen}
+						aria-haspopup="true"
+					>
+						Resources
+						<ChevronDown
+							class="h-3.5 w-3.5 transition-transform duration-200 {isDropdownOpen
+								? 'rotate-180'
+								: ''}"
+						/>
+					</button>
+
+					{#if isDropdownOpen}
+						<div
+							class="absolute top-full left-1/2 z-50 mt-2 w-48 -translate-x-1/2 rounded-lg border bg-popover/95 p-1.5 shadow-lg backdrop-blur transition-all duration-200"
+							role="menu"
+						>
+							<a
+								href={resolve(blogHref)}
+								onclick={() => (isDropdownOpen = false)}
+								class="flex items-center rounded-md px-3 py-2 text-sm transition-colors {$page.url.pathname.startsWith(
+									resolve(blogHref)
+								)
+									? 'bg-primary/10 font-medium text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
+								role="menuitem"
+							>
+								Blog
+							</a>
+							<a
+								href={resolve(aboutHref)}
+								onclick={() => (isDropdownOpen = false)}
+								class="flex items-center rounded-md px-3 py-2 text-sm transition-colors {$page.url.pathname.startsWith(
+									resolve(aboutHref)
+								)
+									? 'bg-primary/10 font-medium text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
+								role="menuitem"
+							>
+								About
+							</a>
+							<a
+								href={resolve(faqsHref)}
+								onclick={() => (isDropdownOpen = false)}
+								class="flex items-center rounded-md px-3 py-2 text-sm transition-colors {$page.url.pathname.startsWith(
+									resolve(faqsHref)
+								)
+									? 'bg-primary/10 font-medium text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
+								role="menuitem"
+							>
+								FAQs
+							</a>
+							<a
+								href={resolve(slidesHref)}
+								onclick={() => (isDropdownOpen = false)}
+								class="flex items-center rounded-md px-3 py-2 text-sm transition-colors {$page.url.pathname.startsWith(
+									resolve(slidesHref)
+								)
+									? 'bg-primary/10 font-medium text-primary'
+									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
+								role="menuitem"
+							>
+								Slides
+							</a>
+							<div class="my-1 border-t"></div>
+							<a
+								href="https://docs.contextvm.org"
+								target="_blank"
+								rel="noopener noreferrer"
+								onclick={() => (isDropdownOpen = false)}
+								class="flex items-center justify-between rounded-md px-3 py-2 text-sm text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+								role="menuitem"
+							>
+								Docs
+								<ExternalLink class="h-3 w-3 text-muted-foreground" />
+							</a>
+						</div>
+					{/if}
+				</div>
+
 				<a
 					href="https://github.com/contextvm"
 					target="_blank"
@@ -163,59 +258,83 @@
 							>
 								Servers
 							</a>
-							<a
-								href={resolve(blogHref)}
-								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
-									resolve(blogHref)
-								)
-									? 'bg-primary/10 text-primary'
-									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
-							>
-								Blog
-							</a>
-							<a
-								href={resolve(aboutHref)}
-								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
-									resolve(aboutHref)
-								)
-									? 'bg-primary/10 text-primary'
-									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
-							>
-								About
-							</a>
-							<a
-								href={resolve(faqsHref)}
-								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
-									resolve(faqsHref)
-								)
-									? 'bg-primary/10 text-primary'
-									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
-							>
-								FAQs
-							</a>
-							<a
-								href="https://docs.contextvm.org"
-								target="_blank"
-								rel="noopener noreferrer"
-								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-							>
-								Docs
-							</a>
-							<a
-								href={resolve(slidesHref)}
-								onclick={() => (isMenuOpen = false)}
-								class="rounded-md px-4 py-3 text-base font-medium transition-colors {$page.url.pathname.startsWith(
-									resolve(slidesHref)
-								)
-									? 'bg-primary/10 text-primary'
-									: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
-							>
-								Slides
-							</a>
+
+							<!-- Mobile Resources Section -->
+							<div>
+								<button
+									onclick={() => (isMobileResourcesOpen = !isMobileResourcesOpen)}
+									class="flex w-full items-center justify-between rounded-md px-4 py-3 text-base font-medium transition-colors {isResourcePageActive
+										? 'bg-primary/10 text-primary'
+										: 'text-foreground/80 hover:bg-accent hover:text-foreground'}"
+								>
+									Resources
+									<ChevronDown
+										class="h-4 w-4 transition-transform duration-200 {isMobileResourcesOpen
+											? 'rotate-180'
+											: ''}"
+									/>
+								</button>
+
+								{#if isMobileResourcesOpen}
+									<div class="mt-1 ml-4 flex flex-col space-y-1 border-l-2 border-border pl-3">
+										<a
+											href={resolve(blogHref)}
+											onclick={() => (isMenuOpen = false)}
+											class="rounded-md px-3 py-2 text-sm font-medium transition-colors {$page.url.pathname.startsWith(
+												resolve(blogHref)
+											)
+												? 'bg-primary/10 text-primary'
+												: 'text-foreground/70 hover:bg-accent hover:text-foreground'}"
+										>
+											Blog
+										</a>
+										<a
+											href={resolve(aboutHref)}
+											onclick={() => (isMenuOpen = false)}
+											class="rounded-md px-3 py-2 text-sm font-medium transition-colors {$page.url.pathname.startsWith(
+												resolve(aboutHref)
+											)
+												? 'bg-primary/10 text-primary'
+												: 'text-foreground/70 hover:bg-accent hover:text-foreground'}"
+										>
+											About
+										</a>
+										<a
+											href={resolve(faqsHref)}
+											onclick={() => (isMenuOpen = false)}
+											class="rounded-md px-3 py-2 text-sm font-medium transition-colors {$page.url.pathname.startsWith(
+												resolve(faqsHref)
+											)
+												? 'bg-primary/10 text-primary'
+												: 'text-foreground/70 hover:bg-accent hover:text-foreground'}"
+										>
+											FAQs
+										</a>
+										<a
+											href={resolve(slidesHref)}
+											onclick={() => (isMenuOpen = false)}
+											class="rounded-md px-3 py-2 text-sm font-medium transition-colors {$page.url.pathname.startsWith(
+												resolve(slidesHref)
+											)
+												? 'bg-primary/10 text-primary'
+												: 'text-foreground/70 hover:bg-accent hover:text-foreground'}"
+										>
+											Slides
+										</a>
+										<a
+											href="https://docs.contextvm.org"
+											target="_blank"
+											rel="noopener noreferrer"
+											onclick={() => (isMenuOpen = false)}
+											class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+										>
+											Docs
+											<ExternalLink class="h-3 w-3 text-muted-foreground" />
+										</a>
+									</div>
+								{/if}
+							</div>
+
 							<a
 								href="https://github.com/contextvm"
 								target="_blank"
