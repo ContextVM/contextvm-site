@@ -38,6 +38,57 @@ export function formatUnixTimestamp(
 	return date.toLocaleString(locale, options);
 }
 
+export function formatRelativeTime(value: Date | string): string {
+	const date = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return '';
+	}
+
+	const deltaSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+	if (deltaSeconds < 0) {
+		const absSeconds = Math.abs(deltaSeconds);
+		if (absSeconds < 20) {
+			return 'just now';
+		}
+		if (absSeconds < 60) {
+			return `in ${absSeconds}s`;
+		}
+		const absMinutes = Math.floor(absSeconds / 60);
+		if (absMinutes < 60) {
+			return `in ${absMinutes}m`;
+		}
+		const absHours = Math.floor(absMinutes / 60);
+		if (absHours < 24) {
+			return `in ${absHours}h`;
+		}
+		const absDays = Math.floor(absHours / 24);
+		return `in ${absDays}d`;
+	}
+
+	if (deltaSeconds < 20) {
+		return 'just now';
+	}
+	if (deltaSeconds < 60) {
+		return `${deltaSeconds}s ago`;
+	}
+
+	const deltaMinutes = Math.floor(deltaSeconds / 60);
+	if (deltaMinutes < 60) {
+		return `${deltaMinutes}m ago`;
+	}
+
+	const deltaHours = Math.floor(deltaMinutes / 60);
+	if (deltaHours < 24) {
+		return `${deltaHours}h ago`;
+	}
+
+	const deltaDays = Math.floor(deltaHours / 24);
+	if (deltaDays > 7) {
+		return date.toLocaleDateString();
+	}
+	return `${deltaDays}d ago`;
+}
+
 // Server capability utilities
 export function hasCapability(server: InitializeResult, capability: string): boolean {
 	return capability in server.capabilities;

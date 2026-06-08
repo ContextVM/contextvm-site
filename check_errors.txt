@@ -1,0 +1,254 @@
+Loading svelte-check in workspace: /home/khush/code_hub/ContextVM/contextvm-site
+Getting Svelte diagnostics...
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:215:4
+Error: Argument expression expected. 
+		const stream = await this.client.chat.completions.create(
+			const controller = new AbortController();
+			const handleAbort = () => controller.abort();
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:238:13
+Error: ',' expected. 
+				model,
+				messages: toOpenAiMessages(messages),
+				stream: true,
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:239:11
+Error: ',' expected. 
+				messages: toOpenAiMessages(messages),
+				stream: true,
+				...(tools?.length ? { tools } : {})
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:241:4
+Error: ',' expected. 
+				...(tools?.length ? { tools } : {})
+			},
+			{
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:241:5
+Error: Unexpected token. A constructor, method, accessor, or property was expected. 
+				...(tools?.length ? { tools } : {})
+			},
+			{
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:242:4
+Error: Unexpected token. A constructor, method, accessor, or property was expected. 
+			},
+			{
+				signal
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:245:3
+Error: Declaration or statement expected. 
+					signal: controller.signal
+		);
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:311:5
+Error: Declaration or statement expected. 
+					toolCallAccumulator.set(toolCall.index, existing);
+				}
+			}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:312:4
+Error: Declaration or statement expected. 
+				}
+			}
+		}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:313:3
+Error: Declaration or statement expected. 
+			}
+		}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:328:2
+Error: Declaration or statement expected. 
+		return { content, model, finishReason, toolCalls };
+	}
+}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:329:1
+Error: Declaration or statement expected. 
+	}
+}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:213:5
+Error: A function whose declared type is neither 'undefined', 'void', nor 'any' must return a value. 
+		tools: ChatCompletionTool[] | undefined
+	): Promise<SendMessageResult> {
+		const stream = await this.client.chat.completions.create(
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:214:9
+Error: Cannot redeclare block-scoped variable 'stream'. 
+	): Promise<SendMessageResult> {
+		const stream = await this.client.chat.completions.create(
+			const controller = new AbortController();
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:236:10
+Error: Cannot redeclare block-scoped variable 'stream'. 
+
+			const stream = await this.client.chat.completions.create(
+				model,
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:240:5
+Error: A spread argument must either have a tuple type or be passed to a rest parameter. 
+				stream: true,
+				...(tools?.length ? { tools } : {})
+			},
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:240:8
+Error: Type '{ tools: ChatCompletionTool[]; } | {}' must have a '[Symbol.iterator]()' method that returns an iterator. 
+				stream: true,
+				...(tools?.length ? { tools } : {})
+			},
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:243:5
+Error: Cannot find name 'signal'. 
+			{
+				signal
+					signal: controller.signal
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:244:14
+Error: Cannot find name 'controller'. 
+				signal
+					signal: controller.signal
+		);
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:253:5
+Error: Cannot find name 'resetIdleTimeout'. 
+			try {
+				resetIdleTimeout();
+				for await (const chunk of stream) {
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:254:31
+Error: Cannot find name 'stream'. 
+				resetIdleTimeout();
+				for await (const chunk of stream) {
+					resetIdleTimeout();
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:255:6
+Error: Cannot find name 'resetIdleTimeout'. 
+				for await (const chunk of stream) {
+					resetIdleTimeout();
+					const choice = chunk.choices[0];
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:268:7
+Error: Cannot find name 'onDelta'. Did you mean 'delta'? 
+						content += delta.content;
+						onDelta?.(delta.content);
+					}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:294:9
+Error: Cannot find name 'idleTimeoutId'. 
+			} finally {
+				if (idleTimeoutId) {
+					clearTimeout(idleTimeoutId);
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:295:19
+Error: Cannot find name 'idleTimeoutId'. 
+				if (idleTimeoutId) {
+					clearTimeout(idleTimeoutId);
+				}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:297:9
+Error: Cannot find name 'signal'. 
+				}
+				if (signal) {
+					signal.removeEventListener('abort', handleAbort);
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:298:6
+Error: Cannot find name 'signal'. 
+				if (signal) {
+					signal.removeEventListener('abort', handleAbort);
+				}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:298:42
+Error: Cannot find name 'handleAbort'. 
+				if (signal) {
+					signal.removeEventListener('abort', handleAbort);
+				}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:302:8
+Error: Cannot find name 'timedOut'. 
+
+			if (timedOut) {
+				throw new Error('LLM response timed out');
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:306:10
+Error: Cannot find name 'toolCall'. 
+					}
+					if (toolCall.function?.arguments) {
+						existing.args += toolCall.function.arguments;
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:307:7
+Error: Cannot find name 'existing'. 
+					if (toolCall.function?.arguments) {
+						existing.args += toolCall.function.arguments;
+					}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:307:24
+Error: Cannot find name 'toolCall'. 
+					if (toolCall.function?.arguments) {
+						existing.args += toolCall.function.arguments;
+					}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:310:6
+Error: Cannot find name 'toolCallAccumulator'. 
+
+					toolCallAccumulator.set(toolCall.index, existing);
+				}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:310:30
+Error: Cannot find name 'toolCall'. 
+
+					toolCallAccumulator.set(toolCall.index, existing);
+				}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:310:46
+Error: Cannot find name 'existing'. 
+
+					toolCallAccumulator.set(toolCall.index, existing);
+				}
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:316:4
+Error: Cannot find name 'toolCallAccumulator'. 
+		const toolCalls =
+			toolCallAccumulator.size > 0
+				? [...toolCallAccumulator.values()]
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:317:11
+Error: Cannot find name 'toolCallAccumulator'. 
+			toolCallAccumulator.size > 0
+				? [...toolCallAccumulator.values()]
+						.filter((toolCall) => toolCall.id && toolCall.name)
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:326:3
+Error: Object is possibly 'undefined'. 
+
+		this.lastUsedModel = model;
+		return { content, model, finishReason, toolCalls };
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/llm.ts:326:24
+Error: Cannot find name 'model'. 
+
+		this.lastUsedModel = model;
+		return { content, model, finishReason, toolCalls };
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/conversation-store.svelte.ts:168:4
+Error: Cannot find name 'sort'. 
+			.map((conversation) => normalizeConversation(conversation as Conversation))
+			sort(
+			(a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt)
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/conversation-store.svelte.ts:169:5
+Error: Parameter 'a' implicitly has an 'any' type. 
+			sort(
+			(a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt)
+		);
+
+/home/khush/code_hub/ContextVM/contextvm-site/src/lib/services/conversation-store.svelte.ts:169:8
+Error: Parameter 'b' implicitly has an 'any' type. 
+			sort(
+			(a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt)
+		);
+
+====================================
+svelte-check found 42 errors and 0 warnings in 2 files

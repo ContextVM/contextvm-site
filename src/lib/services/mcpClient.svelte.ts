@@ -167,8 +167,8 @@ export class McpClientService {
 
 		const baseTransport = new NostrClientTransport({
 			signer,
-			serverPubkey: preferredIdentifier,
-			fallbackOperationalRelayUrls: relayStore.selectedRelays
+			serverPubkey: preferredIdentifier
+			// fallbackOperationalRelayUrls: relayStore.selectedRelays
 		});
 		this.clientTransports.set(serverKey, baseTransport);
 
@@ -374,9 +374,11 @@ export class McpClientService {
 	}
 
 	// List tools for a server
-	async listTools(serverIdentifier: string): Promise<ListToolsResult> {
+	async listTools(serverIdentifier: string, cursor?: string): Promise<ListToolsResult> {
 		const client = await this.getConnectedClientOrThrow(serverIdentifier);
-		return client.listTools(undefined, { timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS });
+		return client.listTools(cursor ? { cursor } : undefined, {
+			timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS
+		});
 	}
 
 	// List resources for a server
@@ -405,19 +407,29 @@ export class McpClientService {
 	async callTool(
 		serverIdentifier: string,
 		toolName: string,
-		arguments_: Record<string, unknown>
+		arguments_: Record<string, unknown>,
+		signal?: AbortSignal
 	): Promise<CallToolResult> {
 		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 
-		const result = await client.callTool(
+		if (signal?.aborted) {
+			throw new Error('Tool execution stopped');
+		}
+
+		const toolPromise = client.callTool(
 			{
 				name: toolName,
 				arguments: arguments_,
-				_meta: { progressToken: Math.random().toString(36).substring(2, 15) }
+				_meta: { progressToken: crypto.randomUUID() }
 			},
 			undefined,
-			{ timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS, resetTimeoutOnProgress: true }
+			{
+				timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS,
+				resetTimeoutOnProgress: true,
+				signal
+			}
 		);
+		const result = await toolPromise;
 		return result as CallToolResult;
 	}
 

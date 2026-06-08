@@ -3,7 +3,12 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import ServerCard from '$lib/components/ServerCard.svelte';
 	import LoadingCard from '$lib/components/LoadingCard.svelte';
-	import { useServerAnnouncement, useServerAnnouncements } from '$lib/queries/serverQueries';
+	import {
+		useServerAnnouncement,
+		useServerAnnouncements,
+		matchesServerSearch
+	} from '$lib/queries/serverQueries';
+	import { serverKeys } from '$lib/queries/serverQueryKeys';
 	import { eventStore } from '$lib/services/eventStore';
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 	import { CatalogSchemasModel } from '$lib/models/catalogSchemas';
@@ -12,11 +17,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import CatalogBrowseSection from '$lib/components/CatalogBrowseSection.svelte';
-	import {
-		decodeServerIdentifier,
-		encodeServerIdentity,
-		resolveServerIdentifier
-	} from '$lib/utils';
+	import { decodeServerIdentifier, resolveServerIdentifier } from '$lib/utils';
 
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 	const allSchemas = eventStore.model(CatalogSchemasModel);
@@ -48,7 +49,7 @@
 		const trimmedSearchTerm = searchTerm.trim();
 
 		return createQuery({
-			queryKey: ['server-search-identifier', trimmedSearchTerm, page.url.hostname],
+			queryKey: serverKeys.searchIdentifier(trimmedSearchTerm, page.url.hostname),
 			queryFn: () => resolveServerIdentifier(trimmedSearchTerm, page.url.hostname),
 			enabled: trimmedSearchTerm.length > 0
 		});
@@ -59,23 +60,8 @@
 			return $serverAnnouncements;
 		}
 
-		const term = searchTerm.toLowerCase().trim();
-		const decodedIdentifier = decodeServerIdentifier(searchTerm);
-		const normalizedPubkey = decodedIdentifier?.pubkey;
-		return (
-			$serverAnnouncements?.filter((server) => {
-				const identity = encodeServerIdentity(server.pubkey, []);
-
-				return (
-					server.name.toLowerCase().includes(term) ||
-					server.about?.toLowerCase().includes(term) ||
-					server.website?.toLowerCase().includes(term) ||
-					server.pubkey.includes(term) ||
-					identity.npub.toLowerCase().includes(term) ||
-					(normalizedPubkey !== undefined && server.pubkey === normalizedPubkey)
-				);
-			}) ?? []
-		);
+		const term = searchTerm.trim();
+		return $serverAnnouncements?.filter((s) => matchesServerSearch(s, term)) ?? [];
 	});
 
 	const decodedSearchIdentifier = $derived(

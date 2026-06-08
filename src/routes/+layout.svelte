@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Header from '$lib/components/header.svelte';
 	import Footer from '$lib/components/footer.svelte';
+	import { page } from '$app/stores';
 	import { ModeWatcher } from 'mode-watcher';
 	import '../app.css';
 	import { setThemeContext } from '@sjsf/shadcn4-theme';
@@ -24,8 +25,14 @@
 	<Header />
 	<RelayWidget />
 	<Toaster />
-	<div class="min-h-screen pt-14">
+	<div
+		class={$page.url.pathname.startsWith('/chat')
+			? 'min-h-[calc(100dvh-3.5rem)] pt-14'
+			: 'min-h-screen pt-14'}
+	>
 		{@render children()}
 	</div>
-	<Footer />
+	{#if !$page.url.pathname.startsWith('/chat')}
+		<Footer />
+	{/if}
 </QueryClientProvider>
