@@ -9,7 +9,7 @@
 	let activePanel = $state<'conversations' | 'servers'>('conversations');
 </script>
 
-<Sidebar.Root collapsible="icon" class="border-r border-border/60 bg-sidebar/95">
+<Sidebar.Root collapsible="icon" class="h-full border-r border-border/60 bg-sidebar/95">
 	<Sidebar.Header class="border-b border-border/60 bg-sidebar/80">
 		<div class="flex items-center justify-between gap-2">
 			<div class="flex items-center gap-2 group-data-[state=collapsed]/sidebar:hidden">
@@ -50,7 +50,7 @@
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Header>
-	<Sidebar.Content class="px-2 pb-4 group-data-[state=collapsed]/sidebar:hidden">
+	<Sidebar.Content class="min-h-0 group-data-[state=collapsed]/sidebar:hidden">
 		{#if activePanel === 'conversations'}
 			<ConversationList bind:activeId />
 		{:else}

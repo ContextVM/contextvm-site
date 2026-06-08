@@ -1,38 +1,58 @@
-# sv
+# ContextVM
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Modern web application for discovering, connecting to, and orchestrating MCP (Model Context Protocol) servers over Nostr.
 
-## Creating a project
+## Tech Stack
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Svelte 5** + **SvelteKit** — reactive UI with runes
+- **TypeScript** — strict type checking
+- **Tailwind CSS v4** + **Shadcn Svelte** — styling & components
+- **Applesauce** — Nostr event store, loaders, accounts
+- **Bun** — package manager & runtime
 
-```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Getting Started
 
 ```sh
-npm run dev
+# Install dependencies
+bun install
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+# Start dev server
+bun run dev
+
+# Build for production
+bun run build
 ```
 
-## Building
+## Project Structure
 
-To create a production version of your app:
-
-```sh
-npm run build
+```
+src/
+├── lib/
+│   ├── components/     # UI components (chat, landing, ui)
+│   ├── services/       # LLM, MCP client, agent orchestrator, payments
+│   ├── models/         # Nostr event models (server announcements)
+│   ├── queries/        # TanStack Query hooks
+│   ├── stores/         # Svelte 5 reactive stores
+│   └── types/          # TypeScript type definitions
+├── routes/             # SvelteKit routes (chat, servers, blog, etc.)
+└── app.css             # Global styles
 ```
 
-You can preview the production build with `npm run preview`.
+## Commands
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Start development server |
+| `bun run build` | Build for production |
+| `bun run preview` | Preview production build |
+| `bun run check` | TypeScript type check |
+| `bun run format` | Format code with Prettier |
+| `bun run lint` | Lint code with ESLint |
+
+## Key Features
+
+- **Server Catalog** — browse MCP servers announced over Nostr
+- **One-Click Connect** — connect to servers directly from the chat
+- **Agent Orchestration** — LLM-powered tool orchestration across connected servers
+- **Nostr Identity** — server lookup via NIP-05, npub, hex pubkey
+- **Payments** — CEP-8 payment flow for paid server tools

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import {
 		isAutoMode,
 		isUsingDefaultKey,
@@ -13,77 +14,17 @@
 	import { LLMService } from '$lib/services/llm';
 	import { AgentOrchestrator } from '$lib/services/agent-orchestrator';
 	import { mcpClientService } from '$lib/services/mcpClient.svelte';
+	import { eventStore } from '$lib/services/eventStore';
+	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
+	import { createServerAnnouncementsLoader } from '$lib/services/loaders.svelte';
 	import ChatBubble from '$lib/components/chat/ChatBubble.svelte';
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
 	import AutoModeBanner from '$lib/components/chat/AutoModeBanner.svelte';
 	import { cn } from '$lib/utils.js';
 	import ServerIcon from '@lucide/svelte/icons/server';
-	import GitBranchIcon from '@lucide/svelte/icons/git-branch';
 	import PlugIcon from '@lucide/svelte/icons/plug';
-	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
-
-	type PromptItem = { text: string; icon: typeof ServerIcon };
-
-	const PROMPT_POOL: PromptItem[] = [
-		{
-			text: 'Find MCP servers that offer code analysis tools',
-			icon: ServerIcon
-		},
-		{
-			text: 'List all available tools on my connected servers',
-			icon: ServerIcon
-		},
-		{
-			text: 'Compare capabilities of two MCP server providers',
-			icon: ServerIcon
-		},
-		{
-			text: 'Design a multi-step workflow using MCP tools',
-			icon: GitBranchIcon
-		},
-		{
-			text: 'Chain a file reader and a summarizer tool together',
-			icon: GitBranchIcon
-		},
-		{
-			text: 'Build an automated code review pipeline with MCP',
-			icon: GitBranchIcon
-		},
-		{
-			text: 'Help me connect a new MCP server via Nostr relay',
-			icon: PlugIcon
-		},
-		{
-			text: 'Generate a server announcement event for my tools',
-			icon: PlugIcon
-		},
-		{
-			text: 'Walk me through setting up a ContextVM transport',
-			icon: PlugIcon
-		},
-		{
-			text: 'Use the connected tools to analyze this codebase',
-			icon: TerminalIcon
-		},
-		{
-			text: 'Run a tool and explain the output step by step',
-			icon: TerminalIcon
-		},
-		{
-			text: 'Draft a Nostr event to publish my MCP server',
-			icon: TerminalIcon
-		}
-	];
-
-	const shuffleArray = <T,>(items: T[]) => {
-		const result = [...items];
-		for (let i = result.length - 1; i > 0; i -= 1) {
-			const j = Math.floor(Math.random() * (i + 1));
-			[result[i], result[j]] = [result[j], result[i]];
-		}
-		return result;
-	};
 
 	let {
 		conversationId = $bindable(null),
@@ -109,7 +50,34 @@
 	let conversationToken = 0;
 	let loadedConversationId: string | null = null;
 	let isNearBottom = $state(true);
-	let starterPrompts = $state<PromptItem[]>(shuffleArray(PROMPT_POOL).slice(0, 3));
+
+	// ── Server catalog ──────────────────────────────────────────────────
+	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
+
+	// Subscribe to the announcements loader so relay events populate the
+	// event store regardless of whether the sidebar ServerPanel is mounted.
+	$effect(() => {
+		const sub = createServerAnnouncementsLoader().subscribe();
+		return () => sub.unsubscribe();
+	});
+
+	const connectedPubkeys = $derived(new Set([...mcpClientService.clients.keys()]));
+
+	const availableServers = $derived(
+		($serverAnnouncements ?? []).filter((s) => !connectedPubkeys.has(s.pubkey)).slice(0, 6)
+	);
+
+	let connectingPubkey = $state<string | null>(null);
+
+	async function connectToServer(identifier: string) {
+		connectingPubkey = identifier;
+		try {
+			await mcpClientService.getClient(identifier);
+		} finally {
+			connectingPubkey = null;
+		}
+	}
+
 	let persistTimeout: ReturnType<typeof setTimeout> | null = null;
 	let pendingPersist: { id: string; messages: ChatMessage[] } | null = null;
 
@@ -313,7 +281,6 @@
 
 		messages = [...messages, userMessage];
 		const streamMessages = messages;
-		starterPrompts = [];
 		isStreaming = true;
 
 		try {
@@ -483,24 +450,58 @@
 						Orchestrate MCP servers, explore tools, and manage workflows — all from this chat.
 					</p>
 				</div>
-				<div class="grid w-full gap-3 sm:grid-cols-3">
-					{#each starterPrompts as prompt (prompt.text)}
-						{@const Icon = prompt.icon}
-						<button
-							type="button"
-							class="group flex h-full items-start gap-3 rounded-xl border border-border/60 bg-card/60 px-3.5 py-3 text-left text-sm leading-5 text-foreground shadow-sm backdrop-blur transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card/80 disabled:cursor-not-allowed disabled:opacity-60"
-							disabled={isStreaming}
-							onclick={() => handleSend(prompt.text)}
-						>
-							<span
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+				{#if availableServers.length > 0}
+					<div class="grid w-full gap-3 sm:grid-cols-2">
+						{#each availableServers as server (server.pubkey)}
+							{@const isConnecting = connectingPubkey === server.pubkey}
+							<div
+								class="group flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-3.5 py-3 text-left shadow-sm backdrop-blur transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card/80"
 							>
-								<Icon class="h-4 w-4" />
-							</span>
-							<span class="min-w-0 text-left">{prompt.text}</span>
-						</button>
-					{/each}
-				</div>
+								<a
+									href={resolve(`/s/${server.pubkey}`)}
+									class="flex min-w-0 flex-1 items-center gap-3"
+								>
+									<span
+										class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+									>
+										<ServerIcon class="h-4 w-4" />
+									</span>
+									<span class="min-w-0">
+										<span class="block truncate text-sm font-medium">{server.name}</span>
+										<span class="block truncate font-mono text-[10px] text-muted-foreground">
+											{server.pubkey.slice(0, 12)}...
+										</span>
+									</span>
+								</a>
+								<button
+									type="button"
+									class="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+									disabled={isConnecting}
+									onclick={() => connectToServer(server.pubkey)}
+									aria-label="Connect to {server.name}"
+								>
+									{#if isConnecting}
+										<LoaderCircleIcon class="h-4 w-4 animate-spin" />
+									{:else}
+										<PlugIcon class="h-4 w-4" />
+									{/if}
+								</button>
+							</div>
+						{/each}
+					</div>
+					<a
+						href={resolve('/servers')}
+						class="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Browse all servers
+						<ExternalLinkIcon class="h-3 w-3" />
+					</a>
+				{:else}
+					<div class="flex items-center gap-2 text-xs text-muted-foreground">
+						<LoaderCircleIcon class="h-3 w-3 animate-spin" />
+						Loading servers...
+					</div>
+				{/if}
 				<p class="text-[11px] text-muted-foreground/60">
 					Press Enter to send · Shift+Enter for new line
 				</p>
