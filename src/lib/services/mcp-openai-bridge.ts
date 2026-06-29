@@ -1,5 +1,5 @@
 import type { ToolApprovalTier } from '$lib/types/chat-types';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@contextvm/mcp-sdk/types.js';
 import type { ChatCompletionTool } from 'openai/resources/chat/completions';
 import Ajv, { type ValidateFunction } from 'ajv';
 

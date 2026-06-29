@@ -5,7 +5,7 @@
 	import { copyToClipboard } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import type { Resource, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
+	import type { Resource, ReadResourceResult } from '@contextvm/mcp-sdk/types.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';

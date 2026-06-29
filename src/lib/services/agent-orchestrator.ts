@@ -1,4 +1,4 @@
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@contextvm/mcp-sdk/types.js';
 import type { ChatMessage, ToolCallData } from '$lib/types/chat-types';
 import type { LLMService, SendMessageResult } from '$lib/services/llm';
 import type { McpClientService } from '$lib/services/mcpClient.svelte';

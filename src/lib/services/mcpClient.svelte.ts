@@ -4,7 +4,7 @@ import {
 	PAYMENT_ACCEPTED_METHOD,
 	PAYMENT_REJECTED_METHOD
 } from '@contextvm/sdk/payments/constants';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Client } from '@contextvm/mcp-sdk/client/index.js';
 import {
 	type ListPromptsResult,
 	type ListResourcesResult,
@@ -12,15 +12,14 @@ import {
 	type ListToolsResult,
 	type CallToolResult,
 	type ReadResourceResult,
-	type GetPromptResult,
-	ProgressNotificationSchema
-} from '@modelcontextprotocol/sdk/types.js';
+	type GetPromptResult
+} from '@contextvm/mcp-sdk/types.js';
 import { SvelteMap } from 'svelte/reactivity';
 import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
 import { withClientPayments, PMI_BITCOIN_LIGHTNING_BOLT11 } from '@contextvm/sdk';
 import { UiOnlyPaymentHandler } from '$lib/services/payments/ui-payment-handler';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { relayStore } from '$lib/stores/relay-store.svelte';
+import type { Transport } from '@contextvm/mcp-sdk/shared/transport.js';
+import type { ProgressCallback } from '@contextvm/mcp-sdk/shared/protocol.js';
 import { decodeServerIdentifier } from '$lib/utils';
 import type { PaymentAcceptedNotification, PaymentRejectedNotification } from '@contextvm/sdk';
 import { z } from 'zod';
@@ -54,19 +53,10 @@ export interface McpConnectionState {
 	error: string | null;
 }
 
-export interface McpProgressNotification {
-	progressToken: string;
-	serverPubkey: string;
-	progress: number;
-	message?: string;
-	timestamp: number;
-}
-
 export class McpClientService {
 	public clients = new SvelteMap<string, Client>();
 	private clientTransports = new SvelteMap<string, NostrClientTransport>();
 	private connectionStates = new SvelteMap<string, McpConnectionState>();
-	private progressNotifications = new SvelteMap<string, McpProgressNotification[]>();
 	private serverIdentifiers = new SvelteMap<string, string>();
 	private static readonly clientConfig = {
 		name: 'ContextVM Web Client',
@@ -78,8 +68,6 @@ export class McpClientService {
 		error: null
 	};
 	private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
-
-	constructor() {}
 
 	private getServerKey(serverIdentifier: string): string {
 		return decodeServerIdentifier(serverIdentifier)?.pubkey ?? serverIdentifier;
@@ -168,7 +156,6 @@ export class McpClientService {
 		const baseTransport = new NostrClientTransport({
 			signer,
 			serverPubkey: preferredIdentifier
-			// fallbackOperationalRelayUrls: relayStore.selectedRelays
 		});
 		this.clientTransports.set(serverKey, baseTransport);
 
@@ -275,29 +262,6 @@ export class McpClientService {
 			// CEP-8 `payment_required` is captured by the payments middleware handler.
 			this.registerPaymentNotificationHandlers(client, serverIdentifier);
 
-			client.setNotificationHandler(ProgressNotificationSchema, async (req) => {
-				if (req.params?.progressToken) {
-					const notification: McpProgressNotification = {
-						progressToken: req.params.progressToken as string,
-						serverPubkey: serverKey,
-						progress: req.params.progress || 0,
-						message: req.params.message,
-						timestamp: Date.now()
-					};
-
-					const existingNotifications = this.progressNotifications.get(serverKey) || [];
-					const existingIndex = existingNotifications.findIndex(
-						(n) => n.progressToken === notification.progressToken
-					);
-
-					if (existingIndex >= 0) {
-						existingNotifications[existingIndex] = notification;
-					} else {
-						existingNotifications.push(notification);
-					}
-					this.progressNotifications.set(serverKey, existingNotifications);
-				}
-			});
 			this.clients.set(serverKey, client);
 
 			this.setConnectionState(serverKey, {
@@ -340,39 +304,6 @@ export class McpClientService {
 		);
 	}
 
-	// Get progress notifications for a server
-	getProgressNotifications(serverIdentifier: string): McpProgressNotification[] {
-		return this.progressNotifications.get(this.getServerKey(serverIdentifier)) || [];
-	}
-
-	// Get all progress notifications across all servers
-	getAllProgressNotifications(): McpProgressNotification[] {
-		const allNotifications: McpProgressNotification[] = [];
-		for (const notifications of this.progressNotifications.values()) {
-			allNotifications.push(...notifications);
-		}
-		return allNotifications.sort((a, b) => b.timestamp - a.timestamp);
-	}
-
-	// Clear progress notifications for a server
-	clearProgressNotifications(serverIdentifier: string): void {
-		this.progressNotifications.delete(this.getServerKey(serverIdentifier));
-	}
-
-	// Clear a specific progress notification
-	clearProgressNotification(serverIdentifier: string, progressToken: string): void {
-		const serverKey = this.getServerKey(serverIdentifier);
-		const notifications = this.progressNotifications.get(serverKey);
-		if (notifications) {
-			const filteredNotifications = notifications.filter((n) => n.progressToken !== progressToken);
-			if (filteredNotifications.length > 0) {
-				this.progressNotifications.set(serverKey, filteredNotifications);
-			} else {
-				this.progressNotifications.delete(serverKey);
-			}
-		}
-	}
-
 	// List tools for a server
 	async listTools(serverIdentifier: string, cursor?: string): Promise<ListToolsResult> {
 		const client = await this.getConnectedClientOrThrow(serverIdentifier);
@@ -403,12 +334,15 @@ export class McpClientService {
 		return client.listPrompts(undefined, { timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS });
 	}
 
-	// Call a tool on a server
+	// Call a tool on a server. Progress is delegated to the SDK via `onprogress`
+	// (with `resetTimeoutOnProgress`), so we never inject our own progress token —
+	// keeping request `params` deterministic for explicit-gating canonical matching.
 	async callTool(
 		serverIdentifier: string,
 		toolName: string,
 		arguments_: Record<string, unknown>,
-		signal?: AbortSignal
+		signal?: AbortSignal,
+		onprogress?: ProgressCallback
 	): Promise<CallToolResult> {
 		const client = await this.getConnectedClientOrThrow(serverIdentifier);
 
@@ -416,20 +350,12 @@ export class McpClientService {
 			throw new Error('Tool execution stopped');
 		}
 
-		const toolPromise = client.callTool(
-			{
-				name: toolName,
-				arguments: arguments_,
-				_meta: { progressToken: crypto.randomUUID() }
-			},
-			undefined,
-			{
-				timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS,
-				resetTimeoutOnProgress: true,
-				signal
-			}
-		);
-		const result = await toolPromise;
+		const result = await client.callTool({ name: toolName, arguments: arguments_ }, undefined, {
+			timeout: McpClientService.DEFAULT_REQUEST_TIMEOUT_MS,
+			resetTimeoutOnProgress: true,
+			signal,
+			onprogress
+		});
 		return result as CallToolResult;
 	}
 
@@ -470,7 +396,6 @@ export class McpClientService {
 		this.clients.clear();
 		this.clientTransports.clear();
 		this.connectionStates.clear();
-		this.progressNotifications.clear();
 		this.serverIdentifiers.clear();
 	}
 }

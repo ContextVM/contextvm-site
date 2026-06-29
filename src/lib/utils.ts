@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { InitializeResult } from '@modelcontextprotocol/sdk/types.js';
+import type { InitializeResult } from '@contextvm/mcp-sdk/types.js';
 import type { ServerAnnouncement } from './models/serverAnnouncements';
 import { toast } from 'svelte-sonner';
 import { decode, npubEncode, nprofileEncode, type ProfilePointer } from 'nostr-tools/nip19';

@@ -11,7 +11,7 @@
 		TextContent,
 		ImageContent,
 		AudioContent
-	} from '@modelcontextprotocol/sdk/types.js';
+	} from '@contextvm/mcp-sdk/types.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';

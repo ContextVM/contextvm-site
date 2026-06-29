@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { devRelay } from '$lib/services/relay-pool';
 import { ApplesauceRelayPool, NostrMCPGateway, PrivateKeySigner } from '@contextvm/sdk';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport } from '@contextvm/mcp-sdk/client/stdio.js';
 import { generateSecretKey } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 

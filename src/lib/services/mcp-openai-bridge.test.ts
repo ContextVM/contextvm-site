@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { ToolRegistry, mcpToolToOpenAI, sanitizeServerName } from './mcp-openai-bridge';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@contextvm/mcp-sdk/types.js';
 
 const makeTool = (overrides: Partial<Tool> = {}): Tool => ({
 	name: 'tool_x',

@@ -15,14 +15,13 @@
 	import { commonRelays, relayPool } from '$lib/services/relay-pool';
 	import { DIALOG_IDS, dialogState } from '$lib/stores/dialog-state.svelte';
 	import { mergeRelaySets } from 'applesauce-core/helpers/relays';
-	import { EventFactory } from 'applesauce-core/event-factory';
 	import type { NostrEvent } from 'applesauce-core/helpers/event';
 	import { SERVER_ANNOUNCEMENT_KIND } from '@contextvm/sdk';
 	import { Comment } from 'applesauce-common/casts';
 	import { CommentsModel } from 'applesauce-common/models';
 	import { castTimelineStream } from 'applesauce-common/observable';
+	import { CommentFactory } from 'applesauce-common/factories';
 	import type { CommentPointer } from 'applesauce-common/helpers';
-	import 'applesauce-common/blueprints/comment';
 
 	let {
 		pubkey,
@@ -40,8 +39,6 @@
 	});
 
 	const publishRelays = $derived(mergeRelaySets(relayHints, commonRelays));
-	const factory = new EventFactory();
-
 	let reviews = $state<Comment[]>([]);
 	let isLoading = $state(true);
 	let composerContent = $state('');
@@ -80,9 +77,7 @@
 			throw new Error('Please log in to publish a review');
 		}
 
-		factory.setSigner(account.signer);
-		const draft = await factory.comment(parent, content);
-		const signedEvent = await account.signEvent(draft);
+		const signedEvent = await CommentFactory.create(parent, content).as(account.signer).sign();
 		eventStore.add(signedEvent);
 
 		await relayPool.publish(publishRelays, signedEvent);

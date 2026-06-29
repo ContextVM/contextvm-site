@@ -8,7 +8,7 @@
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import CopyIcon from '@lucide/svelte/icons/copy';
-	import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+	import type { Tool, CallToolResult } from '@contextvm/mcp-sdk/types.js';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';

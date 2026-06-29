@@ -40,14 +40,14 @@ src/
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `bun run dev` | Start development server |
-| `bun run build` | Build for production |
-| `bun run preview` | Preview production build |
-| `bun run check` | TypeScript type check |
-| `bun run format` | Format code with Prettier |
-| `bun run lint` | Lint code with ESLint |
+| Command           | Description               |
+| ----------------- | ------------------------- |
+| `bun run dev`     | Start development server  |
+| `bun run build`   | Build for production      |
+| `bun run preview` | Preview production build  |
+| `bun run check`   | TypeScript type check     |
+| `bun run format`  | Format code with Prettier |
+| `bun run lint`    | Lint code with ESLint     |
 
 ## Key Features
 

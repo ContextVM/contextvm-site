@@ -1,5 +1,5 @@
 import type { Event } from 'nostr-tools';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@contextvm/mcp-sdk/types.js';
 
 import { COMMON_SCHEMA_NAMESPACE } from '$lib/constants';
 

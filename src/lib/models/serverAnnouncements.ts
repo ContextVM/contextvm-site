@@ -1,7 +1,7 @@
 import { map } from 'rxjs/operators';
 import type { Model } from 'applesauce-core';
 import { getTagValue } from 'applesauce-core/helpers';
-import { InitializeResultSchema, type InitializeResult } from '@modelcontextprotocol/sdk/types.js';
+import { InitializeResultSchema, type InitializeResult } from '@contextvm/mcp-sdk/types.js';
 import { type Event } from 'nostr-tools';
 import { SERVER_ANNOUNCEMENT_KIND } from '@contextvm/sdk';
 import { queryClient } from '$lib/query-client';

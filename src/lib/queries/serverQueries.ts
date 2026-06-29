@@ -11,7 +11,7 @@ import {
 	createPromptsAnnouncementByPubkeyLoader,
 	createServerAnnouncementsLoader
 } from '$lib/services/loaders.svelte';
-import type { Tool, Resource, ResourceTemplate, Prompt } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool, Resource, ResourceTemplate, Prompt } from '@contextvm/mcp-sdk/types.js';
 import { lastValueFrom } from 'rxjs';
 import type { NostrEvent } from 'nostr-tools';
 import { getSeenRelays, mergeRelaySets } from 'applesauce-core/helpers/relays';

@@ -4,7 +4,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import Input from '$lib/components/ui/input/input.svelte';
-	import type { ReadResourceResult, ResourceTemplate } from '@modelcontextprotocol/sdk/types.js';
+	import type { ReadResourceResult, ResourceTemplate } from '@contextvm/mcp-sdk/types.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoadingSpinner from './ui/LoadingSpinner.svelte';
