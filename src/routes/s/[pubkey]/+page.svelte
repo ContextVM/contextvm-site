@@ -16,7 +16,12 @@
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
+	import { Switch } from '$lib/components/ui/switch/index.js';
+	import {
+		mcpClientService,
+		type McpConnectionState,
+		type PaymentInteractionMode
+	} from '$lib/services/mcpClient.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import { eventStore } from '$lib/services/eventStore';
 	import { createServerNotesLoader } from '$lib/services/loaders.svelte';
@@ -161,6 +166,17 @@
 
 	// Connection state
 	const connectionState = $derived<McpConnectionState>(mcpClientService.getConnectionState(pubkey));
+	const requestedPaymentMode = $derived(mcpClientService.getConnectionMode(connectionIdentifier));
+	const effectivePaymentMode = $derived(
+		mcpClientService.getEffectivePaymentMode(connectionIdentifier)
+	);
+	const paymentModeCaption = $derived(
+		connectionState.connected
+			? `Effective: ${effectivePaymentMode ?? 'transparent'}`
+			: requestedPaymentMode
+	);
+	const explicitGatingEnabled = $derived(requestedPaymentMode === 'explicit_gating');
+	let paymentModeChanging = $state(false);
 
 	// Server capabilities data
 	const serverData = $derived({
@@ -223,6 +239,21 @@
 			await mcpClientService.disconnect(connectionIdentifier);
 		} catch (err) {
 			console.error('Disconnection error:', err);
+		}
+	}
+
+	async function handlePaymentModeChange(checked: boolean) {
+		const mode: PaymentInteractionMode = checked ? 'explicit_gating' : 'transparent';
+		paymentModeChanging = true;
+
+		try {
+			if (connectionState.connected) {
+				await mcpClientService.reconnectWithMode(connectionIdentifier, mode);
+			} else {
+				mcpClientService.setConnectionMode(connectionIdentifier, mode);
+			}
+		} finally {
+			paymentModeChanging = false;
 		}
 	}
 </script>
@@ -295,7 +326,29 @@
 							</a>
 						{/if}
 					</div>
-					<div class="w-full">
+					<div class="w-full space-y-3">
+						<div
+							class="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/40 px-3 py-2"
+						>
+							<div class="min-w-0">
+								<p class="text-xs font-medium text-foreground">Payment mode</p>
+								<p class="text-[11px] text-muted-foreground">
+									{paymentModeCaption}
+								</p>
+							</div>
+							<div class="flex shrink-0 items-center gap-2">
+								<span class="text-xs text-muted-foreground">
+									{explicitGatingEnabled ? 'Explicit gating' : 'Transparent'}
+								</span>
+								<Switch
+									checked={explicitGatingEnabled}
+									onCheckedChange={handlePaymentModeChange}
+									disabled={paymentModeChanging || connectionState.loading}
+									size="sm"
+									aria-label="Use explicit gating payment mode"
+								/>
+							</div>
+						</div>
 						{#if connectionState.connected}
 							<div class="flex flex-col items-center gap-3">
 								<div
