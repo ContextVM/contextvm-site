@@ -197,7 +197,9 @@ export class LLMService {
 		const baseURL = normalizeBaseURL(config.baseURL);
 
 		return new OpenAI({
-			apiKey: config.apiKey,
+			// ponytail: SDK throws at construction on an empty key; real auth errors
+			// surface from the request itself and are handled by callers.
+			apiKey: config.apiKey || 'missing-api-key',
 			baseURL,
 			defaultHeaders: getDefaultHeaders(baseURL),
 			dangerouslyAllowBrowser: true
