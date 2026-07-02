@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
+	import PaymentErrorCard from '$lib/components/chat/PaymentErrorCard.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { ToolCallData } from '$lib/types/chat-types';
 	import { cn, copyToClipboard } from '$lib/utils.js';
@@ -9,6 +10,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
+	import WalletIcon from '@lucide/svelte/icons/wallet';
 	import XCircleIcon from '@lucide/svelte/icons/x-circle';
 
 	let {
@@ -39,6 +41,8 @@
 				return 'Rejected';
 			case 'error':
 				return 'Error';
+			case 'payment_required':
+				return 'Payment required';
 			default:
 				return 'Approval needed';
 		}
@@ -85,13 +89,15 @@
 					'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium',
 					toolCall.status === 'completed'
 						? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-						: toolCall.status === 'error'
-							? 'bg-destructive/10 text-destructive'
-							: toolCall.status === 'rejected'
-								? 'bg-slate-500/10 text-slate-600 dark:text-slate-300'
-								: toolCall.status === 'running'
-									? 'bg-primary/10 text-primary'
-									: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+						: toolCall.status === 'payment_required'
+							? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+							: toolCall.status === 'error'
+								? 'bg-destructive/10 text-destructive'
+								: toolCall.status === 'rejected'
+									? 'bg-slate-500/10 text-slate-600 dark:text-slate-300'
+									: toolCall.status === 'running'
+										? 'bg-primary/10 text-primary'
+										: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
 				)}
 				role="status"
 				aria-live="polite"
@@ -99,6 +105,8 @@
 			>
 				{#if toolCall.status === 'completed'}
 					<CheckCircleIcon class="h-3 w-3" />
+				{:else if toolCall.status === 'payment_required'}
+					<WalletIcon class="h-3 w-3" />
 				{:else if toolCall.status === 'error'}
 					<XCircleIcon class="h-3 w-3" />
 				{:else if toolCall.status === 'rejected'}
@@ -173,6 +181,10 @@
 					</div>
 				</Collapsible.Content>
 			</Collapsible.Root>
+		{/if}
+
+		{#if toolCall.paymentError}
+			<PaymentErrorCard error={toolCall.paymentError} />
 		{/if}
 	</div>
 </div>
