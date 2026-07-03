@@ -2,7 +2,8 @@ import { activeAccount } from '$lib/services/accountManager.svelte';
 import { NostrClientTransport } from '@contextvm/sdk';
 import {
 	PAYMENT_ACCEPTED_METHOD,
-	PAYMENT_REJECTED_METHOD
+	PAYMENT_REJECTED_METHOD,
+	PAYMENT_REQUIRED_METHOD
 } from '@contextvm/sdk/payments/constants';
 import { Client } from '@contextvm/mcp-sdk/client/index.js';
 import {
@@ -20,7 +21,7 @@ import { withClientPayments } from '@contextvm/sdk';
 import type { Transport } from '@contextvm/mcp-sdk/shared/transport.js';
 import type { ProgressCallback } from '@contextvm/mcp-sdk/shared/protocol.js';
 import { decodeServerIdentifier } from '$lib/utils';
-import type { PaymentAcceptedNotification, PaymentRejectedNotification } from '@contextvm/sdk';
+import type { PaymentAcceptedNotification, PaymentRejectedNotification, PaymentRequiredNotification } from '@contextvm/sdk';
 import { z } from 'zod';
 
 export type PaymentInteractionMode = 'transparent' | 'explicit_gating';
@@ -37,6 +38,12 @@ const PaymentAcceptedNotificationSchema = z.object({
 const PaymentRejectedNotificationSchema = z.object({
 	jsonrpc: z.literal('2.0').optional(),
 	method: z.literal(PAYMENT_REJECTED_METHOD),
+	params: z.record(z.string(), z.unknown()).optional()
+});
+
+const PaymentRequiredNotificationSchema = z.object({
+	jsonrpc: z.literal('2.0').optional(),
+	method: z.literal(PAYMENT_REQUIRED_METHOD),
 	params: z.record(z.string(), z.unknown()).optional()
 });
 
@@ -130,6 +137,22 @@ export class McpClientService {
 				notification: {
 					type: 'payment_rejected',
 					...(notification as PaymentRejectedNotification)
+				},
+				timestamp: Date.now()
+			});
+		});
+
+		client.setNotificationHandler(PaymentRequiredNotificationSchema, async (notification) => {
+			const requestEventId = getRequestEventIdFromNotification(notification);
+			if (!requestEventId) return;
+
+			paymentNotificationsService.set({
+				serverPubkey: serverIdentifier,
+				requestEventId,
+				status: 'payment_required',
+				notification: {
+					type: 'payment_required',
+					...(notification as PaymentRequiredNotification)
 				},
 				timestamp: Date.now()
 			});

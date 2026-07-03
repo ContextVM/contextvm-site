@@ -69,7 +69,10 @@ describe('AgentOrchestrator explicit gating', () => {
 			signal: new AbortController().signal
 		});
 
-		await new Promise(resolve => setTimeout(resolve, 10));
+		for (let i = 0; i < 200 && !(orchestrator as any).pendingApprovals?.has('call_1'); i += 1) {
+			await new Promise((resolve) => setTimeout(resolve, 1));
+		}
+		if (!(orchestrator as any).pendingApprovals?.has('call_1')) throw new Error('Tool call approval not registered');
 		orchestrator.approveToolCall('call_1');
 
 		await runPromise;
@@ -155,7 +158,10 @@ describe('AgentOrchestrator explicit gating', () => {
 			signal: new AbortController().signal
 		});
 
-		await new Promise(resolve => setTimeout(resolve, 10));
+		for (let i = 0; i < 200 && !(orchestrator as any).pendingApprovals?.has('call_1'); i += 1) {
+			await new Promise((resolve) => setTimeout(resolve, 1));
+		}
+		if (!(orchestrator as any).pendingApprovals?.has('call_1')) throw new Error('Tool call approval not registered');
 		orchestrator.approveToolCall('call_1');
 
 		await runPromise;
@@ -222,7 +228,10 @@ describe('AgentOrchestrator explicit gating', () => {
 			signal: new AbortController().signal
 		});
 
-		await new Promise(resolve => setTimeout(resolve, 10));
+		for (let i = 0; i < 200 && !(orchestrator as any).pendingApprovals?.has('call_1'); i += 1) {
+			await new Promise((resolve) => setTimeout(resolve, 1));
+		}
+		if (!(orchestrator as any).pendingApprovals?.has('call_1')) throw new Error('Tool call approval not registered');
 		orchestrator.approveToolCall('call_1');
 
 		await runPromise;

@@ -46,7 +46,7 @@
 				? PAYMENT_REQUIRED_ERROR_CODE
 				: PAYMENT_PENDING_ERROR_CODE}
 		</span>
-		{#if retryAfter}
+		{#if retryAfter !== null}
 			<span class="font-mono text-[10px] text-amber-800/70 dark:text-amber-200/70">
 				Retry after {retryAfter}s
 			</span>
@@ -79,13 +79,13 @@
 					</div>
 
 					{#if payReq}
-						<Tabs.Root value="invoice-{i}" class="mt-3 w-full">
+						<Tabs.Root value="invoice" class="mt-3 w-full">
 							<Tabs.List class="grid w-full grid-cols-2">
-								<Tabs.Trigger value="invoice-{i}">Payment Request</Tabs.Trigger>
-								<Tabs.Trigger value="qr-{i}">QR</Tabs.Trigger>
+								<Tabs.Trigger value="invoice">Payment Request</Tabs.Trigger>
+								<Tabs.Trigger value="qr">QR</Tabs.Trigger>
 							</Tabs.List>
 
-							<Tabs.Content value="invoice-{i}" class="mt-2">
+							<Tabs.Content value="invoice" class="mt-2">
 								<div class="relative rounded-md bg-muted p-2">
 									<pre class="max-h-44 overflow-auto pr-8 text-xs whitespace-pre-wrap">{payReq}</pre>
 									<button
@@ -99,7 +99,7 @@
 								</div>
 							</Tabs.Content>
 
-							<Tabs.Content value="qr-{i}" class="mt-2">
+							<Tabs.Content value="qr" class="mt-2">
 								<div class="flex justify-center">
 									<QrCode data={payReq} size={180} />
 								</div>
