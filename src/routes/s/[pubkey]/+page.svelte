@@ -176,6 +176,11 @@
 			: requestedPaymentMode
 	);
 	const explicitGatingEnabled = $derived(requestedPaymentMode === 'explicit_gating');
+	const modeMismatch = $derived(
+		connectionState.connected &&
+			requestedPaymentMode === 'explicit_gating' &&
+			effectivePaymentMode !== 'explicit_gating'
+	);
 	let paymentModeChanging = $state(false);
 
 	// Server capabilities data
@@ -335,6 +340,11 @@
 								<p class="text-[11px] text-muted-foreground">
 									{paymentModeCaption}
 								</p>
+								{#if modeMismatch}
+									<p class="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
+										Server does not support explicit gating &mdash; fell back to transparent.
+									</p>
+								{/if}
 							</div>
 							<div class="flex shrink-0 items-center gap-2">
 								<span class="text-xs text-muted-foreground">
