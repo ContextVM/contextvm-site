@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
 	import PaymentErrorCard from '$lib/components/chat/PaymentErrorCard.svelte';
+	import PaymentStatusPanel from '$lib/components/PaymentStatusPanel.svelte';
+	import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { ToolCallData } from '$lib/types/chat-types';
 	import { cn, copyToClipboard } from '$lib/utils.js';
@@ -28,6 +30,10 @@
 	let formattedArguments = $state('{}');
 	let lastArguments = $state('');
 
+	// Transparent-mode payment for this tool's server (explicit gating uses paymentError below).
+	const transparentPayment = $derived(
+		toolCall.serverPubkey ? paymentNotificationsService.getLatestForServer(toolCall.serverPubkey) : undefined
+	);
 	const title = $derived(toolCall.name.replace(/_/g, ' '));
 	const statusLabel = $derived.by(() => {
 		switch (toolCall.status) {
@@ -185,6 +191,9 @@
 
 		{#if toolCall.paymentError}
 			<PaymentErrorCard error={toolCall.paymentError} />
+		{:else if transparentPayment &&
+			(toolCall.status === 'running' || toolCall.status === 'pending' || toolCall.status === 'approved')}
+			<PaymentStatusPanel payment={transparentPayment} />
 		{/if}
 	</div>
 </div>

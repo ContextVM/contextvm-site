@@ -16,6 +16,7 @@ export interface ToolCallData {
 		| 'payment_required';
 	result?: string;
 	serverName?: string;
+	serverPubkey?: string;
 	paymentError?: ExplicitGatingError;
 }
 

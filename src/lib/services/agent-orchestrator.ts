@@ -8,7 +8,6 @@ import {
 	serializeExplicitGatingError
 } from '$lib/services/payments/payment-errors';
 
-const DEFAULT_MAX_TOOL_ROUNDS = 5;
 const DEFAULT_TOOL_APPROVAL_TIMEOUT_MS = 120_000;
 const DEFAULT_REGISTRY_CACHE_MS = 60_000;
 const DEFAULT_TOOL_CONCURRENCY = 4;
@@ -40,12 +39,10 @@ export type AgentOrchestratorRunOptions = {
 
 export type AgentOrchestratorResult = {
 	lastModel: string | null;
-	stoppedByMaxRounds: boolean;
 	error?: string;
 };
 
 export class AgentOrchestrator {
-	private maxToolRounds: number;
 	private toolApprovalTimeoutMs: number;
 	private registryCacheMs: number;
 	private toolConcurrency: number;
@@ -57,14 +54,12 @@ export class AgentOrchestrator {
 	constructor(options: {
 		llmService: LLMService;
 		mcpClientService: McpClientService;
-		maxToolRounds?: number;
 		toolApprovalTimeoutMs?: number;
 		registryCacheMs?: number;
 		toolConcurrency?: number;
 	}) {
 		this.llmService = options.llmService;
 		this.mcpClientService = options.mcpClientService;
-		this.maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
 		this.toolApprovalTimeoutMs = options.toolApprovalTimeoutMs ?? DEFAULT_TOOL_APPROVAL_TIMEOUT_MS;
 		this.registryCacheMs = options.registryCacheMs ?? DEFAULT_REGISTRY_CACHE_MS;
 		this.toolConcurrency = Math.max(1, options.toolConcurrency ?? DEFAULT_TOOL_CONCURRENCY);
@@ -104,11 +99,8 @@ export class AgentOrchestrator {
 				: null;
 			let outgoingMessages = this.withToolSystemContext(messages, systemMessage);
 			let done = false;
-			let round = 0;
 
-			while (!done && round < this.maxToolRounds) {
-				round += 1;
-
+			while (!done && !signal.aborted) {
 				const rawAssistant: ChatMessage = {
 					id: crypto.randomUUID(),
 					content: '',
@@ -138,7 +130,7 @@ export class AgentOrchestrator {
 					if (!assistant.content && !assistant.toolCalls?.length) {
 						this.removeMessage(messages, assistant.id, callbacks);
 					}
-					return { lastModel, stoppedByMaxRounds: false };
+					return { lastModel };
 				}
 
 				if (result.content && result.content !== assistant.content) {
@@ -177,7 +169,7 @@ export class AgentOrchestrator {
 						}
 					);
 					if (signal.aborted) {
-						return { lastModel, stoppedByMaxRounds: false };
+						return { lastModel };
 					}
 
 					for (const toolResultMessage of toolResultMessages) {
@@ -195,19 +187,7 @@ export class AgentOrchestrator {
 				done = true;
 			}
 
-			if (!done && !signal.aborted) {
-				const warningMessage: ChatMessage = {
-					id: crypto.randomUUID(),
-					content: `Stopped after ${this.maxToolRounds} tool rounds to avoid a runaway loop.`,
-					role: 'assistant',
-					timestamp: new Date()
-				};
-				messages.push(warningMessage);
-				callbacks?.onMessageAdded?.(warningMessage);
-				return { lastModel, stoppedByMaxRounds: true };
-			}
-
-			return { lastModel, stoppedByMaxRounds: false };
+			return { lastModel };
 		} catch (error) {
 			const latestAssistant = [...messages]
 				.reverse()
@@ -217,7 +197,7 @@ export class AgentOrchestrator {
 				if (latestAssistant && !latestAssistant.content && !latestAssistant.toolCalls?.length) {
 					this.removeMessage(messages, latestAssistant.id, callbacks);
 				}
-				return { lastModel, stoppedByMaxRounds: false };
+				return { lastModel };
 			}
 
 			const errorText = error instanceof Error ? error.message : 'Something went wrong.';
@@ -226,7 +206,7 @@ export class AgentOrchestrator {
 				callbacks?.onAssistantUpdated?.(latestAssistant);
 			}
 			callbacks?.onError?.(errorText);
-			return { lastModel, stoppedByMaxRounds: false, error: errorText };
+			return { lastModel, error: errorText };
 		} finally {
 			this.rejectPendingApprovals(new Error('Tool approval cancelled'));
 		}
@@ -393,7 +373,8 @@ export class AgentOrchestrator {
 				name: toolCall.functionName,
 				arguments: toolCall.arguments,
 				status: resolved.value.tier === 'auto' ? 'running' : 'pending',
-				serverName: resolved.value.serverName
+				serverName: resolved.value.serverName,
+				serverPubkey: resolved.value.serverPubkey
 			};
 		});
 

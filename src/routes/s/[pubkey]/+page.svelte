@@ -168,7 +168,9 @@
 	const connectionState = $derived<McpConnectionState>(mcpClientService.getConnectionState(pubkey));
 	const requestedPaymentMode = $derived(mcpClientService.getConnectionMode(connectionIdentifier));
 	const effectivePaymentMode = $derived(
-		mcpClientService.getEffectivePaymentMode(connectionIdentifier)
+		// Re-evaluate after the handshake completes: connectionState.connected flips true
+		// only once client.connect() resolves, by which point the effective mode is set.
+		connectionState.connected ? mcpClientService.getEffectivePaymentMode(connectionIdentifier) : undefined
 	);
 	const paymentModeCaption = $derived(
 		connectionState.connected
