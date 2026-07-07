@@ -189,9 +189,7 @@ export class McpClientService {
 		});
 		this.clientTransports.set(serverKey, baseTransport);
 
-		return withClientPayments(baseTransport, {
-			...(paymentInteraction ? { paymentInteraction } : {})
-		} as Parameters<typeof withClientPayments>[1]);
+		return withClientPayments(baseTransport, { paymentInteraction });
 	}
 
 	/**
