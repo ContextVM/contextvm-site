@@ -53,6 +53,7 @@
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import { createServerNotesFilter } from '$lib/constants';
 	import { npubEncode } from 'nostr-tools/nip19';
+	import { parseCapTagsFromTags } from '$lib/services/payments/cep8-tags';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -193,6 +194,7 @@
 		prompts: $promptsQuery?.data || null
 	});
 	const toolsAnnouncementTags = $derived($toolsQuery?.data?.tags ?? []);
+	const hasPaidCapabilities = $derived(parseCapTagsFromTags(toolsAnnouncementTags).length > 0);
 
 	let activeTab = $state('about');
 
@@ -334,33 +336,44 @@
 						{/if}
 					</div>
 					<div class="w-full space-y-3">
-						<div
-							class="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/40 px-3 py-2"
-						>
-							<div class="min-w-0">
-								<p class="text-xs font-medium text-foreground">Payment mode</p>
-								<p class="text-[11px] text-muted-foreground">
-									{paymentModeCaption}
-								</p>
-								{#if modeMismatch}
-									<p class="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
-										Server does not support explicit gating &mdash; fell back to transparent.
-									</p>
-								{/if}
-							</div>
-							<div class="flex shrink-0 items-center gap-2">
-								<span class="text-xs text-muted-foreground">
-									{explicitGatingEnabled ? 'Explicit gating' : 'Transparent'}
-								</span>
-								<Switch
-									checked={explicitGatingEnabled}
-									onCheckedChange={handlePaymentModeChange}
-									disabled={paymentModeChanging || connectionState.loading}
-									size="sm"
-									aria-label="Use explicit gating payment mode"
-								/>
-							</div>
-						</div>
+						{#if hasPaidCapabilities}
+							<Collapsible.Root class="w-full">
+								<Collapsible.Trigger
+									class="flex w-full items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-left"
+								>
+									<div class="min-w-0">
+										<p class="text-xs font-medium text-foreground">Payment mode</p>
+										<p class="text-[11px] text-muted-foreground">
+											{paymentModeCaption}
+										</p>
+									</div>
+									<ChevronsUpDownIcon class="h-4 w-4 shrink-0 text-muted-foreground" />
+								</Collapsible.Trigger>
+								<Collapsible.Content class="pt-2">
+									<div
+										class="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
+									>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-xs text-muted-foreground">
+												{explicitGatingEnabled ? 'Explicit gating' : 'Transparent'}
+											</span>
+											<Switch
+												checked={explicitGatingEnabled}
+												onCheckedChange={handlePaymentModeChange}
+												disabled={paymentModeChanging || connectionState.loading}
+												size="sm"
+												aria-label="Use explicit gating payment mode"
+											/>
+										</div>
+										{#if modeMismatch}
+											<p class="text-[11px] text-amber-600 dark:text-amber-400">
+												Server does not support explicit gating &mdash; fell back to transparent.
+											</p>
+										{/if}
+									</div>
+								</Collapsible.Content>
+							</Collapsible.Root>
+						{/if}
 						{#if connectionState.connected}
 							<div class="flex flex-col items-center gap-3">
 								<div
