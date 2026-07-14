@@ -7,6 +7,7 @@ import {
 	extractExplicitGatingError,
 	serializeExplicitGatingError
 } from '$lib/services/payments/payment-errors';
+import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
 
 const DEFAULT_TOOL_APPROVAL_TIMEOUT_MS = 120_000;
 const DEFAULT_REGISTRY_CACHE_MS = 60_000;
@@ -84,6 +85,7 @@ export class AgentOrchestrator {
 	public async run(options: AgentOrchestratorRunOptions): Promise<AgentOrchestratorResult> {
 		const { messages, signal, callbacks } = options;
 		let lastModel: string | null = null;
+		const touchedServers = new Set<string>();
 
 		try {
 			const registry = await this.getOrBuildRegistry(callbacks);
@@ -155,6 +157,9 @@ export class AgentOrchestrator {
 						assistant,
 						result.toolCalls
 					);
+					for (const toolCall of assistant.toolCalls ?? []) {
+						if (toolCall.serverPubkey) touchedServers.add(toolCall.serverPubkey);
+					}
 					callbacks?.onAssistantUpdated?.(assistant);
 
 					const toolResultMessages = await this.executeToolCalls(
@@ -209,6 +214,12 @@ export class AgentOrchestrator {
 			return { lastModel, error: errorText };
 		} finally {
 			this.rejectPendingApprovals(new Error('Tool approval cancelled'));
+			// Transparent payment groups are server-scoped and can't be attributed to a specific
+			// tool call (the SDK doesn't expose the request id app-side). Clear the servers this
+			// turn touched so paid/stale invoices don't resurface on later cards.
+			for (const serverPubkey of touchedServers) {
+				paymentNotificationsService.clearServer(serverPubkey);
+			}
 		}
 	}
 

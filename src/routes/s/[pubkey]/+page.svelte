@@ -53,7 +53,7 @@
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import { createServerNotesFilter } from '$lib/constants';
 	import { npubEncode } from 'nostr-tools/nip19';
-	import { parseCapTagsFromTags } from '$lib/services/payments/cep8-tags';
+	import { parseCapTagsFromEvent, parseCapTagsFromTags } from '$lib/services/payments/cep8-tags';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -171,7 +171,9 @@
 	const effectivePaymentMode = $derived(
 		// Re-evaluate after the handshake completes: connectionState.connected flips true
 		// only once client.connect() resolves, by which point the effective mode is set.
-		connectionState.connected ? mcpClientService.getEffectivePaymentMode(connectionIdentifier) : undefined
+		connectionState.connected
+			? mcpClientService.getEffectivePaymentMode(connectionIdentifier)
+			: undefined
 	);
 	const paymentModeCaption = $derived(
 		connectionState.connected
@@ -194,7 +196,13 @@
 		prompts: $promptsQuery?.data || null
 	});
 	const toolsAnnouncementTags = $derived($toolsQuery?.data?.tags ?? []);
-	const hasPaidCapabilities = $derived(parseCapTagsFromTags(toolsAnnouncementTags).length > 0);
+	const toolsListEvent = $derived(mcpClientService.getServerToolsListEvent(connectionIdentifier));
+	// ponytail: mirror ToolCallForm — prefer runtime tools/list `cap` tags (covers unannounced
+	// servers that only advertise pricing at connect time), fall back to the announcement.
+	const hasPaidCapabilities = $derived(
+		parseCapTagsFromEvent(toolsListEvent).length > 0 ||
+			parseCapTagsFromTags(toolsAnnouncementTags).length > 0
+	);
 
 	let activeTab = $state('about');
 

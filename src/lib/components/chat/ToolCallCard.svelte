@@ -30,9 +30,14 @@
 	let formattedArguments = $state('{}');
 	let lastArguments = $state('');
 
-	// Transparent-mode payment for this tool's server (explicit gating uses paymentError below).
-	const transparentPayment = $derived(
-		toolCall.serverPubkey ? paymentNotificationsService.getLatestForServer(toolCall.serverPubkey) : undefined
+	// Transparent-mode payments for this tool's server. Explicit gating uses paymentError below.
+	// CEP-8: a server MAY emit several `payment_required` per request (one per PMI) and
+	// several requests may be in flight at once. We render every active group so no
+	// invoice is lost; per-request correlation stays with the server/SDK.
+	const transparentGroups = $derived(
+		toolCall.serverPubkey
+			? paymentNotificationsService.getActiveGroupsForServer(toolCall.serverPubkey)
+			: []
 	);
 	const title = $derived(toolCall.name.replace(/_/g, ' '));
 	const statusLabel = $derived.by(() => {
@@ -191,9 +196,12 @@
 
 		{#if toolCall.paymentError}
 			<PaymentErrorCard error={toolCall.paymentError} />
-		{:else if transparentPayment &&
-			(toolCall.status === 'running' || toolCall.status === 'pending' || toolCall.status === 'approved')}
-			<PaymentStatusPanel payment={transparentPayment} />
+		{:else if transparentGroups.length > 0 && (toolCall.status === 'running' || toolCall.status === 'pending' || toolCall.status === 'approved')}
+			<div class="space-y-2">
+				{#each transparentGroups as group (group.requestEventId)}
+					<PaymentStatusPanel payment={group} />
+				{/each}
+			</div>
 		{/if}
 	</div>
 </div>

@@ -1,10 +1,6 @@
 import { activeAccount } from '$lib/services/accountManager.svelte';
 import { NostrClientTransport } from '@contextvm/sdk';
-import {
-	PAYMENT_ACCEPTED_METHOD,
-	PAYMENT_REJECTED_METHOD,
-	PAYMENT_REQUIRED_METHOD
-} from '@contextvm/sdk/payments/constants';
+import { PAYMENT_REQUIRED_METHOD } from '@contextvm/sdk/payments/constants';
 import { Client } from '@contextvm/mcp-sdk/client/index.js';
 import {
 	type ListPromptsResult,
@@ -21,25 +17,13 @@ import { withClientPayments } from '@contextvm/sdk';
 import type { Transport } from '@contextvm/mcp-sdk/shared/transport.js';
 import type { ProgressCallback } from '@contextvm/mcp-sdk/shared/protocol.js';
 import { decodeServerIdentifier } from '$lib/utils';
-import type { PaymentAcceptedNotification, PaymentRejectedNotification, PaymentRequiredNotification } from '@contextvm/sdk';
+import type { PaymentRequiredNotification } from '@contextvm/sdk';
 import { z } from 'zod';
 
 export type PaymentInteractionMode = 'transparent' | 'explicit_gating';
 type PaymentNegotiatingTransport = NostrClientTransport & {
 	getEffectivePaymentInteraction?: () => PaymentInteractionMode | undefined;
 };
-
-const PaymentAcceptedNotificationSchema = z.object({
-	jsonrpc: z.literal('2.0').optional(),
-	method: z.literal(PAYMENT_ACCEPTED_METHOD),
-	params: z.record(z.string(), z.unknown()).optional()
-});
-
-const PaymentRejectedNotificationSchema = z.object({
-	jsonrpc: z.literal('2.0').optional(),
-	method: z.literal(PAYMENT_REJECTED_METHOD),
-	params: z.record(z.string(), z.unknown()).optional()
-});
 
 const PaymentRequiredNotificationSchema = z.object({
 	jsonrpc: z.literal('2.0').optional(),
@@ -110,50 +94,19 @@ export class McpClientService {
 	}
 
 	private registerPaymentNotificationHandlers(client: Client, serverIdentifier: string): void {
-		client.setNotificationHandler(PaymentAcceptedNotificationSchema, async (notification) => {
-			const requestEventId = getRequestEventIdFromNotification(notification);
-			if (!requestEventId) return;
-
-			paymentNotificationsService.set({
-				serverPubkey: serverIdentifier,
-				requestEventId,
-				status: 'payment_accepted',
-				notification: {
-					type: 'payment_accepted',
-					...(notification as PaymentAcceptedNotification)
-				},
-				timestamp: Date.now()
-			});
-		});
-
-		client.setNotificationHandler(PaymentRejectedNotificationSchema, async (notification) => {
-			const requestEventId = getRequestEventIdFromNotification(notification);
-			if (!requestEventId) return;
-
-			paymentNotificationsService.set({
-				serverPubkey: serverIdentifier,
-				requestEventId,
-				status: 'payment_rejected',
-				notification: {
-					type: 'payment_rejected',
-					...(notification as PaymentRejectedNotification)
-				},
-				timestamp: Date.now()
-			});
-		});
-
 		client.setNotificationHandler(PaymentRequiredNotificationSchema, async (notification) => {
-			const requestEventId = getRequestEventIdFromNotification(notification);
-			if (!requestEventId) return;
+			// The SDK correlates payment_required to the original request internally (transport
+			// ctx.correlatedEventId) but does not surface it on the notification's `_meta`.
+			// Fall back to `pay_req` so the invoice is never lost; true per-request grouping of
+			// PMI alternatives only happens when the server echoes requestEventId in `_meta`.
+			const requestEventId =
+				getRequestEventIdFromNotification(notification) ??
+				(notification as PaymentRequiredNotification).params.pay_req;
 
 			paymentNotificationsService.set({
 				serverPubkey: serverIdentifier,
 				requestEventId,
-				status: 'payment_required',
-				notification: {
-					type: 'payment_required',
-					...(notification as PaymentRequiredNotification)
-				},
+				notification: notification as PaymentRequiredNotification,
 				timestamp: Date.now()
 			});
 		});
