@@ -113,9 +113,7 @@ export class McpClientService {
 	}
 
 	private clearServerState(serverIdentifier: string): void {
-		const preferredIdentifier = this.getPreferredServerIdentifier(serverIdentifier);
-		paymentNotificationsService.clearServer(preferredIdentifier);
-		paymentNotificationsService.clearServer(this.getServerKey(serverIdentifier));
+		paymentNotificationsService.clearServer(serverIdentifier);
 	}
 
 	private createTransport(
