@@ -19,6 +19,11 @@
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import PaymentStatusPanel from '$lib/components/PaymentStatusPanel.svelte';
+	import PaymentErrorCard from '$lib/components/chat/PaymentErrorCard.svelte';
+	import {
+		extractExplicitGatingError,
+		type ExplicitGatingError
+	} from '$lib/services/payments/payment-errors';
 	import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
 	import {
 		findCapTagForPrompt,
@@ -43,6 +48,7 @@
 	// Form state
 	let formResult = $state<GetPromptResult | null>(null);
 	let formError = $state<string | null>(null);
+	let gatingError = $state<ExplicitGatingError | null>(null);
 	let showResult = $state(false);
 
 	// Collapsible state
@@ -98,6 +104,7 @@
 			// Ensure payment panel is visible for subsequent calls.
 			paymentOpen = true;
 			paymentNotificationsService.clearServer(serverPubkey);
+			gatingError = null;
 			open = true;
 			try {
 				if (!connectionState.connected) {
@@ -111,6 +118,12 @@
 				formResult = result;
 				showResult = true;
 			} catch (error) {
+				const explicitGatingError = extractExplicitGatingError(error);
+				if (explicitGatingError) {
+					gatingError = explicitGatingError;
+					return;
+				}
+
 				formError = error instanceof Error ? error.message : 'Failed to get prompt';
 			} finally {
 				loading = false;
@@ -123,6 +136,7 @@
 		form.reset(new Event('reset'));
 		formResult = null;
 		formError = null;
+		gatingError = null;
 		showResult = false;
 		paymentNotificationsService.clearServer(serverPubkey);
 		paymentOpen = true;
@@ -160,6 +174,11 @@
 		class="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden"
 	>
 		<div class="border-t bg-muted/50 p-4">
+			{#if gatingError}
+				<div class="mb-4">
+					<PaymentErrorCard error={gatingError} />
+				</div>
+			{/if}
 			{#if paymentState}
 				<div class="mb-4">
 					<PaymentStatusPanel payment={paymentState} open={paymentOpen} />

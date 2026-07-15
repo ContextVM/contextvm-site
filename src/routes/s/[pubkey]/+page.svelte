@@ -16,7 +16,12 @@
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { mcpClientService, type McpConnectionState } from '$lib/services/mcpClient.svelte';
+	import { Switch } from '$lib/components/ui/switch/index.js';
+	import {
+		mcpClientService,
+		type McpConnectionState,
+		type PaymentInteractionMode
+	} from '$lib/services/mcpClient.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
 	import { eventStore } from '$lib/services/eventStore';
 	import { createServerNotesLoader } from '$lib/services/loaders.svelte';
@@ -48,6 +53,7 @@
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import { createServerNotesFilter } from '$lib/constants';
 	import { npubEncode } from 'nostr-tools/nip19';
+	import { parseCapTagsFromEvent, parseCapTagsFromTags } from '$lib/services/payments/cep8-tags';
 
 	const requestedIdentifier = page.params.pubkey ?? '';
 	const resolvedIdentifierQuery = createQuery({
@@ -161,6 +167,26 @@
 
 	// Connection state
 	const connectionState = $derived<McpConnectionState>(mcpClientService.getConnectionState(pubkey));
+	const requestedPaymentMode = $derived(mcpClientService.getConnectionMode(connectionIdentifier));
+	const effectivePaymentMode = $derived(
+		// Re-evaluate after the handshake completes: connectionState.connected flips true
+		// only once client.connect() resolves, by which point the effective mode is set.
+		connectionState.connected
+			? mcpClientService.getEffectivePaymentMode(connectionIdentifier)
+			: undefined
+	);
+	const paymentModeCaption = $derived(
+		connectionState.connected
+			? `Effective: ${effectivePaymentMode ?? 'transparent'}`
+			: requestedPaymentMode
+	);
+	const explicitGatingEnabled = $derived(requestedPaymentMode === 'explicit_gating');
+	const modeMismatch = $derived(
+		connectionState.connected &&
+			requestedPaymentMode === 'explicit_gating' &&
+			effectivePaymentMode !== 'explicit_gating'
+	);
+	let paymentModeChanging = $state(false);
 
 	// Server capabilities data
 	const serverData = $derived({
@@ -170,6 +196,13 @@
 		prompts: $promptsQuery?.data || null
 	});
 	const toolsAnnouncementTags = $derived($toolsQuery?.data?.tags ?? []);
+	const toolsListEvent = $derived(mcpClientService.getServerToolsListEvent(connectionIdentifier));
+	// ponytail: mirror ToolCallForm — prefer runtime tools/list `cap` tags (covers unannounced
+	// servers that only advertise pricing at connect time), fall back to the announcement.
+	const hasPaidCapabilities = $derived(
+		parseCapTagsFromEvent(toolsListEvent).length > 0 ||
+			parseCapTagsFromTags(toolsAnnouncementTags).length > 0
+	);
 
 	let activeTab = $state('about');
 
@@ -223,6 +256,21 @@
 			await mcpClientService.disconnect(connectionIdentifier);
 		} catch (err) {
 			console.error('Disconnection error:', err);
+		}
+	}
+
+	async function handlePaymentModeChange(checked: boolean) {
+		const mode: PaymentInteractionMode = checked ? 'explicit_gating' : 'transparent';
+		paymentModeChanging = true;
+
+		try {
+			if (connectionState.connected) {
+				await mcpClientService.reconnectWithMode(connectionIdentifier, mode);
+			} else {
+				mcpClientService.setConnectionMode(connectionIdentifier, mode);
+			}
+		} finally {
+			paymentModeChanging = false;
 		}
 	}
 </script>
@@ -295,7 +343,45 @@
 							</a>
 						{/if}
 					</div>
-					<div class="w-full">
+					<div class="w-full space-y-3">
+						{#if hasPaidCapabilities}
+							<Collapsible.Root class="w-full">
+								<Collapsible.Trigger
+									class="flex w-full items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-left"
+								>
+									<div class="min-w-0">
+										<p class="text-xs font-medium text-foreground">Payment mode</p>
+										<p class="text-[11px] text-muted-foreground">
+											{paymentModeCaption}
+										</p>
+									</div>
+									<ChevronsUpDownIcon class="h-4 w-4 shrink-0 text-muted-foreground" />
+								</Collapsible.Trigger>
+								<Collapsible.Content class="pt-2">
+									<div
+										class="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
+									>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-xs text-muted-foreground">
+												{explicitGatingEnabled ? 'Explicit gating' : 'Transparent'}
+											</span>
+											<Switch
+												checked={explicitGatingEnabled}
+												onCheckedChange={handlePaymentModeChange}
+												disabled={paymentModeChanging || connectionState.loading}
+												size="sm"
+												aria-label="Use explicit gating payment mode"
+											/>
+										</div>
+										{#if modeMismatch}
+											<p class="text-[11px] text-amber-600 dark:text-amber-400">
+												Server does not support explicit gating &mdash; fell back to transparent.
+											</p>
+										{/if}
+									</div>
+								</Collapsible.Content>
+							</Collapsible.Root>
+						{/if}
 						{#if connectionState.connected}
 							<div class="flex flex-col items-center gap-3">
 								<div

@@ -1,9 +1,6 @@
 import { activeAccount } from '$lib/services/accountManager.svelte';
 import { NostrClientTransport } from '@contextvm/sdk';
-import {
-	PAYMENT_ACCEPTED_METHOD,
-	PAYMENT_REJECTED_METHOD
-} from '@contextvm/sdk/payments/constants';
+import { PAYMENT_REQUIRED_METHOD } from '@contextvm/sdk/payments/constants';
 import { Client } from '@contextvm/mcp-sdk/client/index.js';
 import {
 	type ListPromptsResult,
@@ -16,23 +13,21 @@ import {
 } from '@contextvm/mcp-sdk/types.js';
 import { SvelteMap } from 'svelte/reactivity';
 import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
-import { withClientPayments, PMI_BITCOIN_LIGHTNING_BOLT11 } from '@contextvm/sdk';
-import { UiOnlyPaymentHandler } from '$lib/services/payments/ui-payment-handler';
+import { withClientPayments } from '@contextvm/sdk';
 import type { Transport } from '@contextvm/mcp-sdk/shared/transport.js';
 import type { ProgressCallback } from '@contextvm/mcp-sdk/shared/protocol.js';
 import { decodeServerIdentifier } from '$lib/utils';
-import type { PaymentAcceptedNotification, PaymentRejectedNotification } from '@contextvm/sdk';
+import type { PaymentRequiredNotification } from '@contextvm/sdk';
 import { z } from 'zod';
 
-const PaymentAcceptedNotificationSchema = z.object({
-	jsonrpc: z.literal('2.0').optional(),
-	method: z.literal(PAYMENT_ACCEPTED_METHOD),
-	params: z.record(z.string(), z.unknown()).optional()
-});
+export type PaymentInteractionMode = 'transparent' | 'explicit_gating';
+type PaymentNegotiatingTransport = NostrClientTransport & {
+	getEffectivePaymentInteraction?: () => PaymentInteractionMode | undefined;
+};
 
-const PaymentRejectedNotificationSchema = z.object({
+const PaymentRequiredNotificationSchema = z.object({
 	jsonrpc: z.literal('2.0').optional(),
-	method: z.literal(PAYMENT_REJECTED_METHOD),
+	method: z.literal(PAYMENT_REQUIRED_METHOD),
 	params: z.record(z.string(), z.unknown()).optional()
 });
 
@@ -58,6 +53,7 @@ export class McpClientService {
 	private clientTransports = new SvelteMap<string, NostrClientTransport>();
 	private connectionStates = new SvelteMap<string, McpConnectionState>();
 	private serverIdentifiers = new SvelteMap<string, string>();
+	private connectionModes = new SvelteMap<string, PaymentInteractionMode>();
 	private static readonly clientConfig = {
 		name: 'ContextVM Web Client',
 		version: '1.0.0'
@@ -98,47 +94,32 @@ export class McpClientService {
 	}
 
 	private registerPaymentNotificationHandlers(client: Client, serverIdentifier: string): void {
-		client.setNotificationHandler(PaymentAcceptedNotificationSchema, async (notification) => {
-			const requestEventId = getRequestEventIdFromNotification(notification);
-			if (!requestEventId) return;
+		client.setNotificationHandler(PaymentRequiredNotificationSchema, async (notification) => {
+			// The SDK correlates payment_required to the original request internally (transport
+			// ctx.correlatedEventId) but does not surface it on the notification's `_meta`.
+			// Fall back to `pay_req` so the invoice is never lost; true per-request grouping of
+			// PMI alternatives only happens when the server echoes requestEventId in `_meta`.
+			const requestEventId =
+				getRequestEventIdFromNotification(notification) ??
+				(notification as PaymentRequiredNotification).params.pay_req;
 
 			paymentNotificationsService.set({
 				serverPubkey: serverIdentifier,
 				requestEventId,
-				status: 'payment_accepted',
-				notification: {
-					type: 'payment_accepted',
-					...(notification as PaymentAcceptedNotification)
-				},
-				timestamp: Date.now()
-			});
-		});
-
-		client.setNotificationHandler(PaymentRejectedNotificationSchema, async (notification) => {
-			const requestEventId = getRequestEventIdFromNotification(notification);
-			if (!requestEventId) return;
-
-			paymentNotificationsService.set({
-				serverPubkey: serverIdentifier,
-				requestEventId,
-				status: 'payment_rejected',
-				notification: {
-					type: 'payment_rejected',
-					...(notification as PaymentRejectedNotification)
-				},
+				notification: notification as PaymentRequiredNotification,
 				timestamp: Date.now()
 			});
 		});
 	}
 
 	private clearServerState(serverIdentifier: string): void {
-		const preferredIdentifier = this.getPreferredServerIdentifier(serverIdentifier);
-		paymentNotificationsService.clearServer(preferredIdentifier);
-		paymentNotificationsService.clearServer(this.getServerKey(serverIdentifier));
+		paymentNotificationsService.clearServer(serverIdentifier);
 	}
 
-	// Helper method to create a new transport for a client
-	private createTransport(serverIdentifier: string): Transport {
+	private createTransport(
+		serverIdentifier: string,
+		paymentInteraction?: PaymentInteractionMode
+	): Transport {
 		// Check if user is logged in
 		const currentAccount = activeAccount.getValue();
 		if (!currentAccount) {
@@ -159,15 +140,7 @@ export class McpClientService {
 		});
 		this.clientTransports.set(serverKey, baseTransport);
 
-		// UI-only payments integration using the SDK middleware.
-		// - advertises PMIs via `pmi` tags
-		// - captures payment_required in our handler
-		// - does not attempt to pay
-		const uiHandler = new UiOnlyPaymentHandler({
-			pmi: PMI_BITCOIN_LIGHTNING_BOLT11,
-			serverPubkey: preferredIdentifier
-		});
-		return withClientPayments(baseTransport, { handlers: [uiHandler] });
+		return withClientPayments(baseTransport, { paymentInteraction });
 	}
 
 	/**
@@ -206,6 +179,31 @@ export class McpClientService {
 			?.getServerPromptsListEvent();
 	}
 
+	public setConnectionMode(serverIdentifier: string, mode: PaymentInteractionMode): void {
+		this.connectionModes.set(this.getServerKey(serverIdentifier), mode);
+	}
+
+	public getConnectionMode(serverIdentifier: string): PaymentInteractionMode {
+		return this.connectionModes.get(this.getServerKey(serverIdentifier)) ?? 'transparent';
+	}
+
+	public getEffectivePaymentMode(serverIdentifier: string): PaymentInteractionMode | undefined {
+		return (
+			this.clientTransports.get(this.getServerKey(serverIdentifier)) as
+				| PaymentNegotiatingTransport
+				| undefined
+		)?.getEffectivePaymentInteraction?.();
+	}
+
+	public async reconnectWithMode(
+		serverIdentifier: string,
+		mode: PaymentInteractionMode
+	): Promise<void> {
+		this.setConnectionMode(serverIdentifier, mode);
+		await this.disconnect(serverIdentifier, { keepMode: true });
+		await this.getClient(serverIdentifier);
+	}
+
 	// Reconnect all existing clients using their preferred server identifier.
 	public async reconnectAllClients(): Promise<void> {
 		for (const [serverPubkey, client] of this.clients) {
@@ -218,7 +216,10 @@ export class McpClientService {
 
 				await client.close();
 
-				const transport = this.createTransport(this.getPreferredServerIdentifier(serverPubkey));
+				const transport = this.createTransport(
+					this.getPreferredServerIdentifier(serverPubkey),
+					this.connectionModes.get(serverPubkey)
+				);
 
 				await client.connect(transport);
 
@@ -255,11 +256,10 @@ export class McpClientService {
 				error: null
 			});
 
-			const transport = this.createTransport(serverIdentifier);
+			const transport = this.createTransport(serverIdentifier, this.connectionModes.get(serverKey));
 			const client = new Client(McpClientService.clientConfig);
 			await client.connect(transport);
 
-			// CEP-8 `payment_required` is captured by the payments middleware handler.
 			this.registerPaymentNotificationHandlers(client, serverIdentifier);
 
 			this.clients.set(serverKey, client);
@@ -283,15 +283,21 @@ export class McpClientService {
 	}
 
 	// Disconnect from a server
-	async disconnect(serverIdentifier: string): Promise<void> {
+	async disconnect(serverIdentifier: string, options: { keepMode?: boolean } = {}): Promise<void> {
 		const serverKey = this.getServerKey(serverIdentifier);
 		const client = this.clients.get(serverKey);
+		if (!client && !options.keepMode) {
+			this.connectionModes.delete(serverKey);
+		}
 		if (client) {
 			await client.close();
 			this.clients.delete(serverKey);
 			this.clientTransports.delete(serverKey);
 			this.clearServerState(serverIdentifier);
 			this.serverIdentifiers.delete(serverKey);
+			if (!options.keepMode) {
+				this.connectionModes.delete(serverKey);
+			}
 			this.setConnectionState(serverKey, { ...McpClientService.defaultConnectionState });
 		}
 	}
@@ -397,6 +403,7 @@ export class McpClientService {
 		this.clientTransports.clear();
 		this.connectionStates.clear();
 		this.serverIdentifiers.clear();
+		this.connectionModes.clear();
 	}
 }
 

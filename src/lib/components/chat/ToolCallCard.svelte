@@ -1,5 +1,8 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
+	import PaymentErrorCard from '$lib/components/chat/PaymentErrorCard.svelte';
+	import PaymentStatusPanel from '$lib/components/PaymentStatusPanel.svelte';
+	import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { ToolCallData } from '$lib/types/chat-types';
 	import { cn, copyToClipboard } from '$lib/utils.js';
@@ -9,6 +12,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
+	import WalletIcon from '@lucide/svelte/icons/wallet';
 	import XCircleIcon from '@lucide/svelte/icons/x-circle';
 
 	let {
@@ -26,6 +30,15 @@
 	let formattedArguments = $state('{}');
 	let lastArguments = $state('');
 
+	// Transparent-mode payments for this tool's server. Explicit gating uses paymentError below.
+	// CEP-8: a server MAY emit several `payment_required` per request (one per PMI) and
+	// several requests may be in flight at once. We render every active group so no
+	// invoice is lost; per-request correlation stays with the server/SDK.
+	const transparentGroups = $derived(
+		toolCall.serverPubkey
+			? paymentNotificationsService.getActiveGroupsForServer(toolCall.serverPubkey)
+			: []
+	);
 	const title = $derived(toolCall.name.replace(/_/g, ' '));
 	const statusLabel = $derived.by(() => {
 		switch (toolCall.status) {
@@ -39,6 +52,8 @@
 				return 'Rejected';
 			case 'error':
 				return 'Error';
+			case 'payment_required':
+				return 'Payment required';
 			default:
 				return 'Approval needed';
 		}
@@ -85,13 +100,15 @@
 					'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium',
 					toolCall.status === 'completed'
 						? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-						: toolCall.status === 'error'
-							? 'bg-destructive/10 text-destructive'
-							: toolCall.status === 'rejected'
-								? 'bg-slate-500/10 text-slate-600 dark:text-slate-300'
-								: toolCall.status === 'running'
-									? 'bg-primary/10 text-primary'
-									: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+						: toolCall.status === 'payment_required'
+							? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+							: toolCall.status === 'error'
+								? 'bg-destructive/10 text-destructive'
+								: toolCall.status === 'rejected'
+									? 'bg-slate-500/10 text-slate-600 dark:text-slate-300'
+									: toolCall.status === 'running'
+										? 'bg-primary/10 text-primary'
+										: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
 				)}
 				role="status"
 				aria-live="polite"
@@ -99,6 +116,8 @@
 			>
 				{#if toolCall.status === 'completed'}
 					<CheckCircleIcon class="h-3 w-3" />
+				{:else if toolCall.status === 'payment_required'}
+					<WalletIcon class="h-3 w-3" />
 				{:else if toolCall.status === 'error'}
 					<XCircleIcon class="h-3 w-3" />
 				{:else if toolCall.status === 'rejected'}
@@ -173,6 +192,16 @@
 					</div>
 				</Collapsible.Content>
 			</Collapsible.Root>
+		{/if}
+
+		{#if toolCall.paymentError}
+			<PaymentErrorCard error={toolCall.paymentError} />
+		{:else if transparentGroups.length > 0 && (toolCall.status === 'running' || toolCall.status === 'pending' || toolCall.status === 'approved')}
+			<div class="space-y-2">
+				{#each transparentGroups as group (group.requestEventId)}
+					<PaymentStatusPanel payment={group} />
+				{/each}
+			</div>
 		{/if}
 	</div>
 </div>

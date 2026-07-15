@@ -3,8 +3,12 @@ import type { ChatMessage, ToolCallData } from '$lib/types/chat-types';
 import type { LLMService, SendMessageResult } from '$lib/services/llm';
 import type { McpClientService } from '$lib/services/mcpClient.svelte';
 import { ToolRegistry, type ToolResolveResult } from '$lib/services/mcp-openai-bridge';
+import {
+	extractExplicitGatingError,
+	serializeExplicitGatingError
+} from '$lib/services/payments/payment-errors';
+import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
 
-const DEFAULT_MAX_TOOL_ROUNDS = 5;
 const DEFAULT_TOOL_APPROVAL_TIMEOUT_MS = 120_000;
 const DEFAULT_REGISTRY_CACHE_MS = 60_000;
 const DEFAULT_TOOL_CONCURRENCY = 4;
@@ -36,12 +40,10 @@ export type AgentOrchestratorRunOptions = {
 
 export type AgentOrchestratorResult = {
 	lastModel: string | null;
-	stoppedByMaxRounds: boolean;
 	error?: string;
 };
 
 export class AgentOrchestrator {
-	private maxToolRounds: number;
 	private toolApprovalTimeoutMs: number;
 	private registryCacheMs: number;
 	private toolConcurrency: number;
@@ -53,14 +55,12 @@ export class AgentOrchestrator {
 	constructor(options: {
 		llmService: LLMService;
 		mcpClientService: McpClientService;
-		maxToolRounds?: number;
 		toolApprovalTimeoutMs?: number;
 		registryCacheMs?: number;
 		toolConcurrency?: number;
 	}) {
 		this.llmService = options.llmService;
 		this.mcpClientService = options.mcpClientService;
-		this.maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
 		this.toolApprovalTimeoutMs = options.toolApprovalTimeoutMs ?? DEFAULT_TOOL_APPROVAL_TIMEOUT_MS;
 		this.registryCacheMs = options.registryCacheMs ?? DEFAULT_REGISTRY_CACHE_MS;
 		this.toolConcurrency = Math.max(1, options.toolConcurrency ?? DEFAULT_TOOL_CONCURRENCY);
@@ -85,6 +85,7 @@ export class AgentOrchestrator {
 	public async run(options: AgentOrchestratorRunOptions): Promise<AgentOrchestratorResult> {
 		const { messages, signal, callbacks } = options;
 		let lastModel: string | null = null;
+		const touchedServers = new Set<string>();
 
 		try {
 			const registry = await this.getOrBuildRegistry(callbacks);
@@ -100,11 +101,8 @@ export class AgentOrchestrator {
 				: null;
 			let outgoingMessages = this.withToolSystemContext(messages, systemMessage);
 			let done = false;
-			let round = 0;
 
-			while (!done && round < this.maxToolRounds) {
-				round += 1;
-
+			while (!done && !signal.aborted) {
 				const rawAssistant: ChatMessage = {
 					id: crypto.randomUUID(),
 					content: '',
@@ -134,7 +132,7 @@ export class AgentOrchestrator {
 					if (!assistant.content && !assistant.toolCalls?.length) {
 						this.removeMessage(messages, assistant.id, callbacks);
 					}
-					return { lastModel, stoppedByMaxRounds: false };
+					return { lastModel };
 				}
 
 				if (result.content && result.content !== assistant.content) {
@@ -159,6 +157,9 @@ export class AgentOrchestrator {
 						assistant,
 						result.toolCalls
 					);
+					for (const toolCall of assistant.toolCalls ?? []) {
+						if (toolCall.serverPubkey) touchedServers.add(toolCall.serverPubkey);
+					}
 					callbacks?.onAssistantUpdated?.(assistant);
 
 					const toolResultMessages = await this.executeToolCalls(
@@ -173,7 +174,7 @@ export class AgentOrchestrator {
 						}
 					);
 					if (signal.aborted) {
-						return { lastModel, stoppedByMaxRounds: false };
+						return { lastModel };
 					}
 
 					for (const toolResultMessage of toolResultMessages) {
@@ -191,19 +192,7 @@ export class AgentOrchestrator {
 				done = true;
 			}
 
-			if (!done && !signal.aborted) {
-				const warningMessage: ChatMessage = {
-					id: crypto.randomUUID(),
-					content: `Stopped after ${this.maxToolRounds} tool rounds to avoid a runaway loop.`,
-					role: 'assistant',
-					timestamp: new Date()
-				};
-				messages.push(warningMessage);
-				callbacks?.onMessageAdded?.(warningMessage);
-				return { lastModel, stoppedByMaxRounds: true };
-			}
-
-			return { lastModel, stoppedByMaxRounds: false };
+			return { lastModel };
 		} catch (error) {
 			const latestAssistant = [...messages]
 				.reverse()
@@ -213,7 +202,7 @@ export class AgentOrchestrator {
 				if (latestAssistant && !latestAssistant.content && !latestAssistant.toolCalls?.length) {
 					this.removeMessage(messages, latestAssistant.id, callbacks);
 				}
-				return { lastModel, stoppedByMaxRounds: false };
+				return { lastModel };
 			}
 
 			const errorText = error instanceof Error ? error.message : 'Something went wrong.';
@@ -222,9 +211,15 @@ export class AgentOrchestrator {
 				callbacks?.onAssistantUpdated?.(latestAssistant);
 			}
 			callbacks?.onError?.(errorText);
-			return { lastModel, stoppedByMaxRounds: false, error: errorText };
+			return { lastModel, error: errorText };
 		} finally {
 			this.rejectPendingApprovals(new Error('Tool approval cancelled'));
+			// Transparent payment groups are server-scoped and can't be attributed to a specific
+			// tool call (the SDK doesn't expose the request id app-side). Clear the servers this
+			// turn touched so paid/stale invoices don't resurface on later cards.
+			for (const serverPubkey of touchedServers) {
+				paymentNotificationsService.clearServer(serverPubkey);
+			}
 		}
 	}
 
@@ -316,7 +311,8 @@ export class AgentOrchestrator {
 		message: ChatMessage,
 		toolCallId: string,
 		status: ToolCallData['status'],
-		result?: string
+		result?: string,
+		paymentError?: ToolCallData['paymentError']
 	): void {
 		const toolCall = message.toolCalls?.find((candidate) => candidate.id === toolCallId);
 		if (!toolCall) {
@@ -326,6 +322,9 @@ export class AgentOrchestrator {
 		toolCall.status = status;
 		if (result !== undefined) {
 			toolCall.result = result;
+		}
+		if (paymentError !== undefined) {
+			toolCall.paymentError = paymentError;
 		}
 	}
 
@@ -385,7 +384,8 @@ export class AgentOrchestrator {
 				name: toolCall.functionName,
 				arguments: toolCall.arguments,
 				status: resolved.value.tier === 'auto' ? 'running' : 'pending',
-				serverName: resolved.value.serverName
+				serverName: resolved.value.serverName,
+				serverPubkey: resolved.value.serverPubkey
 			};
 		});
 
@@ -403,8 +403,13 @@ export class AgentOrchestrator {
 		} = {}
 	): Promise<ChatMessage[]> {
 		const { signal, onStatusUpdate, approvalTimeoutMs = this.toolApprovalTimeoutMs } = options;
-		const markStatus = (toolCallId: string, status: ToolCallData['status'], result?: string) => {
-			this.updateToolCallStatus(assistantMessage, toolCallId, status, result);
+		const markStatus = (
+			toolCallId: string,
+			status: ToolCallData['status'],
+			result?: string,
+			paymentError?: ToolCallData['paymentError']
+		) => {
+			this.updateToolCallStatus(assistantMessage, toolCallId, status, result, paymentError);
 			onStatusUpdate?.(toolCallId);
 		};
 		const throwIfAborted = () => {
@@ -443,6 +448,13 @@ export class AgentOrchestrator {
 				markStatus(toolCall.id, 'completed', serialized);
 				return this.makeToolResultMessage(toolCall.id, toolCall.functionName, serialized);
 			} catch (error) {
+				const gatingError = extractExplicitGatingError(error);
+				if (gatingError) {
+					const serialized = serializeExplicitGatingError(gatingError);
+					markStatus(toolCall.id, 'payment_required', serialized, gatingError);
+					return this.makeToolResultMessage(toolCall.id, toolCall.functionName, serialized);
+				}
+
 				const errorText = error instanceof Error ? error.message : 'Tool call failed';
 				const serialized = `Error: ${errorText}`;
 				const status = errorText === 'User rejected tool call' ? 'rejected' : 'error';

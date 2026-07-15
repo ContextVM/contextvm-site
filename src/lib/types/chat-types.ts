@@ -1,12 +1,23 @@
+import type { ExplicitGatingError } from '$lib/services/payments/payment-errors';
+
 export type ToolApprovalTier = 'auto' | 'prompt';
 
 export interface ToolCallData {
 	id: string;
 	name: string;
 	arguments: string;
-	status: 'pending' | 'running' | 'approved' | 'completed' | 'rejected' | 'error';
+	status:
+		| 'pending'
+		| 'running'
+		| 'approved'
+		| 'completed'
+		| 'rejected'
+		| 'error'
+		| 'payment_required';
 	result?: string;
 	serverName?: string;
+	serverPubkey?: string;
+	paymentError?: ExplicitGatingError;
 }
 
 export interface ChatMessage {
