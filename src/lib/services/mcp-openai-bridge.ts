@@ -9,6 +9,12 @@ const MAX_TOOL_ARGS_CHARS = 64 * 1024;
 const DISAMBIGUATOR_LENGTH = 8;
 const ajv = new Ajv({ allErrors: true, strict: false });
 
+/** Executor for a built-in (non-MCP) local tool, e.g. the wallet. */
+export type LocalToolExecutor = (
+	args: Record<string, unknown>,
+	signal?: AbortSignal
+) => Promise<string>;
+
 interface ToolMapping {
 	serverPubkey: string;
 	serverName: string;
@@ -17,6 +23,8 @@ interface ToolMapping {
 	openAITool: ChatCompletionTool;
 	inputSchema?: Tool['inputSchema'];
 	validator?: ValidateFunction<unknown>;
+	/** Present only for built-in local tools. */
+	execute?: LocalToolExecutor;
 }
 
 type ParsedArguments = { ok: true; value: Record<string, unknown> } | { ok: false; error: string };
@@ -31,6 +39,8 @@ export interface ResolvedToolCall {
 	originalToolName: string;
 	args: Record<string, unknown>;
 	tier: ToolApprovalTier;
+	/** Present only for built-in local tools; the orchestrator runs it directly. */
+	execute?: LocalToolExecutor;
 }
 
 function sanitizeFunctionSegment(value: string, fallback: string, maxLength?: number): string {
@@ -211,6 +221,32 @@ export class ToolRegistry {
 		}
 	}
 
+	/**
+	 * Register a built-in local tool (not backed by an MCP server). The orchestrator
+	 * runs `execute` directly instead of dispatching to an MCP client. Names are
+	 * author-controlled and must not collide with sanitized MCP tool names.
+	 */
+	public registerLocal(
+		name: string,
+		description: string,
+		parameters: Record<string, unknown>,
+		execute: LocalToolExecutor,
+		tier: ToolApprovalTier = 'auto'
+	): void {
+		const openAITool: ChatCompletionTool = {
+			type: 'function',
+			function: { name, description, parameters }
+		};
+		this.mappings.set(name, {
+			serverPubkey: '__local__',
+			serverName: 'wallet',
+			originalName: name,
+			tier,
+			openAITool,
+			execute
+		});
+	}
+
 	public resolve(namespacedName: string, rawArgs: string): ToolResolveResult {
 		const mapping = this.mappings.get(namespacedName);
 		const args = parseToolArguments(rawArgs);
@@ -251,7 +287,8 @@ export class ToolRegistry {
 				serverName: mapping.serverName,
 				originalToolName: mapping.originalName,
 				args: args.value,
-				tier: mapping.tier
+				tier: mapping.tier,
+				execute: mapping.execute
 			}
 		};
 	}
@@ -286,7 +323,7 @@ export class ToolRegistry {
 		}
 
 		return [
-			'You have access to tools from connected Model Context Protocol (MCP) servers:',
+			'You have access to tools from connected servers and the built-in wallet:',
 			...serverLines,
 			'',
 			'Use these tools when the user asks to interact with, query, or manage these servers.',

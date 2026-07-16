@@ -17,6 +17,8 @@ export interface ToolCallData {
 	result?: string;
 	serverName?: string;
 	serverPubkey?: string;
+	/** Original MCP tool name (un-namespaced); used to retry after a payment. */
+	originalToolName?: string;
 	paymentError?: ExplicitGatingError;
 }
 

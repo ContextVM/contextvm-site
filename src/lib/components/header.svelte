@@ -6,6 +6,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import ThemeToggle from './theme-toggle.svelte';
+	import WalletMenu from './WalletMenu.svelte';
 	import AccountLoginDialog from './AccountLoginDialog.svelte';
 	import ProfileCard from './ProfileCard.svelte';
 	import { activeAccount } from '$lib/services/accountManager.svelte';
@@ -222,12 +223,14 @@
 			</div>
 			<!-- Theme Toggle -->
 			<div class="flex items-center space-x-2">
+				<WalletMenu />
 				<ThemeToggle />
 			</div>
 		</div>
 
 		<!-- Mobile Menu Button -->
 		<div class="flex items-center space-x-2 sm:hidden">
+			<WalletMenu />
 			<ThemeToggle />
 			<Sheet.Root bind:open={isMenuOpen}>
 				<Sheet.Trigger class={buttonVariants({ variant: 'ghost', size: 'icon' })} aria-label="Menu">

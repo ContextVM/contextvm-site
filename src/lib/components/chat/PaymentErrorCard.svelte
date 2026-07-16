@@ -8,7 +8,7 @@
 	} from '$lib/services/payments/payment-errors';
 	import { toOptionViews } from '$lib/services/payments/payment-options';
 
-	let { error }: { error: ExplicitGatingError } = $props();
+	let { error, onRetry }: { error: ExplicitGatingError; onRetry?: () => void } = $props();
 
 	const paymentOptions = $derived(
 		isPaymentRequiredError(error) ? toOptionViews(error.data.payment_options) : []
@@ -52,6 +52,6 @@
 	{/if}
 
 	{#if paymentOptions.length > 0}
-		<PaymentOptionsList options={paymentOptions} />
+		<PaymentOptionsList options={paymentOptions} {onRetry} />
 	{/if}
 </div>

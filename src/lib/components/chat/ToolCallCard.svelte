@@ -18,11 +18,13 @@
 	let {
 		toolCall,
 		onApprove,
-		onReject
+		onReject,
+		onRetry
 	}: {
 		toolCall: ToolCallData;
 		onApprove?: () => void;
 		onReject?: () => void;
+		onRetry?: () => void;
 	} = $props();
 
 	let argsOpen = $state(false);
@@ -195,7 +197,7 @@
 		{/if}
 
 		{#if toolCall.paymentError}
-			<PaymentErrorCard error={toolCall.paymentError} />
+			<PaymentErrorCard error={toolCall.paymentError} {onRetry} />
 		{:else if transparentGroups.length > 0 && (toolCall.status === 'running' || toolCall.status === 'pending' || toolCall.status === 'approved')}
 			<div class="space-y-2">
 				{#each transparentGroups as group (group.requestEventId)}

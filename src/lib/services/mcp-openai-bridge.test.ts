@@ -155,3 +155,36 @@ describe('ToolRegistry resolve', () => {
 		}
 	});
 });
+
+describe('ToolRegistry local tools', () => {
+	it('registers a built-in tool whose execute flows through resolve', async () => {
+		const registry = new ToolRegistry();
+		const execute = async (args: Record<string, unknown>) =>
+			`ran with ${JSON.stringify(args)}`;
+
+		registry.registerLocal(
+			'wallet_pay_invoice',
+			'Pay a bolt11 invoice',
+			{ type: 'object', properties: { invoice: { type: 'string' } }, required: ['invoice'] },
+			execute,
+			'auto'
+		);
+
+		const tools = registry.getOpenAITools();
+		expect(tools).toHaveLength(1);
+		expect(tools[0].type).toBe('function');
+		if (tools[0].type === 'function') {
+			expect(tools[0].function.name).toBe('wallet_pay_invoice');
+		}
+
+		const resolved = registry.resolve('wallet_pay_invoice', JSON.stringify({ invoice: 'lnbc1' }));
+		expect(resolved.ok).toBe(true);
+		if (resolved.ok) {
+			expect(resolved.value.tier).toBe('auto');
+			expect(resolved.value.execute).toBe(execute);
+			expect(await resolved.value.execute?.(resolved.value.args)).toBe(
+				'ran with {"invoice":"lnbc1"}'
+			);
+		}
+	});
+});

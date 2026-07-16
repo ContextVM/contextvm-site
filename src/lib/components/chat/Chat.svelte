@@ -14,6 +14,7 @@
 	import { LLMService } from '$lib/services/llm';
 	import { AgentOrchestrator } from '$lib/services/agent-orchestrator';
 	import { mcpClientService } from '$lib/services/mcpClient.svelte';
+	import { walletStore } from '$lib/services/wallet/wallet-store.svelte';
 	import { eventStore } from '$lib/services/eventStore';
 	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
 	import { createServerAnnouncementsLoader } from '$lib/services/loaders.svelte';
@@ -111,6 +112,23 @@
 		orchestrator?.rejectToolCall(toolCallId);
 	};
 
+	const retryToolCall = async (toolCallId: string) => {
+		if (!orchestrator) return;
+		let target;
+		for (const message of messages) {
+			const found = message.toolCalls?.find((tc) => tc.id === toolCallId);
+			if (found) {
+				target = found;
+				break;
+			}
+		}
+		if (!target) return;
+		await orchestrator.retryToolCall(target);
+		if (conversationId) {
+			debouncedPersist(conversationId, messages);
+		}
+	};
+
 	const rejectPendingApprovals = (reason: Error) => {
 		orchestrator?.rejectPendingApprovals(reason);
 	};
@@ -121,7 +139,8 @@
 			llmService = new LLMService(config);
 			orchestrator = new AgentOrchestrator({
 				llmService,
-				mcpClientService
+				mcpClientService,
+				wallet: walletStore
 			});
 		} else {
 			llmService.reconfigure(config);
@@ -131,6 +150,8 @@
 	// Invalidate cached tool registry when servers connect/disconnect.
 	$effect(() => {
 		void mcpClientService.clients.size;
+		void walletStore.isConfigured;
+		void walletStore.allowInChat;
 		orchestrator?.invalidateRegistry();
 	});
 
@@ -513,6 +534,7 @@
 						{message}
 						onApproveToolCall={approveToolCall}
 						onRejectToolCall={rejectToolCall}
+						onRetryToolCall={retryToolCall}
 					/>
 				{/each}
 				{#if isPreparingTools}

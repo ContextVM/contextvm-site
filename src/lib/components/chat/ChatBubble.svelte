@@ -47,11 +47,13 @@
 	let {
 		message,
 		onApproveToolCall,
-		onRejectToolCall
+		onRejectToolCall,
+		onRetryToolCall
 	}: {
 		message: ChatMessage;
 		onApproveToolCall?: (toolCallId: string) => void;
 		onRejectToolCall?: (toolCallId: string) => void;
+		onRetryToolCall?: (toolCallId: string) => void;
 	} = $props();
 
 	const html = $derived.by(() => {
@@ -135,6 +137,7 @@
 									{toolCall}
 									onApprove={() => onApproveToolCall?.(toolCall.id)}
 									onReject={() => onRejectToolCall?.(toolCall.id)}
+									onRetry={() => onRetryToolCall?.(toolCall.id)}
 								/>
 							{/each}
 						</div>

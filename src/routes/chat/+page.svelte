@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import ChatSidebar from '$lib/components/chat/ChatSidebar.svelte';
 	import Chat from '$lib/components/chat/Chat.svelte';
@@ -14,12 +15,18 @@
 		type LLMConfig as ChatLLMConfig
 	} from '$lib/types/chat-types';
 	import { mcpClientService } from '$lib/services/mcpClient.svelte';
+	import { walletStore } from '$lib/services/wallet/wallet-store.svelte';
 	import PlugIcon from '@lucide/svelte/icons/plug';
 
 	let activeConversationId = $state<string | null>(null);
 	let config = $state<ChatLLMConfig>({ ...DEFAULT_LLM_CONFIG });
 	let lastUsedModel = $state('');
-	let autoApproveTools = $state(false);
+	const AUTO_APPROVE_KEY = 'contextvm.chat.autoApproveTools';
+	let autoApproveTools = $state(browser && localStorage.getItem(AUTO_APPROVE_KEY) === '1');
+
+	$effect(() => {
+		if (browser) localStorage.setItem(AUTO_APPROVE_KEY, autoApproveTools ? '1' : '0');
+	});
 	const selectedProvider = $derived(
 		PROVIDER_PRESETS.find((preset) => preset.key === config.provider) ?? PROVIDER_PRESETS[0]
 	);
@@ -106,6 +113,16 @@
 					<Switch bind:checked={autoApproveTools} size="sm" />
 					<span class="hidden text-[11px] text-muted-foreground sm:inline">Auto-approve</span>
 				</div>
+				{#if walletStore.isConfigured}
+					<div class="flex items-center gap-1.5">
+						<Switch
+							checked={walletStore.allowInChat}
+							onCheckedChange={(v) => walletStore.setAllowInChat(v)}
+							size="sm"
+						/>
+						<span class="hidden text-[11px] text-muted-foreground sm:inline">Allow wallet</span>
+					</div>
+				{/if}
 				<LLMConfig bind:config />
 			</div>
 		</div>

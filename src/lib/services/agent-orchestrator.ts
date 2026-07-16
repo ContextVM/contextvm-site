@@ -8,6 +8,19 @@ import {
 	serializeExplicitGatingError
 } from '$lib/services/payments/payment-errors';
 import { paymentNotificationsService } from '$lib/services/payments/payment-notifications.svelte';
+import type { NwcClient } from '@contextvm/sdk';
+import { registerWalletTools } from '$lib/services/wallet/wallet-tools';
+
+/**
+ * Reactive wallet access the orchestrator reads when building the tool registry.
+ * Injected (not imported) so the orchestrator stays free of `.svelte.ts` runes
+ * and unit-testable without the Svelte runtime.
+ */
+export interface WalletToolSource {
+	readonly isConfigured: boolean;
+	readonly allowInChat: boolean;
+	getClient(): NwcClient | null;
+}
 
 const DEFAULT_TOOL_APPROVAL_TIMEOUT_MS = 120_000;
 const DEFAULT_REGISTRY_CACHE_MS = 60_000;
@@ -47,6 +60,7 @@ export class AgentOrchestrator {
 	private toolApprovalTimeoutMs: number;
 	private registryCacheMs: number;
 	private toolConcurrency: number;
+	private wallet: WalletToolSource | null;
 	private registryCache: { registry: ToolRegistry; timestamp: number } | null = null;
 	private pendingApprovals = new Map<string, PendingApproval>();
 	private llmService: LLMService;
@@ -58,12 +72,14 @@ export class AgentOrchestrator {
 		toolApprovalTimeoutMs?: number;
 		registryCacheMs?: number;
 		toolConcurrency?: number;
+		wallet?: WalletToolSource;
 	}) {
 		this.llmService = options.llmService;
 		this.mcpClientService = options.mcpClientService;
 		this.toolApprovalTimeoutMs = options.toolApprovalTimeoutMs ?? DEFAULT_TOOL_APPROVAL_TIMEOUT_MS;
 		this.registryCacheMs = options.registryCacheMs ?? DEFAULT_REGISTRY_CACHE_MS;
 		this.toolConcurrency = Math.max(1, options.toolConcurrency ?? DEFAULT_TOOL_CONCURRENCY);
+		this.wallet = options.wallet ?? null;
 	}
 
 	public approveToolCall(toolCallId: string): void {
@@ -80,6 +96,47 @@ export class AgentOrchestrator {
 			approval.reject(reason);
 		}
 		this.pendingApprovals.clear();
+	}
+
+	/**
+	 * Re-run a single MCP tool call in place (e.g. after the user paid an
+	 * explicit-gating invoice outside the agent loop). Mutates the reactive
+	 * toolCall so the UI updates.
+	 */
+	public async retryToolCall(toolCall: ToolCallData): Promise<void> {
+		if (!toolCall.serverPubkey || !toolCall.originalToolName) return;
+
+		let args: Record<string, unknown>;
+		try {
+			args = toolCall.arguments.trim() ? JSON.parse(toolCall.arguments) : {};
+		} catch {
+			args = {};
+		}
+
+		toolCall.status = 'running';
+		toolCall.paymentError = undefined;
+
+		try {
+			const result = await this.mcpClientService.callTool(
+				toolCall.serverPubkey,
+				toolCall.originalToolName,
+				args
+			);
+			toolCall.status = 'completed';
+			toolCall.result = this.serializeToolResult(result);
+		} catch (error) {
+			const gatingError = extractExplicitGatingError(error);
+			if (gatingError) {
+				toolCall.status = 'payment_required';
+				toolCall.paymentError = gatingError;
+				toolCall.result = serializeExplicitGatingError(gatingError);
+			} else {
+				toolCall.status = 'error';
+				toolCall.result = `Error: ${
+					error instanceof Error ? error.message : 'Tool call failed'
+				}`;
+			}
+		}
 	}
 
 	public async run(options: AgentOrchestratorRunOptions): Promise<AgentOrchestratorResult> {
@@ -278,6 +335,12 @@ export class AgentOrchestrator {
 			})
 		);
 
+		const wallet = this.wallet;
+		if (wallet && wallet.allowInChat && wallet.isConfigured) {
+			const nwc = wallet.getClient();
+			if (nwc) registerWalletTools(registry, nwc);
+		}
+
 		return registry;
 	}
 
@@ -385,7 +448,8 @@ export class AgentOrchestrator {
 				arguments: toolCall.arguments,
 				status: resolved.value.tier === 'auto' ? 'running' : 'pending',
 				serverName: resolved.value.serverName,
-				serverPubkey: resolved.value.serverPubkey
+				serverPubkey: resolved.value.serverPubkey,
+				originalToolName: resolved.value.originalToolName
 			};
 		});
 
@@ -437,6 +501,14 @@ export class AgentOrchestrator {
 				}
 
 				throwIfAborted();
+
+				if (resolved.value.execute) {
+					markStatus(toolCall.id, 'running');
+					const content = await resolved.value.execute(resolved.value.args, signal);
+					markStatus(toolCall.id, 'completed', content);
+					return this.makeToolResultMessage(toolCall.id, toolCall.functionName, content);
+				}
+
 				markStatus(toolCall.id, 'running');
 				const result = await this.mcpClientService.callTool(
 					resolved.value.serverPubkey,
