@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		CheckCircle,
@@ -145,7 +146,7 @@
 			<div class="mt-10 text-center">
 				<Button
 					variant="outline"
-					href="/faqs"
+					href={resolve('/faqs')}
 					class="transition-transform duration-200 hover:scale-105"
 				>
 					Find more answers in our FAQs

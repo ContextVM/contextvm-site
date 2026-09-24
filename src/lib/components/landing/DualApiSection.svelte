@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 </script>
 
@@ -57,7 +58,7 @@
 			<div class="mt-10 text-center">
 				<Button
 					variant="outline"
-					href="/blog/HeekLEB1p4rU61ngbuFrH"
+					href={resolve('/blog/HeekLEB1p4rU61ngbuFrH')}
 					class="transition-transform duration-200 hover:scale-105"
 				>
 					Discover CtxCN

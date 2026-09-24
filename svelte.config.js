@@ -12,17 +12,18 @@ const config = {
 
 	kit: {
 		adapter: adapter({
-			fallback: 'index.html'
+			fallback: '404.html'
 		}),
 		paths: {
-			base: isGitHubPages ? githubPagesBasePath : ''
+			base: isGitHubPages ? githubPagesBasePath : '',
+			relative: false
 		},
 		alias: {
 			'@/*': './path/to/lib/*'
 		},
 		prerender: {
 			crawl: true,
-			handleHttpError: 'ignore'
+			origin: isGitHubPages ? 'https://contextvm.github.io' : 'https://contextvm.org'
 		}
 	}
 };

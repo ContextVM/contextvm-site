@@ -2,7 +2,14 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
+	import SEO from '$lib/components/SEO.svelte';
 </script>
+
+<SEO
+	title={page.status === 404 ? 'Page not found' : 'Error'}
+	description="The requested ContextVM page could not be displayed."
+	robots="noindex, nofollow"
+/>
 
 <main class="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background px-4">
 	<div class="mx-auto max-w-md text-center">
