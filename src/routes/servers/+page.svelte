@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import ServerCard from '$lib/components/ServerCard.svelte';
@@ -74,7 +75,7 @@
 	);
 	const serverLookupHref = $derived.by(() => {
 		const identifier = decodedSearchIdentifier;
-		return identifier ? `/s/${identifier.original}` : null;
+		return identifier ? resolve(`/s/${identifier.original}`) : null;
 	});
 </script>
 

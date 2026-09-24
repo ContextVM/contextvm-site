@@ -82,6 +82,25 @@ if (!homepage.includes('<h1') || !homepage.includes('ContextVM')) {
 	throw new Error('index.html does not contain the prerendered homepage');
 }
 
+const githubPagesBase = '/contextvm-site';
+const isGitHubPagesBuild = homepage.includes(`href="${githubPagesBase}/favicon.ico"`);
+if (isGitHubPagesBuild) {
+	for (const page of pages.keys()) {
+		const internalLinks = [...readBuildFile(page).matchAll(/<a\b[^>]*href="([^"]+)"/g)]
+			.map((match) => match[1])
+			.filter((href) => href.startsWith('/') && !href.startsWith('//'));
+		const linksOutsideBase = internalLinks.filter(
+			(href) => href !== githubPagesBase && !href.startsWith(`${githubPagesBase}/`)
+		);
+
+		if (linksOutsideBase.length > 0) {
+			throw new Error(
+				`${page} has internal links outside ${githubPagesBase}: ${JSON.stringify(linksOutsideBase)}`
+			);
+		}
+	}
+}
+
 const about = readBuildFile('about.html');
 if (!about.includes('Imagine a world where anyone, anywhere')) {
 	throw new Error('about.html does not contain the About page copy');
@@ -114,6 +133,16 @@ if (robots !== expectedRobots) {
 const fallback = readBuildFile('404.html');
 if (fallback === homepage) {
 	throw new Error('404.html duplicates the prerendered homepage');
+}
+
+const vercelConfig = JSON.parse(
+	readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')
+) as { cleanUrls?: boolean; rewrites?: Array<{ source?: string; destination?: string }> };
+const hasIndexFallback = vercelConfig.rewrites?.some(
+	(rewrite) => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'
+);
+if (vercelConfig.cleanUrls !== true || hasIndexFallback) {
+	throw new Error('vercel.json must use clean URLs without an index.html catch-all rewrite');
 }
 
 console.log('SEO build output is valid');
