@@ -77,7 +77,6 @@
 	let seoTitle = $state('Loading...');
 	let seoDescription = $state('Loading article...');
 	let seoImage = $state(logoBlackSrc);
-	let seoUrl = $state(`https://contextvm.com/blog/${page.params.id}`);
 	let seoType = $state('article' as 'website' | 'article');
 
 	// Update SEO data when article loads
@@ -90,7 +89,6 @@
 			seoTitle = articleTitle;
 			seoDescription = contentPreview;
 			seoImage = articleImage || logoBlackSrc;
-			seoUrl = `https://contextvm.com/blog/${page.params.id}`;
 			seoType = 'article';
 		}
 	});
@@ -233,7 +231,7 @@
 </script>
 
 {#if $storedArticle}
-	<SEO title={seoTitle} description={seoDescription} image={seoImage} url={seoUrl} type={seoType} />
+	<SEO title={seoTitle} description={seoDescription} image={seoImage} type={seoType} />
 	{@const image = getArticleImage($storedArticle)}
 	{@const title = getArticleTitle($storedArticle)}
 	{@const publishedAt = formatUnixTimestamp($storedArticle.created_at, true)}

@@ -77,7 +77,6 @@
 	let seoTitle = $state('Loading server...');
 	let seoDescription = $state('Loading server information...');
 	let seoImage = $state(logoBlackSrc);
-	let seoUrl = $state(`https://contextvm.com/s/${requestedIdentifier}`);
 	let seoType = $state('website' as 'website' | 'article');
 
 	const serverQuery = $derived(
@@ -123,7 +122,6 @@
 			seoDescription =
 				serverAbout.length > 160 ? serverAbout.substring(0, 160) + '...' : serverAbout;
 			seoImage = serverPicture;
-			seoUrl = `https://contextvm.com/s/${requestedIdentifier}`;
 			seoType = 'website';
 		}
 	});
@@ -275,7 +273,7 @@
 	}
 </script>
 
-<Seo title={seoTitle} description={seoDescription} image={seoImage} url={seoUrl} type={seoType} />
+<Seo title={seoTitle} description={seoDescription} image={seoImage} type={seoType} />
 
 {#if $resolvedIdentifierQuery.isLoading}
 	<div class="container mx-auto flex min-h-[50vh] max-w-6xl items-center justify-center px-4 py-12">

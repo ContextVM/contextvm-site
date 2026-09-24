@@ -69,8 +69,9 @@
 </script>
 
 <Seo
-	title="{currentSchema?.name || 'Schema'} | ContextVM"
+	title={currentSchema?.name || 'Schema'}
 	description="MCP servers implementing the {currentSchema?.name || hash} common tool schema."
+	robots="noindex, follow"
 />
 
 <main class="min-h-screen bg-background px-4 py-8">
