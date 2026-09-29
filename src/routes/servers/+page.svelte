@@ -11,7 +11,11 @@
 	} from '$lib/queries/serverQueries';
 	import { serverKeys } from '$lib/queries/serverQueryKeys';
 	import { eventStore } from '$lib/services/eventStore';
-	import { ServerAnnouncementsModel } from '$lib/models/serverAnnouncements';
+	import {
+		parseServerInitializeMsg,
+		ServerAnnouncementsModel,
+		type ServerAnnouncement
+	} from '$lib/models/serverAnnouncements';
 	import { CatalogSchemasModel } from '$lib/models/catalogSchemas';
 	import { createCommonSchemaAnnouncementsLoader } from '$lib/services/loaders.svelte';
 	import Seo from '$lib/components/SEO.svelte';
@@ -19,7 +23,16 @@
 	import { Button } from '$lib/components/ui/button';
 	import CatalogBrowseSection from '$lib/components/CatalogBrowseSection.svelte';
 	import { decodeServerIdentifier, resolveServerIdentifier } from '$lib/utils';
+	import type { PageData } from './$types';
 
+	let { data }: { data: PageData } = $props();
+
+	const snapshotAnnouncements = $derived(
+		data.servers.flatMap((snapshot) => {
+			const server = parseServerInitializeMsg(snapshot.event);
+			return server ? [server] : [];
+		})
+	);
 	const serverAnnouncements = eventStore.model(ServerAnnouncementsModel);
 	const allSchemas = eventStore.model(CatalogSchemasModel);
 
@@ -44,7 +57,24 @@
 		return () => sub.unsubscribe();
 	});
 
-	let loading = $state($serverAnnouncementsQuery.isFetching);
+	const loading = $derived($serverAnnouncementsQuery.isFetching);
+	const liveStatus = $derived(
+		$serverAnnouncementsQuery.isError
+			? 'unavailable'
+			: $serverAnnouncementsQuery.data
+				? 'available'
+				: 'connecting'
+	);
+	const allServerAnnouncements = $derived.by(() => {
+		const byPubkey = new Map<string, ServerAnnouncement>();
+
+		for (const server of [...snapshotAnnouncements, ...$serverAnnouncements]) {
+			const current = byPubkey.get(server.pubkey);
+			if (!current || server.created_at > current.created_at) byPubkey.set(server.pubkey, server);
+		}
+
+		return [...byPubkey.values()].sort((a, b) => b.created_at - a.created_at);
+	});
 	let searchTerm = $state('');
 	const resolvedSearchIdentifierQuery = $derived.by(() => {
 		const trimmedSearchTerm = searchTerm.trim();
@@ -58,11 +88,11 @@
 
 	const filteredServerAnnouncements = $derived.by(() => {
 		if (!searchTerm.trim()) {
-			return $serverAnnouncements;
+			return allServerAnnouncements;
 		}
 
 		const term = searchTerm.trim();
-		return $serverAnnouncements?.filter((s) => matchesServerSearch(s, term)) ?? [];
+		return allServerAnnouncements.filter((server) => matchesServerSearch(server, term));
 	});
 
 	const decodedSearchIdentifier = $derived(
@@ -91,6 +121,15 @@
 			<p class="mx-auto max-w-2xl text-lg text-muted-foreground">
 				Discover and connect with Model Context Protocol servers running on the Nostr network. No
 				domains, no OAuth, no port forwarding—just cryptographic keys and relays.
+			</p>
+			<p class="mt-4 text-sm text-muted-foreground">
+				Snapshot refreshed
+				<time datetime={data.generatedAt}
+					>{new Date(data.generatedAt).toLocaleDateString('en', {
+						dateStyle: 'medium',
+						timeZone: 'UTC'
+					})}</time
+				>. Live relay updates are {liveStatus}.
 			</p>
 		</div>
 
@@ -176,7 +215,7 @@
 						{/each}
 					</div>
 				{/if}
-			{:else if !$serverAnnouncements?.length && !loading}
+			{:else if !allServerAnnouncements.length && !loading}
 				<div class="mt-12 text-center text-muted-foreground">
 					<p>No MCP servers found. Check back later for server announcements.</p>
 				</div>

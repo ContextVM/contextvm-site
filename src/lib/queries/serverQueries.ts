@@ -18,7 +18,7 @@ import { getSeenRelays, mergeRelaySets } from 'applesauce-core/helpers/relays';
 import { relayStore } from '$lib/stores/relay-store.svelte';
 import { encodeServerIdentity, decodeServerIdentifier, type ServerIdentity } from '$lib/utils';
 
-interface ServerQueryResult {
+export interface ServerQueryResult {
 	isPublic: boolean;
 	server: ServerAnnouncement | null;
 }
@@ -33,9 +33,15 @@ interface ParsedRelayList {
 	hasPublishedRelayList: boolean;
 }
 
-export function useServerAnnouncement(pubkey: string, relayHints: string[] = []) {
+export function useServerAnnouncement(
+	pubkey: string,
+	relayHints: string[] = [],
+	initialData?: ServerQueryResult
+) {
 	return createQuery<ServerQueryResult | null>({
 		queryKey: serverKeys.announcement(pubkey),
+		initialData,
+		initialDataUpdatedAt: initialData ? 0 : undefined,
 		queryFn: async () => {
 			let server: ServerAnnouncement | null = null;
 			const event = await lastValueFrom(
@@ -47,9 +53,15 @@ export function useServerAnnouncement(pubkey: string, relayHints: string[] = [])
 	});
 }
 
-export function useServerIdentity(pubkey: string, explicitRelayHints: string[] = []) {
+export function useServerIdentity(
+	pubkey: string,
+	explicitRelayHints: string[] = [],
+	initialData?: ServerIdentity
+) {
 	return createQuery<ServerIdentity>({
 		queryKey: serverKeys.identity(pubkey),
+		initialData,
+		initialDataUpdatedAt: initialData ? 0 : undefined,
 		queryFn: async () => {
 			const relayListEvent = await fetchServerRelayListEvent(pubkey, explicitRelayHints);
 			const publishedRelayList = parseServerRelayList(relayListEvent);

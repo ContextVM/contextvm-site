@@ -23,7 +23,17 @@ const config = {
 		},
 		prerender: {
 			crawl: true,
-			origin: isGitHubPages ? 'https://contextvm.github.io' : 'https://contextvm.org'
+			origin: isGitHubPages ? 'https://contextvm.github.io' : 'https://contextvm.org',
+			handleHttpError: ({ status, path, referrer, message }) => {
+				const isLiveServerLink =
+					status === 404 && path.startsWith('/s/') && referrer?.startsWith('/blog/');
+				const isDocsMirrorLink =
+					isGitHubPages &&
+					status === 404 &&
+					path.startsWith('/contextvm-docs/') &&
+					referrer?.startsWith(`${githubPagesBasePath}/blog/`);
+				if (!isLiveServerLink && !isDocsMirrorLink) throw new Error(message);
+			}
 		}
 	}
 };

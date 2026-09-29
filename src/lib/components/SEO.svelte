@@ -3,6 +3,20 @@
 	import { page } from '$app/stores';
 	import { absoluteSiteUrl, canonicalUrl, SITE_ORIGIN } from '$lib/seo';
 
+	type StructuredData = Record<string, unknown>;
+
+	interface Props {
+		title?: string;
+		description?: string;
+		image?: string;
+		type?: 'website' | 'article';
+		siteName?: string;
+		locale?: string;
+		robots?: string;
+		canonicalPath?: string;
+		structuredData?: StructuredData[];
+	}
+
 	const favicon32Src = asset('/favicon-32x32.png');
 	const favicon16Src = asset('/favicon-16x16.png');
 	const appleTouchIconSrc = asset('/apple-touch-icon-180x180.png');
@@ -11,18 +25,20 @@
 		title = 'ContextVM',
 		description = 'Discover and connect with Model Context Protocol (MCP) servers on Nostr.',
 		image = '/apple-touch-icon-180x180.png',
-		type = 'website' as 'website' | 'article',
+		type = 'website',
 		siteName = 'ContextVM',
 		locale = 'en_US',
-		robots = 'index, follow'
-	} = $props();
+		robots = 'index, follow',
+		canonicalPath,
+		structuredData = []
+	}: Props = $props();
 
 	const fullTitle = $derived(
 		`${title || 'Untitled'} ${title === siteName ? '' : `| ${siteName}`}`.trim()
 	);
-	const url = $derived(canonicalUrl($page.url.pathname, base));
+	const url = $derived(canonicalUrl(canonicalPath ?? $page.url.pathname, base));
 	const imageUrl = $derived(absoluteSiteUrl(image, base));
-	const structuredData = $derived.by(() =>
+	const jsonLd = $derived.by(() =>
 		JSON.stringify({
 			'@context': 'https://schema.org',
 			'@graph': [
@@ -42,9 +58,10 @@
 					name: siteName,
 					url: `${SITE_ORIGIN}/`,
 					publisher: { '@id': `${SITE_ORIGIN}/#organization` }
-				}
+				},
+				...structuredData
 			]
-		})
+		}).replace(/</g, '\\u003c')
 	);
 </script>
 
@@ -74,5 +91,5 @@
 	<link rel="apple-touch-icon" href={appleTouchIconSrc} />
 	<link rel="canonical" href={url} />
 
-	{@html `<script type="application/ld+json">${structuredData}<\/script>`}
+	{@html `<script type="application/ld+json">${jsonLd}<\/script>`}
 </svelte:head>

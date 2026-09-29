@@ -7,6 +7,8 @@
 		getAvailableCapabilities,
 		pubkeyToHexColor,
 		copyToClipboard,
+		decodeServerIdentifier,
+		encodeServerIdentity,
 		resolveServerIdentifier
 	} from '$lib/utils';
 	import { goto } from '$app/navigation';
@@ -54,11 +56,48 @@
 	import { createServerNotesFilter } from '$lib/constants';
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { parseCapTagsFromEvent, parseCapTagsFromTags } from '$lib/services/payments/cep8-tags';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const requestedIdentifier = page.params.pubkey ?? '';
+	const snapshotAnnouncement = $derived(
+		data.server ? parseServerInitializeMsg(data.server.event) : null
+	);
+	const snapshotIdentifier = $derived.by(() => {
+		if (!data.server) return undefined;
+
+		const decoded = decodeServerIdentifier(requestedIdentifier);
+		if (decoded?.pubkey === data.server.event.pubkey) {
+			return {
+				...decoded,
+				relayHints: decoded.relayHints.length ? decoded.relayHints : data.server.relays
+			};
+		}
+
+		return {
+			original: requestedIdentifier,
+			pubkey: data.server.event.pubkey,
+			relayHints: data.server.relays,
+			format: 'hex' as const
+		};
+	});
+	const snapshotIdentity = $derived.by(() => {
+		if (!snapshotAnnouncement || !data.server) return undefined;
+
+		const relayHints = snapshotIdentifier?.relayHints ?? data.server.relays;
+		const relaySource: 'nprofile' | 'announcement' =
+			snapshotIdentifier?.format === 'nprofile' ? 'nprofile' : 'announcement';
+		return {
+			...encodeServerIdentity(snapshotAnnouncement.pubkey, relayHints),
+			relaySource
+		};
+	});
+
 	const resolvedIdentifierQuery = createQuery({
 		queryKey: ['server-identifier', requestedIdentifier, page.url.hostname],
-		queryFn: () => resolveServerIdentifier(requestedIdentifier, page.url.hostname)
+		queryFn: () => resolveServerIdentifier(requestedIdentifier, page.url.hostname),
+		initialData: () => snapshotIdentifier
 	});
 	const resolvedIdentifier = $derived($resolvedIdentifierQuery.data ?? null);
 	const pubkey = $derived(resolvedIdentifier?.pubkey ?? requestedIdentifier);
@@ -73,17 +112,19 @@
 	const homeHref = $derived<`/`>('/');
 	const logoBlackSrc = asset('/logo-black.svg');
 
-	// Dynamic SEO data for server pages
-	let seoTitle = $state('Loading server...');
-	let seoDescription = $state('Loading server information...');
-	let seoImage = $state(logoBlackSrc);
-	let seoType = $state('website' as 'website' | 'article');
-
 	const serverQuery = $derived(
-		resolvedIdentifier ? useServerAnnouncement(pubkey, bootstrapRelayHints) : undefined
+		resolvedIdentifier
+			? useServerAnnouncement(
+					pubkey,
+					bootstrapRelayHints,
+					snapshotAnnouncement ? { server: snapshotAnnouncement, isPublic: true } : undefined
+				)
+			: undefined
 	);
 	const serverIdentityQuery = $derived(
-		resolvedIdentifier ? useServerIdentity(pubkey, bootstrapRelayHints) : undefined
+		resolvedIdentifier
+			? useServerIdentity(pubkey, bootstrapRelayHints, snapshotIdentity)
+			: undefined
 	);
 	const effectiveRelayHints = $derived(
 		$serverIdentityQuery?.data?.relayHints?.length
@@ -110,21 +151,23 @@
 
 	const hasNotes = $derived($notes.length > 0);
 
-	// Update SEO data when server loads
-	$effect(() => {
-		if ($serverQuery?.data?.server) {
-			const server = $serverQuery.data.server;
-			const serverName = server.name || 'Unnamed Server';
-			const serverAbout = server.about || 'No description available for this server.';
-			const serverPicture = server.picture || logoBlackSrc;
-
-			seoTitle = serverName;
-			seoDescription =
-				serverAbout.length > 160 ? serverAbout.substring(0, 160) + '...' : serverAbout;
-			seoImage = serverPicture;
-			seoType = 'website';
-		}
+	const displayedServer = $derived($serverQuery?.data?.server ?? snapshotAnnouncement);
+	const seoTitle = $derived(displayedServer?.name || 'Server');
+	const seoDescription = $derived.by(() => {
+		const about = displayedServer?.about || 'Public ContextVM server on Nostr.';
+		return about.length > 160 ? about.substring(0, 157) + '...' : about;
 	});
+	const seoImage = $derived(displayedServer?.picture || logoBlackSrc);
+	const canonicalPath = $derived('/s/' + (displayedServer?.pubkey ?? pubkey));
+	const liveStatus = $derived(
+		$serverQuery?.isError
+			? 'unavailable'
+			: $serverQuery?.isFetching
+				? 'connecting'
+				: ($serverQuery?.dataUpdatedAt ?? 0) > 0
+					? 'available'
+					: 'not checked'
+	);
 
 	// Only load queries for capabilities that are actually available
 	let toolsQuery = $derived(
@@ -273,7 +316,7 @@
 	}
 </script>
 
-<Seo title={seoTitle} description={seoDescription} image={seoImage} type={seoType} />
+<Seo title={seoTitle} description={seoDescription} image={seoImage} {canonicalPath} />
 
 {#if $resolvedIdentifierQuery.isLoading}
 	<div class="container mx-auto flex min-h-[50vh] max-w-6xl items-center justify-center px-4 py-12">
@@ -294,13 +337,13 @@
 	</div>
 {:else if $serverQuery?.data?.server}
 	<article class="container mx-auto max-w-6xl px-4 py-6 sm:py-8 md:py-12">
-		<!-- Back to servers link -->
-		<button
-			onclick={() => goto(resolve(serversHref))}
-			class="mb-4 flex items-center text-sm font-medium text-muted-foreground hover:text-primary sm:mb-6"
-		>
-			← Back to servers
-		</button>
+		<nav aria-label="Breadcrumb" class="mb-4 text-sm text-muted-foreground sm:mb-6">
+			<ol class="flex flex-wrap items-center gap-2">
+				<li><a href={resolve(serversHref)} class="font-medium hover:text-primary">Servers</a></li>
+				<li aria-hidden="true">/</li>
+				<li aria-current="page" class="truncate">{seoTitle}</li>
+			</ol>
+		</nav>
 
 		<!-- Server header with picture -->
 		{#if $serverQuery.data.server.picture}
@@ -325,9 +368,9 @@
 				<!-- Server name and website -->
 				<div class="mb-6 flex flex-col gap-6">
 					<div>
-						<h2 class="mb-1 text-2xl leading-none font-bold sm:text-3xl md:text-4xl">
+						<h1 class="mb-1 text-2xl leading-none font-bold sm:text-3xl md:text-4xl">
 							{$serverQuery.data.server.name}
-						</h2>
+						</h1>
 						{#if $serverQuery.data.server.website}
 							<!-- External URL — resolve() not applicable -->
 							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
@@ -340,6 +383,15 @@
 								{$serverQuery.data.server.website}
 							</a>
 						{/if}
+						<p class="mt-3 text-xs text-muted-foreground">
+							Snapshot refreshed
+							<time datetime={data.generatedAt}
+								>{new Date(data.generatedAt).toLocaleDateString('en', {
+									dateStyle: 'medium',
+									timeZone: 'UTC'
+								})}</time
+							>. Live relay lookup is {liveStatus}.
+						</p>
 					</div>
 					<div class="w-full space-y-3">
 						{#if hasPaidCapabilities}
