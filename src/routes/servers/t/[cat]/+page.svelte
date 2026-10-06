@@ -69,8 +69,9 @@
 </script>
 
 <Seo
-	title="#{cat} Servers | ContextVM"
+	title="#{cat} Servers"
 	description="MCP servers in the {cat} category on the Nostr network."
+	robots="noindex, follow"
 />
 
 <main class="min-h-screen bg-background px-4 py-8">

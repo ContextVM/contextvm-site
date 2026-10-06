@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { marked } from 'marked';
-	import DOMPurify from 'dompurify';
-	import { browser } from '$app/environment';
 	import Seo from '$lib/components/SEO.svelte';
 
 	// About page content in markdown
@@ -97,6 +95,8 @@ To get involved:
 ---
 
 *Built with ❤️ for the decentralized web*`;
+
+	const aboutHtml = marked.parse(aboutContent) as string;
 </script>
 
 <Seo
@@ -118,11 +118,8 @@ To get involved:
 	<div
 		class="prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none [&>*:not(:first-child)]:mt-6"
 	>
-		{#await marked.parse(aboutContent) then html}
-			{#if browser}
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html DOMPurify.sanitize(html)}
-			{/if}
-		{/await}
+		<!-- aboutContent is source-controlled static copy. -->
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+		{@html aboutHtml}
 	</div>
 </article>

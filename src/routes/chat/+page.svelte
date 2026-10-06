@@ -56,7 +56,7 @@
 <SEO
 	title="Chat"
 	description="Try ContextVM with an LLM chat. Zero config with free models or bring your own API key."
-	url="https://contextvm.com/chat"
+	robots="noindex, nofollow"
 />
 
 <Sidebar.Provider class="h-[calc(100dvh-3.5rem)] min-h-0 overflow-hidden">

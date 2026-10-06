@@ -113,7 +113,7 @@
 					size="lg"
 					variant="outline"
 					class="w-full px-6 text-base transition-transform duration-200 hover:scale-105 sm:w-auto sm:px-8"
-					href="/servers"
+					href={resolve('/servers')}
 				>
 					Browse public servers
 				</Button>
@@ -172,7 +172,7 @@
 					</div>
 
 					<div class="mt-10 text-center sm:mt-12">
-						<Button size="lg" href="/servers">View all public servers</Button>
+						<Button size="lg" href={resolve('/servers')}>View all public servers</Button>
 					</div>
 				</div>
 			</div>

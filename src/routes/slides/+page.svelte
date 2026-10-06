@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Seo from '$lib/components/SEO.svelte';
-	import { resolve } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
 
 	type SlideDeck = {
 		title: string;
@@ -19,7 +19,7 @@
 			title: 'ContextVM — Permissionless Infrastructure for MCP',
 			description:
 				'A technical overview of ContextVM as the transport layer that makes MCP sovereign, relay-routed, and public-key addressed.',
-			href: '/slides/contextvm-deck/index.html',
+			href: asset('/slides/contextvm-deck/index.html'),
 			status: 'Available now',
 			category: 'Protocol overview'
 		}

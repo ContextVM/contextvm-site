@@ -10,15 +10,12 @@
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { QueryClientProvider } from '@tanstack/svelte-query';
 	import { queryClient } from '$lib/query-client';
-	import SEO from '$lib/components/SEO.svelte';
 
 	let { children } = $props();
 
 	// Initialize the theme context for shadcn forms
 	setThemeContext({ components });
 </script>
-
-<SEO />
 
 <QueryClientProvider client={queryClient}>
 	<ModeWatcher />

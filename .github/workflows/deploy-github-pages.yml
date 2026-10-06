@@ -38,8 +38,8 @@ jobs:
           GITHUB_PAGES: 'true'
         run: bun run build
 
-      - name: Add SPA fallback for GitHub Pages
-        run: cp build/index.html build/404.html
+      - name: Check SEO build output
+        run: bun run check:seo
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

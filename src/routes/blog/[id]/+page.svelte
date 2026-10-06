@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { asset, resolve } from '$app/paths';
+	import { asset, base, resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import ProfileCard from '$lib/components/ProfileCard.svelte';
 	import ServerNoteCard from '$lib/components/ServerNoteCard.svelte';
@@ -13,13 +13,20 @@
 	import DOMPurify from 'dompurify';
 	import { formatUnixTimestamp } from '$lib/utils';
 	import { browser } from '$app/environment';
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import SEO from '$lib/components/SEO.svelte';
 	import { relayStore } from '$lib/stores/relay-store.svelte';
 	import { commonRelays } from '$lib/services/relay-pool';
-	import { getArticleImage, getArticleTitle } from 'applesauce-common/helpers';
+	import {
+		getArticleImage,
+		getArticlePublished,
+		getArticleSummary,
+		getArticleTitle
+	} from 'applesauce-common/helpers';
 	import type { Event } from 'nostr-tools';
+	import type { PageData } from './$types';
+	import { absoluteSiteUrl, canonicalUrl, SITE_ORIGIN } from '$lib/seo';
+
+	let { data }: { data: PageData } = $props();
 
 	const pointer: AddressPointer = $derived({
 		kind: LongFormArticle,
@@ -30,12 +37,11 @@
 			: commonRelays
 	});
 
-	let loading = $state(true);
+	let relayLoading = $state(true);
 	let embeddedNotes = $state<Record<string, Event | undefined>>({});
 	const article = $derived(addressLoader(pointer));
-
 	const storedArticle = $derived(eventStore.model(ReplaceableModel, pointer));
-
+	const articleEvent = $derived($storedArticle ?? data.article);
 	const blogHref = $derived<`/blog`>('/blog');
 
 	type ArticleSegment =
@@ -51,53 +57,111 @@
 	$effect(() => {
 		const sub = article.subscribe({
 			error: () => {
-				loading = false;
+				relayLoading = false;
 			},
 			complete: () => {
-				loading = false;
+				relayLoading = false;
 			}
 		});
-		if ($storedArticle) loading = false;
+		if (articleEvent) relayLoading = false;
 		return () => {
 			sub.unsubscribe();
 		};
 	});
 
-	// Configure marked options
-	onMount(() => {
-		marked.setOptions({
-			breaks: true,
-			gfm: true
-		});
-	});
-
 	const logoBlackSrc = asset('/logo-black.svg');
-
-	// Dynamic SEO data for individual blog posts
-	let seoTitle = $state('Loading...');
-	let seoDescription = $state('Loading article...');
-	let seoImage = $state(logoBlackSrc);
-	let seoUrl = $state(`https://contextvm.com/blog/${page.params.id}`);
-	let seoType = $state('article' as 'website' | 'article');
-
-	// Update SEO data when article loads
-	$effect(() => {
-		if ($storedArticle) {
-			const articleTitle = getArticleTitle($storedArticle) || 'Untitled Article';
-			const articleImage = getArticleImage($storedArticle);
-			const contentPreview = $storedArticle.content.substring(0, 160) + '...';
-
-			seoTitle = articleTitle;
-			seoDescription = contentPreview;
-			seoImage = articleImage || logoBlackSrc;
-			seoUrl = `https://contextvm.com/blog/${page.params.id}`;
-			seoType = 'article';
-		}
-	});
+	const seoTitle = $derived(
+		articleEvent ? getArticleTitle(articleEvent) || 'Untitled Article' : 'Loading...'
+	);
+	const seoDescription = $derived(
+		articleEvent
+			? (getArticleSummary(articleEvent) || articleEvent.content).replace(/\s+/g, ' ').slice(0, 160)
+			: 'Loading article...'
+	);
+	const seoImage = $derived(
+		articleEvent ? getArticleImage(articleEvent) || logoBlackSrc : logoBlackSrc
+	);
+	const articleUrl = $derived(canonicalUrl(`/blog/${page.params.id ?? ''}`, base));
+	const articleImageUrl = $derived(absoluteSiteUrl(seoImage, base));
+	const articleStructuredData = $derived.by(() =>
+		articleEvent
+			? [
+					{
+						'@type': 'Article',
+						'@id': `${articleUrl}#article`,
+						headline: seoTitle,
+						description: seoDescription,
+						image: [articleImageUrl],
+						datePublished: new Date(getArticlePublished(articleEvent) * 1000).toISOString(),
+						dateModified: new Date(articleEvent.created_at * 1000).toISOString(),
+						author: { '@id': `${SITE_ORIGIN}/#organization` },
+						publisher: { '@id': `${SITE_ORIGIN}/#organization` },
+						mainEntityOfPage: articleUrl
+					},
+					{
+						'@type': 'BreadcrumbList',
+						itemListElement: [
+							{
+								'@type': 'ListItem',
+								position: 1,
+								name: 'Blog',
+								item: canonicalUrl('/blog')
+							},
+							{
+								'@type': 'ListItem',
+								position: 2,
+								name: seoTitle,
+								item: articleUrl
+							}
+						]
+					}
+				]
+			: []
+	);
 
 	function escapeRegex(value: string): string {
 		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}
+
+	function escapeHtml(value: string): string {
+		return value
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
+	function isSafeMarkdownUrl(value: string, image: boolean): boolean {
+		try {
+			const protocol = new URL(value, SITE_ORIGIN).protocol;
+			return image
+				? protocol === 'http:' || protocol === 'https:'
+				: protocol === 'http:' ||
+						protocol === 'https:' ||
+						protocol === 'mailto:' ||
+						protocol === 'nostr:';
+		} catch {
+			return false;
+		}
+	}
+
+	const markdownRenderer = new marked.Renderer();
+	markdownRenderer.html = ({ text }) => escapeHtml(text);
+	markdownRenderer.link = function ({ href, title, tokens }) {
+		const label = this.parser.parseInline(tokens);
+		if (!isSafeMarkdownUrl(href, false)) return label;
+
+		const titleAttribute = title ? ` title="${escapeHtml(title)}"` : '';
+		const externalAttribute = /^https?:\/\//i.test(href) ? ' rel="external"' : '';
+		return `<a href="${escapeHtml(href)}"${titleAttribute}${externalAttribute}>${label}</a>`;
+	};
+	markdownRenderer.image = ({ href, title, text }) => {
+		if (!isSafeMarkdownUrl(href, true)) return escapeHtml(text);
+
+		const titleAttribute = title ? ` title="${escapeHtml(title)}"` : '';
+		return `<img src="${escapeHtml(href)}" alt="${escapeHtml(text)}"${titleAttribute}>`;
+	};
 
 	function parseEmbeddedEvents(content: string): Extract<ArticleSegment, { type: 'event' }>[] {
 		return Array.from(content.matchAll(NOSTR_EVENT_URI_REGEX))
@@ -132,11 +196,11 @@
 			);
 	}
 
-	async function parseArticleContent(content: string): Promise<ArticleSegment[]> {
+	function parseArticleContent(content: string): ArticleSegment[] {
 		const matches = Array.from(content.matchAll(NOSTR_URI_REGEX));
 		const segments: ArticleSegment[] = [];
 		const profiles: Array<Extract<ArticleSegment, { type: 'profile' }>> = [];
-		let markdownContent = content;
+		let markdownContent = content.replace(/\]\(\[(https?:\/\/[^\]\s]+)\]\(\1\)\)/g, ']($1)');
 
 		for (const [index, match] of matches.entries()) {
 			const value = match[0];
@@ -168,7 +232,7 @@
 			}
 		}
 
-		const html = await renderMarkdown(markdownContent);
+		const html = renderMarkdown(markdownContent);
 		const tokens = profiles.map((profile) => escapeRegex(profile.token));
 		if (!tokens.length) {
 			return [{ type: 'html', value: html }, ...segments];
@@ -190,23 +254,8 @@
 		];
 	}
 
-	let articleSegments = $state<ArticleSegment[]>([]);
-	const articleEventSegments = $derived.by(() =>
-		parseEmbeddedEvents($storedArticle?.content ?? '')
-	);
-
-	$effect(() => {
-		const content = $storedArticle?.content ?? '';
-		let cancelled = false;
-
-		parseArticleContent(content).then((segments) => {
-			if (!cancelled) articleSegments = segments;
-		});
-
-		return () => {
-			cancelled = true;
-		};
-	});
+	const articleSegments = $derived(parseArticleContent(articleEvent?.content ?? ''));
+	const articleEventSegments = $derived.by(() => parseEmbeddedEvents(articleEvent?.content ?? ''));
 
 	$effect(() => {
 		if (!articleEventSegments.length) return;
@@ -226,26 +275,38 @@
 		};
 	});
 
-	async function renderMarkdown(content: string): Promise<string> {
-		const html = await marked.parse(content);
+	function renderMarkdown(content: string): string {
+		const html = marked.parse(content, {
+			async: false,
+			breaks: true,
+			gfm: true,
+			renderer: markdownRenderer
+		});
 		return browser ? DOMPurify.sanitize(html) : html;
 	}
 </script>
 
-{#if $storedArticle}
-	<SEO title={seoTitle} description={seoDescription} image={seoImage} url={seoUrl} type={seoType} />
-	{@const image = getArticleImage($storedArticle)}
-	{@const title = getArticleTitle($storedArticle)}
-	{@const publishedAt = formatUnixTimestamp($storedArticle.created_at, true)}
+{#if articleEvent}
+	<SEO
+		title={seoTitle}
+		description={seoDescription}
+		image={seoImage}
+		type="article"
+		canonicalPath={`/blog/${page.params.id ?? ''}`}
+		structuredData={articleStructuredData}
+	/>
+	{@const image = getArticleImage(articleEvent)}
+	{@const title = getArticleTitle(articleEvent)}
+	{@const publishedAt = formatUnixTimestamp(getArticlePublished(articleEvent), true)}
 
 	<article class="container mx-auto max-w-4xl px-4 py-6 sm:py-8 md:py-12">
-		<!-- Back to blog link -->
-		<button
-			onclick={() => goto(resolve(blogHref))}
-			class="mb-4 flex items-center text-sm font-medium text-muted-foreground hover:text-primary sm:mb-6"
-		>
-			← Back to blog
-		</button>
+		<nav aria-label="Breadcrumb" class="mb-4 text-sm text-muted-foreground sm:mb-6">
+			<ol class="flex flex-wrap items-center gap-2">
+				<li><a href={resolve(blogHref)} class="font-medium hover:text-primary">Blog</a></li>
+				<li aria-hidden="true">/</li>
+				<li aria-current="page" class="truncate">{seoTitle}</li>
+			</ol>
+		</nav>
 
 		<!-- Article header -->
 		<header class="mb-6 sm:mb-8">
@@ -262,7 +323,7 @@
 			</h1>
 
 			<div class="flex items-center text-sm text-muted-foreground">
-				<time datetime={new Date($storedArticle.created_at * 1000).toISOString()}>
+				<time datetime={new Date(getArticlePublished(articleEvent) * 1000).toISOString()}>
 					{publishedAt}
 				</time>
 			</div>
@@ -298,7 +359,7 @@
 			{/each}
 		</div>
 	</article>
-{:else if loading}
+{:else if relayLoading}
 	<div class="container mx-auto px-4 py-16 text-center">
 		<div class="aspect-video overflow-hidden bg-muted">
 			<div class="h-full w-full animate-pulse bg-muted-foreground/20"></div>
@@ -327,11 +388,11 @@
 		<p class="mb-6 text-muted-foreground">
 			The article you're looking for doesn't exist or couldn't be loaded.
 		</p>
-		<button
-			onclick={() => goto(resolve(blogHref))}
+		<a
+			href={resolve(blogHref)}
 			class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
 		>
 			Back to blog
-		</button>
+		</a>
 	</div>
 {/if}
