@@ -31,6 +31,18 @@ function tagValue(event: Event, name: string): string | null {
 	return event.tags.find((tag) => tag[0] === name)?.[1] || null;
 }
 
+// Website/picture tags are rendered into prerendered href/src attributes, so
+// anything that is not a plain http(s) URL is rejected at this trust boundary.
+function safeHttpUrl(value: string | null): boolean {
+	if (value === null) return true;
+	try {
+		const protocol = new URL(value).protocol;
+		return protocol === 'http:' || protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
+
 function validSignedEvent(event: Event): boolean {
 	return validateEvent(event) && verifyEvent(event);
 }
@@ -59,10 +71,12 @@ function validServer(event: Event, pubkey: string): boolean {
 	try {
 		const content = JSON.parse(event.content);
 		const initializeResult = 'result' in content ? content.result : content;
-		return InitializeResultSchema.safeParse(initializeResult).success;
+		if (!InitializeResultSchema.safeParse(initializeResult).success) return false;
 	} catch {
 		return false;
 	}
+
+	return safeHttpUrl(tagValue(event, 'website')) && safeHttpUrl(tagValue(event, 'picture'));
 }
 
 function latestByIdentifier(events: Event[]): Event[] {
@@ -80,7 +94,13 @@ function latestByIdentifier(events: Event[]): Event[] {
 }
 
 async function readPreviousSnapshot(): Promise<SeoSnapshot> {
-	return JSON.parse(await readFile(SNAPSHOT_PATH, 'utf8')) as SeoSnapshot;
+	try {
+		return JSON.parse(await readFile(SNAPSHOT_PATH, 'utf8')) as SeoSnapshot;
+	} catch (error) {
+		throw new Error(
+			`Could not read the previous snapshot at ${SNAPSHOT_PATH.pathname} (restore it from git history if it was deleted): ${error}`
+		);
+	}
 }
 
 async function refresh() {
